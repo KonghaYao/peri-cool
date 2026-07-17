@@ -1,0 +1,89 @@
+---
+title: /theme 主题
+description: 在暗色和亮色之间切换 Peri 终端的配色方案。一条命令即时生效。
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+## 怎么用
+
+```bash
+/theme           # 在 dark 和 light 之间切换
+/theme dark      # 切换到暗色主题，默认就是它
+/theme light     # 切换到亮色主题
+```
+
+切换即时生效，不需要重启。
+
+## 内置主题
+
+Peri 内置两套主题，都使用暖橙色 `#D77757` 作为强调色：
+
+<Tabs syncKey="builtin-themes">
+  <TabItem label="peri-dark（默认）">
+
+  暗色背景 `#1a1b26`，文字 `#c0caf5`。类似 Tokyo Night 配色风格。
+
+  ```json
+  {
+    "name": "peri-dark",
+    "mode": "dark",
+    "base": { "bg": "#1a1b26", "fg": "#c0caf5" },
+    "brand": "#D77757"
+  }
+  ```
+
+  </TabItem>
+  <TabItem label="peri-light">
+
+  暖白背景 `#FAFAFA`，文字 `#1E1E1E`。同样的暖橙强调色。
+
+  ```json
+  {
+    "name": "peri-light",
+    "mode": "light",
+    "base": { "bg": "#FAFAFA", "fg": "#1E1E1E" },
+    "brand": "#D77757"
+  }
+  ```
+
+  </TabItem>
+</Tabs>
+
+## 自定义主题
+
+如果你不满意默认配色，可以自己写一个主题 JSON。放在 `~/.peri/themes/` 下。
+
+<Aside type="tip">
+  不需要从头写。声明 `"extends": "peri-dark"` 继承默认主题，只覆盖你想改的颜色。
+</Aside>
+
+比如只想把暗色主题的品牌色从暖橙改成紫色：
+
+```json
+{
+  "name": "my-purple",
+  "extends": "peri-dark",
+  "palette": {
+    "brand": { "primary": "#7c3aed" }
+  }
+}
+```
+
+保存为 `~/.peri/themes/my-purple.json`，然后用 `/theme my-purple` 加载。
+
+<Aside type="note">
+  主题 JSON 支持 `$ref` 引用语法——`"semantic": { "$ref": "palette" }` 表示从调色板自动推导语义色。但大多数情况下用 `extends` 就够了。
+</Aside>
+
+## 可定制的颜色层级
+
+如果你要做深度定制，了解这三层：
+
+| 层级 | 作用 | 例子 |
+|------|------|------|
+| `palette` | 原始色板——基础色、品牌色、灰度、语义色（成功/警告/错误）、diff 色 | 你主要改这里 |
+| `semantic` | 文本色系、边框色、状态色、表面色 | 通常 `$ref: palette` 自动推导 |
+| `component` | 具体组件的颜色——消息气泡、输入框、面板、弹窗、状态栏 | 通常 `$ref: semantic` 自动推导 |
+
+大部分自定义只改 `palette.brand.primary` 和 `palette.base.bg/fg` 就够了。

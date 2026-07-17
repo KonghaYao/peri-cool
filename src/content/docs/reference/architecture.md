@@ -1,0 +1,136 @@
+---
+title: 架构设计
+description: Peri 的分层架构——三层入口、ACP 协议、中间件管道与代理核心的协作方式。
+---
+
+import { Aside, Tabs, TabItem, Card, CardGrid } from '@astrojs/starlight/components';
+
+## 架构概览
+
+Peri 不是一个单体 TUI 应用，而是一个**分层平台**——代理核心与前端通过 [Agent Client Protocol (ACP)](https://agentclientprotocol.com) 解耦。同一套核心逻辑驱动三个入口。
+
+```
+┌─────────────────────────────────────────────┐
+│              Frontend Layer                  │
+│  ┌──────────┐  ┌───────────┐  ┌──────────┐ │
+│  │ peri-tui │  │Zed/JB IDE │  │  Stdio   │ │
+│  │(ratatui) │  │(ACP 客户端)│  │(Headless)│ │
+│  └────┬─────┘  └─────┬─────┘  └────┬─────┘ │
+│       │MpscTransport │ACP Stdio   │ACP Stdio│
+├───────┴──────────────┴─────────────┴────────┤
+│              ACP Server Layer                │
+│  ┌──────────────────────────────────────┐   │
+│  │            peri-acp                   │   │
+│  │  Session · Executor · Prompt · Cmds  │   │
+│  └──────────────┬───────────────────────┘   │
+│                 │                            │
+│    ┌────────────┼────────────┐               │
+│    ▼            ▼            ▼               │
+│ ┌────────┐ ┌──────────┐ ┌──────────┐        │
+│ │ Agent  │ │18        │ │ LSP      │        │
+│ │ Core   │ │Middlewares│ │ Client   │        │
+│ └────────┘ └──────────┘ └──────────┘        │
+└─────────────────────────────────────────────┘
+```
+
+## 四个核心模块
+
+<CardGrid>
+  <Card title="peri-agent" icon="star">
+    **ReAct 循环** · LLM 适配器 · 工具调度 · SQLite 持久化。这是 Peri 的大脑——负责理解任务、调用工具、迭代执行。
+  </Card>
+  <Card title="peri-acp" icon="seti-server">
+    **ACP 协议实现** · 会话管理 · 提示词构建 · 命令路由。将代理能力暴露为标准化协议，使任何前端都能连接。
+  </Card>
+  <Card title="peri-middlewares" icon="puzzle">
+    **18 个中间件** · 文件系统 · HITL（人机协同）· 子代理 · Skills · MCP · Hooks · 自动压缩。请求在到达代理核心前经过层层处理。
+  </Card>
+  <Card title="peri-lsp" icon="lsp">
+    **LSP 客户端** · 定义跳转 · 引用查找 · 悬停信息 · 诊断。为代理提供语言感知的代码智能。
+  </Card>
+</CardGrid>
+
+## 三入口架构
+
+<Aside type="tip">
+  一个核心，三个前端。修改一次代理逻辑，所有入口同时受益。
+</Aside>
+
+<Tabs syncKey="entry">
+  <TabItem label="peri-tui">
+
+  **终端用户**使用 `peri-tui`。基于 Ratatui 构建的全功能 TUI，支持：
+
+  - 流式 Markdown 渲染（代码块、表格、diff 实时展示）
+  - 多面板分屏
+  - 后台子代理状态监控
+  - Token 用量实时显示
+
+  ```bash
+  peri          # 启动交互式 TUI
+  peri -p "..." # 单次提问模式
+  ```
+
+  </TabItem>
+  <TabItem label="IDE 集成">
+
+  **IDE 用户**通过 ACP 协议连接。Zed 是首个兼容 ACP 的 IDE，更多编辑器正在适配。
+
+  Peri 的 ACP 服务通过 Stdio 传输协议与 IDE 通信——IDE 发送编码请求，代理核心执行并返回结果，IDE 渲染展示。
+
+  </TabItem>
+  <TabItem label="Headless / CI">
+
+  **CI/CD 和云服务**使用 Stdio 模式。Peri 可以无头运行，通过 stdin/stdout 接收任务、返回结果。
+
+  ```bash
+  echo '{"task": "review PR #42"}' | peri stdio
+  ```
+
+  适合集成到 GitHub Actions、GitLab CI、自定义 DevOps 流水线中。
+
+  </TabItem>
+</Tabs>
+
+## 中间件管道
+
+请求从 ACP 服务到达代理核心前，经过 18 个中间件的串行处理：
+
+```
+Request → FS Middleware → HITL Middleware → SubAgent Middleware
+       → Skills Middleware → MCP Middleware → Hooks Middleware
+       → Compact Middleware → ... → Agent Core
+```
+
+<Aside type="note">
+  每个中间件可以在请求到达核心之前**修改、拦截或增强**它。这与 Web 框架中的中间件模式一致，但专为 AI Agent 场景设计。
+</Aside>
+
+## 缓存架构
+
+Peri 的缓存系统是**性能的核心**：
+
+1. **编译时**：系统提示词的字节序列被冻结并序列化
+2. **运行时**：每个 API 请求复用冻结前缀，边界标记切分可缓存/增量部分
+3. **效果**：第 2 次及以后的对话只需发送增量的用户/助手消息，前缀从缓存命中
+
+这不同于传统的"对话记忆"——Peri 利用的是 **LLM 提供商的 prompt caching 能力**（如 Anthropic 的 prompt caching、DeepSeek 的上下文缓存），而非应用层缓存。
+
+## 技术栈
+
+| 组件 | 技术 | 说明 |
+|------|------|------|
+| **TUI 框架** | Ratatui | Rust 生态最成熟的终端 UI 库 |
+| **异步运行时** | Tokio | 高性能异步 I/O |
+| **MCP 客户端** | rmcp | Anthropic 官方的 Rust MCP 实现 |
+| **LSP 客户端** | lsp-types | 语言服务协议集成 |
+| **可观测性** | Langfuse | LLM 调用追踪与监控 |
+| **存储** | SQLite | 对话历史持久化 |
+| **包管理** | AGM | 自研 skill/agent 包管理器 |
+
+## 更多资源
+
+- [为什么选择 Peri](/guides/why-peri/) — 技术对比与性能数据
+- [快速上手](/guides/getting-started/) — 安装与配置
+- [GitHub 仓库](https://github.com/konghayao/peri) — 源码与贡献指南
+- [Nobody Coding](https://github.com/konghayao/peri/blob/main/docs/blogs/ai-coding-paradigm/nobody-coding.md) — AI 驱动开发哲学

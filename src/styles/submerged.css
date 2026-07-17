@@ -1,0 +1,82 @@
+/* ===== 澄海天光 · Submerged Light Theme ===== */
+
+/* ---- Google Fonts ---- */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,300&family=Figtree:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+
+/*
+ * Starlight 颜色语义（反直觉！）:
+ *   --sl-color-black → 背景色（暗色模式=黑底，亮色模式=白底）
+ *   --sl-color-white → 前景/文字色（暗色模式=白字，亮色模式=黑字）
+ *   --sl-color-gray-1..6 → 文字深→背景浅 的渐变
+ *   --sl-color-gray-7 → 导航栏背景（仅亮色模式）
+ */
+
+/* ---- 亮色模式色板 ---- */
+:root,
+:root[data-theme='light'],
+:root[data-theme='dark'] {
+  /* 主色调 */
+  --sl-color-accent-low: #d8edf4;
+  --sl-color-accent: #5ba4bc;
+  --sl-color-accent-high: #1a3a4a;
+
+  /* 背景色 ← 用暖沙白色填充 "black" 槽位 */
+  --sl-color-black: #faf7f2;
+  --sl-color-gray-7: #f7f4ef; /* 导航栏背景 */
+  --sl-color-gray-6: #ede8e0; /* 内联代码背景 / 侧栏底 */
+  --sl-color-gray-5: #d4cfc6; /* 浅分割线 */
+
+  /* 前景/文字色 ← 用深色填充 "white" 槽位 */
+  --sl-color-white: #1a1816;
+  --sl-color-gray-1: #1a1816;
+  --sl-color-gray-2: #3d3833;
+  --sl-color-gray-3: #6b6560;
+  --sl-color-gray-4: #a0988c; /* 边框色 */
+
+  /* 排版 */
+  --sl-font: 'Figtree', system-ui, -apple-system, sans-serif;
+  --sl-font-mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+
+  /* 布局 */
+  --sl-content-width: 48rem;
+  --sl-sidebar-width: 16rem;
+  --sl-nav-height: 3.5rem;
+  --sl-text-h1: clamp(1.75rem, 3vw, 2.5rem);
+  --sl-text-h2: clamp(1.35rem, 2.5vw, 1.75rem);
+}
+
+/* ---- Link underline animation ---- */
+.sl-markdown-content a:not(.sl-link-card a):not([role='tab']) {
+  text-decoration: none;
+  background-image: linear-gradient(var(--sl-color-accent), var(--sl-color-accent));
+  background-size: 0% 1.5px;
+  background-position: 0% 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.3s ease;
+}
+.sl-markdown-content a:not(.sl-link-card a):not([role='tab']):hover {
+  background-size: 100% 1.5px;
+}
+
+/* ---- Sidebar subtle refinement ---- */
+.sl-sidebar {
+  border-right-color: var(--sl-color-gray-5);
+}
+
+/* ---- Code blocks —— 更柔和的背景 ---- */
+.sl-markdown-content pre,
+.expressive-code {
+  border-radius: 0.75rem !important;
+  border: 1px solid var(--sl-color-gray-5) !important;
+}
+
+/* ---- CardGrid organic feel ---- */
+.sl-card-grid .sl-card {
+  border-radius: 1rem 0.25rem 1rem 0.25rem;
+  border: 1px solid var(--sl-color-gray-5);
+  transition: transform 0.2s ease, box-shadow 0.25s ease;
+}
+.sl-card-grid .sl-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(91, 164, 188, 0.12);
+}
