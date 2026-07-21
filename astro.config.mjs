@@ -19,7 +19,8 @@ function remarkMermaid() {
 
 // https://astro.build/config
 export default defineConfig({
-	site: 'https://peri.pages.dev',
+	site: 'https://konghayao.github.io',
+	base: '/peri-cool/',
 	markdown: {
 		remarkPlugins: [remarkMermaid],
 	},
