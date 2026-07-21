@@ -1,0 +1,37 @@
+---
+title: "ContextBudget：如何让 Agent 在上下文窗口边缘安全运行"
+description: Micro-compact 和 Full-compact 两级压缩策略的设计思路、工作方式与取舍。
+
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Prompt cache 让重复上下文几乎免费，但它带来的问题是：Agent 不知道自己的上下文快满了——直到 API 返回 400 错误。
+
+`ContextBudget` 是 Peri 的上下文管理器，它在 Agent 碰到硬限制之前就介入压缩。
+
+## 两级压缩
+
+Peri 用两个阈值控制压缩节奏：
+
+- **Micro-compact（70% 上下文用量）**：只压缩当前消息——去掉旧的工具调用结果，保留最近的对话。轻量、高频。
+- **Full-compact（85% 上下文用量）**：对整个对话历史做摘要。重量级，但能把上下文压回 50% 以下。
+
+<Aside type="note">
+  阈值不是固定的百分比——70% 和 85% 是相对于模型上下文窗口的可配置比例。对于 200K 窗口的模型，70% 意味着 140K tokens 后才触发 Micro-compact。
+</Aside>
+
+## 为什么不是 LRU
+
+直觉上说"删最早的 N 条消息"就行——对话历史里旧的肯定不重要。但 ReAct 循环不是聊天——它是一系列推理-执行对的链条。中间截断意味着丢掉某次推理的结果，后续推理可能建立在这个结果之上。
+
+Peri 的做法是**摘要而非截断**：让 LLM 把对话历史总结成一段结构化摘要，保留关键决策点和待办事项，丢掉中间过程。
+
+## 实际效果
+
+一次消息管线重构任务跑了 3 小时，触发了 4 次 Micro-compact 和 2 次 Full-compact，任务完成且中间没有中断。没有 ContextBudget，这个任务在第 20 分钟就会因为 400 错误终止。
+
+## 相关文章
+
+- Peri Agent 编辑工具设计复盘
+- [为什么选择 Peri](/docs/get-started/why-peri/)

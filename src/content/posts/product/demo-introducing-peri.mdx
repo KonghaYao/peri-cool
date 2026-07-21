@@ -1,0 +1,38 @@
+---
+title: "Peri Code：一个 13MB 的 Rust 编码助手"
+description: Peri 是什么、能做什么，以及与 Claude Code、Cursor 的核心差异。
+
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Peri 是一个用 Rust 写的终端 AI 编码助手。兼容 Claude Code 生态——skills、hooks、MCP、sub-agents 原样可用。但它更小更快，且不绑定任何特定模型。
+
+## 三个数字
+
+- **13MB**：Peri 是单个静态链接的 Rust 二进制。不需要 Node.js、不需要 Python、不需要任何运行时依赖。
+- **50MB**：运行时内存占用。Claude Code 在几十轮对话后内存会膨胀到 300-800MB，Peri 稳定在 50MB 左右。
+- **99%**：Peri 的代码由 AI 生成。不是 demo——是 20 万行生产级代码。
+
+## 核心差异
+
+Peri 和 Claude Code 做的是同一件事——AI 驱动的编码助手。但实现路径完全不同。
+
+Rust 的内存模型让 Peri 可以精确控制缓存行为。Peri 的冻结系统提示词 + 边界标记机制让 95-99% 的对话 token 从缓存命中——几乎不给 API 重复付费。
+
+Node.js 做不到这一点——V8 的内存管理不受开发者控制，prompt cache 的命中率受 GC 行为影响。
+
+<Aside type="tip">
+  对于重度用户（每天数百次对话），缓存命中带来的节省可以降低 90% 以上的 token 消耗。
+</Aside>
+
+## 模型自由
+
+Peri 不绑定模型。Claude Sonnet 能做架构设计，DeepSeek V3 能做日常编码，GLM 适合中文场景——三者在一个会话中随意切换，`/model` 命令即时生效。
+
+这是 Claude Code 做不到的——Claude Code 本质上是 Anthropic API 的客户端。
+
+## 相关文章
+
+- [为什么选择 Peri](/docs/get-started/why-peri/)
+- [快速上手](/docs/get-started/quickstart/)

@@ -1,0 +1,64 @@
+---
+title: 开发者文档
+description: Peri 的内部架构、模块索引和开发指南——面向 Peri 的贡献者和深度用户。
+---
+
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
+
+本节的读者是 Peri 的开发者——贡献代码、定制功能、深度集成的人。如果你是日常用户，[快速上手](/docs/get-started/quickstart/) 更适合你。
+
+## 代码架构
+
+<CardGrid>
+  <Card title="peri-agent" icon="star">
+    <strong>ReAct 引擎</strong>。5 阶段循环（reason/act/compact/receive/end），LLM 适配器，工具调度，SQLite 持久化。
+  </Card>
+  <Card title="peri-acp" icon="seti-server">
+    <strong>ACP 服务层</strong>。Agent Client Protocol 实现，会话管理，提示词构建，事件路由。
+  </Card>
+  <Card title="peri-middlewares" icon="puzzle">
+    <strong>中间件集合</strong>。20 个中间件——文件系统、HITL、子代理、Skills、MCP、Hooks、Goal、LSP 等。
+  </Card>
+  <Card title="peri-tui" icon="terminal">
+    <strong>TUI 前端</strong>。ratatui-kit 组件框架，流式渲染，多面板分屏，16 个面板 + 6 个弹窗。
+  </Card>
+</CardGrid>
+
+## Crate 拓扑
+
+```text
+peri-tui → peri-acp → peri-agent
+  ↓          ↓
+peri-widgets  peri-middlewares
+              peri-lsp
+              peri-web-pty
+```
+
+## 关键入口
+
+| 任务 | 入口文件 |
+|------|---------|
+| 新增 Core 工具 | `tool_search/core_tools.rs` CORE_TOOLS 常量 |
+| 新增中间件 | `peri-acp/src/agent/builder.rs` 中间件链构造 |
+| 改 LLM Provider | `peri-agent/src/llm/{openai,anthropic}/invoke.rs` |
+| 新增 TUI 面板 | `peri-tui/src/kit/panels/` → `app/panel_types.rs` |
+| 改系统提示词 | `peri-acp/prompts/sections/` 14 个 .md 段落 |
+
+<Aside type="note">
+  完整开发指南见仓库根目录的 `CLAUDE.md`——包含中间件链顺序、TUI 渲染规则、缓存架构、测试规范等。
+</Aside>
+
+## 开发命令
+
+```bash
+cargo build --workspace              # 构建
+cargo test --workspace               # 测试
+cargo run -p peri-tui -- -a           # HITL 审批模式
+cargo clippy --workspace             # 代码检查
+```
+
+## 更多
+
+- **[架构设计](/docs/reference/architecture/)** — 分层架构和模块间通信
+- **[配置参考](/docs/reference/config/)** — 环境变量和 settings.json
+- **[贡献指南](/docs/community/contributing/)** — 提 issue 和 PR 的流程

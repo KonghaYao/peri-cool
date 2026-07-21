@@ -1,0 +1,59 @@
+---
+title: 贡献指南
+description: 如何参与 Peri 的开发——从提 issue 到提交 PR 的完整流程。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Peri 是 Apache 2.0 开源项目，欢迎任何形式的贡献。
+
+## 提 Issue
+
+如果你遇到以下情况，请直接提 issue：
+
+- 发现了 bug
+- 有功能建议
+- 文档有错误或不清楚的地方
+- 性能有问题
+
+<Aside type="tip">
+  提 issue 时附上 Peri 版本（`peri --version`）、操作系统和重现步骤。这大幅缩短诊断时间。
+</Aside>
+
+## 开发环境
+
+```bash
+git clone https://github.com/konghayao/peri.git
+cd peri
+cargo build --workspace
+```
+
+Peri 用 Rust 编写，需要 Rust 工具链。推荐通过 [rustup](https://rustup.rs) 安装。
+
+## 提交规范
+
+- 提交前运行 `cargo test --workspace` 和 `cargo clippy --workspace`
+- commit message 用中文，描述做了什么和为什么
+- 每个 commit 做一件事，不要堆在一起
+- PR 描述写清楚改了什么、怎么验证
+
+## 测试规范
+
+| 测试类型 | 位置 |
+|---------|------|
+| 单元测试 < 30 行 | 同文件 `#[cfg(test)] mod tests` |
+| 单元测试 ≥ 30 行 | 同目录 `_test.rs` |
+| 集成测试 | crate 根 `tests/` 目录 |
+
+## 编码规范
+
+参见仓库根目录的 `CLAUDE.md`，包含完整的 Rust 编码规范、中间件链顺序、TUI 渲染规则等。
+
+## 发布流程
+
+Peri 通过 GitHub Actions 自动构建和发布。推送 tag（`vX.Y.Z`）会触发全平台构建，产物发布到 GitHub Releases。
+
+## 联系
+
+- [GitHub Issues](https://github.com/konghayao/peri/issues) — 报告 bug、提功能建议
+- [GitHub Discussions](https://github.com/konghayao/peri/discussions) — 技术讨论

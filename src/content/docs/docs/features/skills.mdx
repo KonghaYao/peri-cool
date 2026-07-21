@@ -1,0 +1,63 @@
+---
+title: Skills
+description: 可复用的专项能力模块——Peri 自动加载适合当前任务的 skill。
+---
+
+import { Aside, FileTree } from '@astrojs/starlight/components';
+
+Skill 是 Peri 的专项能力模块。每个 skill 定义了一种专门的行为模式——比如写博客、诊断 bug、做实验——Peri 在需要时自动加载。
+
+## 怎么用
+
+Skills 放在了 `.claude/skills/` 目录下，Peri 启动时自动扫描。兼容 Claude Code 的 skill 格式。
+
+<FileTree>
+- .claude/
+  - skills/
+    - diagnosing-bugs/
+      - SKILL.md
+    - blog-writer/
+      - SKILL.md
+    - code-review/
+      - SKILL.md
+</FileTree>
+
+每个 skill 的 `SKILL.md` 定义了触发条件和行为规则。Peri 根据对话内容自动匹配需要加载哪个 skill。
+
+<Aside type="tip">
+  Peri 内置了 50+ 个 skill，分布在用户级（~/.claude/skills/）、项目级（.claude/skills/）和插件级。同名 skill 按优先级覆盖——用户级 > 项目级 > 插件级 > 内置。
+</Aside>
+
+## 触发方式
+
+两种方式触发 skill：
+
+1. **自动匹配**：Peri 分析你的需求，自动加载最匹配的 skill。比如你说"这段代码跑得很慢"，Peri 自动加载 `diagnose` skill。
+2. **手动调用**：用 `/skill-name` 显式调用。比如 `/blog-writer` 触发博客写作 skill。
+
+## 内置 Skills 示例
+
+| Skill | 触发场景 |
+|-------|---------|
+| **diagnose** | 调试 bug、排查性能问题 |
+| **blog-writer** | 写博客、写文章 |
+| **code-review** | 审查代码变更 |
+| **tdd** | 测试驱动开发 |
+| **brainstorming** | 需求讨论、功能设计 |
+| **ultracode** | 并行工作流编排 |
+
+## 自定义 Skill
+
+Skill 就是一个 Markdown 文件。格式很简单：
+
+```markdown
+---
+name: my-skill
+description: 触发这个 skill 的场景描述。
+---
+
+# 你的 skill 内容
+这里是具体的规则和指令。
+```
+
+放在 `.claude/skills/my-skill/SKILL.md`，Peri 下次启动自动加载。

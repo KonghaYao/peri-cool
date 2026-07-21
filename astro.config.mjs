@@ -10,29 +10,48 @@ export default defineConfig({
 			title: 'Peri',
 			description: '更小、更快、任何模型——Rust 编写的编码助手',
 			customCss: ['./src/styles/submerged.css'],
+			components: {
+				Header: './src/components/Header.astro',
+			},
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/konghayao/peri' },
 			],
 			sidebar: [
 				{
-					label: '指南',
+					label: '开始使用',
+					collapsed: false,
 					items: [
-						{ label: '快速上手', slug: 'guides/getting-started' },
-						{ label: '为什么选择 Peri', slug: 'guides/why-peri' },
+						{ slug: 'docs/get-started/introduction' },
+						{ slug: 'docs/get-started/quickstart' },
+						{ slug: 'docs/get-started/why-peri' },
 					],
 				},
 				{
 					label: '功能',
+					collapsed: false,
 					items: [
-						{ label: 'ultracode 工作流', slug: 'guides/ultracode' },
-						{ label: '/theme 主题', slug: 'guides/theme' },
-						{ label: '/goal 长任务', slug: 'guides/goal' },
+						{ slug: 'docs/features/ultracode' },
+						{ slug: 'docs/features/subagent' },
+						{ slug: 'docs/features/skills' },
+						{ slug: 'docs/features/tools' },
+						{ slug: 'docs/features/theme' },
+						{ slug: 'docs/features/goal' },
 					],
 				},
 				{
 					label: '参考',
+					collapsed: true,
 					items: [
-						{ label: '架构设计', slug: 'reference/architecture' },
+						{ slug: 'docs/reference/architecture' },
+						{ slug: 'docs/reference/config' },
+					],
+				},
+				{
+					label: '其他',
+					collapsed: true,
+					items: [
+						{ slug: 'docs/community/contributing' },
+						{ slug: 'docs/developer' },
 					],
 				},
 			],
@@ -40,7 +59,6 @@ export default defineConfig({
 				baseUrl: 'https://github.com/konghayao/peri/edit/main/docs/',
 			},
 			head: [
-				// 在 Starlight 主题检测之前强制亮色模式
 				{
 					tag: 'script',
 					content: `!function(){var e=document.documentElement;e.dataset.theme='light';try{localStorage.setItem('starlight-theme','light')}catch(e){}}();`,

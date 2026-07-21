@@ -1,0 +1,61 @@
+---
+title: 工具系统
+description: Peri 的 12 个核心工具——文件操作、搜索、Shell 执行、Web 抓取。
+---
+
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
+
+Peri 内置 12 个核心工具，覆盖编码助手需要的大部分操作。所有工具通过 ReAct 循环的 Act 阶段分发。
+
+## 核心工具一览
+
+<CardGrid>
+  <Card title="Read / Write / Edit" icon="file">
+    <strong>文件操作</strong>。Read 读文件，Write 写文件，Edit 做精确的字符串替换。Edit 基于 old_string/new_string 匹配，不依赖行号——因为行号在模型输出时经常不准。
+  </Card>
+  <Card title="Glob / Grep" icon="search">
+    <strong>文件搜索</strong>。Glob 按文件名模式匹配，Grep 按文件内容正则搜索。两个工具覆盖日常代码探索。
+  </Card>
+  <Card title="Bash" icon="terminal">
+    <strong>Shell 执行</strong>。支持超时控制、后台运行。Peri 可以通过 Bash 运行测试、构建项目、操作 git。
+  </Card>
+  <Card title="WebFetch / WebSearch" icon="globe">
+    <strong>网络工具</strong>。WebFetch 抓取网页内容为文本，WebSearch 用搜索引擎查找信息。支持指定结果数量。
+  </Card>
+</CardGrid>
+
+## 工具别名
+
+每个工具支持一个或多个别名。比如 `Bash` 也可以写成 `Shell`、`Terminal`——因为模型可能用不同名词输出。
+
+| 工具 | 别名 |
+|------|------|
+| Bash | Shell, Terminal, Command |
+| Read | Cat, View, Open |
+| Grep | Search, Find |
+| Agent | Task |
+
+别名由工具自身声明（通过 `BaseTool::aliases()` trait 方法），在工具分发时自动解析。
+
+<Aside type="note">
+  工具别名是大小写无关的。模型输出 `shell`、`SHELL`、`Shell` 都会正确路由到 Bash 工具。
+</Aside>
+
+## 工具超时
+
+不同工具有不同的超时策略：
+
+| 工具类型 | 超时 | 原因 |
+|---------|------|------|
+| 快速工具（Read、Grep、Glob） | 120 秒 | 本地操作，不应该慢 |
+| Shell 执行 | 300 秒 | 构建、测试可能需要更久 |
+| Agent / Workflow | 无上限 | 子代理可能跑很长时间 |
+
+## Meta 工具
+
+除了 12 个核心工具，Peri 还提供 2 个 Meta 工具：
+
+- **SearchExtraTools**：搜索延迟加载的工具（MCP 工具、Cron 任务等）
+- **ExecuteExtraTool**：执行通过 SearchExtraTools 找到的工具
+
+这套机制让 Peri 的工具集可以动态扩展，而不需要在启动时加载所有工具。

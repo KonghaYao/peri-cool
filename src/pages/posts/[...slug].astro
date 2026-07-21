@@ -1,0 +1,47 @@
+---
+import { getCollection, render } from 'astro:content';
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+
+export async function getStaticPaths() {
+	const posts = await getCollection('posts');
+	return posts.map((post) => ({
+		params: { slug: post.id.replace(/\.mdx$/, '') },
+		props: { post },
+	}));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+
+const section = post.id.split('/')[0]; // engineering | product | research | news
+
+const sectionLabels: Record<string, string> = {
+	engineering: '工程',
+	product: '产品',
+	research: '研究',
+	news: '动态',
+};
+
+const allSectionPosts = (await getCollection('posts'))
+	.filter((p) => p.id.startsWith(section + '/'));
+
+const sidebar = [
+	{
+		label: sectionLabels[section] || section,
+		items: allSectionPosts.map((p) => ({
+			label: p.data.title,
+			link: `/posts/${p.id.replace(/\.mdx$/, '')}/`,
+		})),
+	},
+];
+---
+
+<StarlightPage frontmatter={{ title: post.data.title }} sidebar={sidebar}>
+	<p style="color:var(--sl-color-gray-3);font-size:0.9rem;margin-bottom:0.25rem;">
+		{sectionLabels[section] || section}
+	</p>
+	<p style="color:var(--sl-color-gray-3);margin-bottom:2rem;">
+		{post.data.description}
+	</p>
+	<Content />
+</StarlightPage>

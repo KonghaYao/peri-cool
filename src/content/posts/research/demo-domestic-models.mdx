@@ -1,0 +1,38 @@
+---
+title: "国产模型驱动的大规模 AI 编码：经验与教训"
+description: 用 DeepSeek 和 GLM-5.2 驱动 20 万行 Rust 代码库的实际体验——好用的地方、翻车的地方、怎么适配。
+
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Peri 的 20 万行 Rust 代码有 99% 由国产模型生成——主要是 DeepSeek V3/R1 和 GLM-5.2。这篇文章记录我们在真实大规模项目中使用国产模型的经验。
+
+## 模型表现分层
+
+不同任务上模型表现差异很大：
+
+- **代码生成和重构**：DeepSeek V3 对于 Rust 的日常编码表现出色。工具调用准确率在 90% 以上。GLM-5.2 在中文需求理解和注释生成上更强。
+- **架构设计**：Claude Sonnet 仍然是最强的架构设计者。DeepSeek 能执行架构指令，但不会主动发现设计问题。
+- **Bug 诊断**：DeepSeek R1 的推理链在 debug 场景很有用，但响应慢（30-60 秒）。
+
+## 适配成本
+
+国产模型的 API 兼容 OpenAI 格式，接入成本很低。但有几个需要适配的点：
+
+1. **工具调用格式**：GLM 的工具调用 schema 和 OpenAI 有细微差异，需要专门的解析器
+2. **上下文窗口**：DeepSeek 的设计窗口比 Anthropic 小，需要更激进的 compact 策略
+3. **速率限制**：免费版 DeepSeek 的并发限制很严，子代理数量必须控制
+
+<Aside type="caution">
+  GLM-5.2 在长对话（50+ 轮）后工具调用准确率会下降。Peri 通过更频繁的 Micro-compact 来应对——这间接推动了 compact 机制的完善。
+</Aside>
+
+## 结论
+
+国产模型已经可以驱动真实的生产级项目。但需要一个好框架来弥补它们在一致性、工具调用和上下文管理上的不足。Peri 的 compact 机制和中间件管道就是为此设计的。
+
+## 相关文章
+
+- Peri Code 的 99%，是国产模型写的
+- [ContextBudget：如何让 Agent 在上下文窗口边缘安全运行](/posts/engineering/demo-context-budget/)

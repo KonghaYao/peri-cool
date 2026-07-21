@@ -1,0 +1,44 @@
+---
+title: 概述
+description: Peri 是什么、能做什么、和现有工具的关系——一站式的概念介绍。
+---
+
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
+
+Peri 是一个用 Rust 编写的终端 AI 编码助手。它兼容 Claude Code 生态——skills、hooks、MCP、sub-agents 直接可用——但更小更快，且不绑定任何特定模型。
+
+## Peri 能做什么
+
+<CardGrid>
+  <Card title="日常编码" icon="code">
+    写代码、改 bug、重构模块、审查代码——和任何 AI 编码助手一样，但你可以随时切换模型。
+  </Card>
+  <Card title="长任务自动化" icon="clock">
+    `/goal` 命令声明一个目标，Peri 在后续每一轮自动推进，即使跑几个小时也不会丢上下文。
+  </Card>
+  <Card title="并行工作流" icon="rocket">
+    `/ultracode` 把复杂任务拆成多个子代理并行执行——审查、编码、搜索同时进行。
+  </Card>
+  <Card title="终端 TUI" icon="terminal">
+    全功能终端界面：流式 Markdown 渲染、多面板分屏、后台任务监控、Token 用量实时显示。
+  </Card>
+</CardGrid>
+
+## 和你已有工具的对比
+
+| 如果你在用…… | Peri 的区别 |
+|-------------|-----------|
+| **Claude Code** | 兼容 .claude/ 配置，但用 Rust 写，13MB 二进制，支持任何 LLM |
+| **Cursor / Copilot** | 终端原生，不需要 IDE，可以跑在服务器上 |
+| **aider** | 更完整的 ReAct 循环 + 中间件管道 + 18 个并行子代理 |
+| **没有工具** | Peri 的安装向导在 2 分钟内完成配置，不需要手动编辑任何文件 |
+
+<Aside type="tip">
+  Peri 自身有 99% 的代码由 AI 生成——它是一个 AI 写的 AI 编码助手。这意味着每次 bug 修复都会自动沉淀为知识库规则，质量持续累积。
+</Aside>
+
+## 下一步
+
+- **[快速上手](/docs/get-started/quickstart/)** — 安装、配置、5 分钟跑起来
+- **[为什么选择 Peri](/docs/get-started/why-peri/)** — 技术对比与性能数据
+- **[功能概览](/docs/features/ultracode/)** — 逐个功能深入了解

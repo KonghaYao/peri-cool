@@ -1,0 +1,44 @@
+---
+title: "Peri v2.0 发布：ACP 协议、新 TUI、Workflow 引擎"
+description: Peri v2 的重大架构变更——从单体应用到分层平台，从 Node.js 兼容到原生 Rust TUI。
+
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Peri v2.0 是一次架构级重构。核心变更是引入 Agent Client Protocol (ACP) 作为前后端通信协议——让 Peri 从一个单体 TUI 变为分层平台。
+
+## 主要变更
+
+### ACP 协议集成
+
+ACP 是 Peri 前后端之间的标准通信协议。这意味着同一个 Peri 核心可以驱动不同的前端——TUI、IDE 插件、CI/CD 管道——不需要重复实现代理逻辑。
+
+### 新 TUI 前端
+
+Peri v2 的 TUI 前端基于 ratatui-kit 重写，支持：
+- 流式 Markdown 渲染（代码块、表格实时展示）
+- 多面板分屏
+- 后台子代理状态监控
+- Token 用量和上下文消耗实时显示
+
+### Workflow 引擎
+
+ultracode 工作流引擎从实验性功能升级为核心模块，支持并行和分阶段执行。
+
+<Aside type="tip">
+  Workflow 编排和 SubAgent 工具是 Peri v2 最常用的两个能力。
+</Aside>
+
+## 从 v1 升级
+
+v1 用户需要重新安装——v2 是全新架构，配置文件格式不变，但二进制路径和内部存储不同。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/konghayao/peri/main/scripts/install.sh | bash
+```
+
+## 相关文章
+
+- Peri Code：一个 13MB 的 Rust 编码助手
+- [架构设计](/docs/reference/architecture/)

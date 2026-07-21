@@ -1,0 +1,76 @@
+---
+title: 配置参考
+description: Peri 的配置文件结构、环境变量和 settings.json 字段说明。
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Peri 的配置分两层：`~/.peri/settings.json` 存全局设置，`.claude/` 目录存项目级配置（兼容 Claude Code 格式）。
+
+## 全局配置
+
+`~/.peri/settings.json` 的结构：
+
+```json
+{
+  "model": "deepseek-chat",
+  "env": {
+    "ANTHROPIC_API_KEY": "sk-ant-...",
+    "OPENAI_API_KEY": "sk-..."
+  },
+  "yolo_mode": false,
+  "theme": "peri-dark"
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `model` | string | 默认模型 ID。可以用 `/model` 命令在会话中切换 |
+| `env` | object | 环境变量注入。Provider 的 API Key 放这里 |
+| `yolo_mode` | boolean | 跳过工具调用的审批确认 |
+| `theme` | string | 终端主题名，默认 `peri-dark` |
+
+<Aside type="caution">
+  不要把 `settings.json` 提交到 Git。Peri 的 `.gitignore` 已包含此文件，但切换机器时需要手动迁移。
+</Aside>
+
+## Provider 环境变量
+
+<Tabs syncKey="provider">
+  <TabItem label="Anthropic">
+
+  ```bash
+  ANTHROPIC_API_KEY=sk-ant-...
+  ANTHROPIC_BASE_URL=https://api.anthropic.com  # 可选，默认值
+  ```
+
+  </TabItem>
+  <TabItem label="OpenAI Compatible">
+
+  ```bash
+  OPENAI_API_KEY=sk-...
+  OPENAI_BASE_URL=https://api.openai.com/v1
+  ```
+
+  支持任何 OpenAI 兼容的 API：DeepSeek、GLM、Qwen、Groq 等。
+
+  </TabItem>
+</Tabs>
+
+## 行为开关
+
+| 环境变量 | 作用 | 默认 |
+|---------|------|------|
+| `YOLO_MODE` | 跳过工具审批 | false |
+| `DISABLE_COMPACT` | 禁用自动上下文压缩 | false |
+| `LANGFUSE_PUBLIC_KEY` | Langfuse 可观测性公钥 | 无 |
+| `LANGFUSE_SECRET_KEY` | Langfuse 可观测性密钥 | 无 |
+
+## 项目级配置
+
+`.claude/settings.json`（项目根目录）使用和全局配置相同的格式，但作用于当前项目。你可以在这里覆盖全局默认值——比如指定这个项目用哪个模型。
+
+## 下一步
+
+- **[快速上手](/docs/get-started/quickstart/)** — 从零安装 Peri
+- **[架构设计](/docs/reference/architecture/)** — 理解 Peri 的内部结构

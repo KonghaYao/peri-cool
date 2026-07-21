@@ -23,19 +23,42 @@ Peri 的官方文档与博客站点，基于 Astro + Starlight 构建。
 
 ```
 src/
-  pages/index.astro          # 自定义首页（澄海天光主题）
-  styles/submerged.css       # 全局主题 CSS
-  content/docs/
-    guides/                  # 指南类文章
-      getting-started.mdx    # 快速上手
-      why-peri.mdx           # 为什么选择 Peri
-      ultracode.mdx          # ultracode 工作流
-      theme.mdx              # /theme 主题
-      goal.mdx               # /goal 长任务
-    reference/               # 参考文档
-      architecture.md        # 架构设计
-astro.config.mjs             # Starlight 配置 + sidebar + head scripts
+  pages/
+    index.astro               # 自定义首页（澄海天光主题）
+    blog/
+      index.astro             # 博客列表页（按 engineering/product/research/news 分类）
+      [...slug].astro         # 单篇博客文章页
+  styles/submerged.css        # 全局主题 CSS
+  content/
+    docs/                     # 文档内容（Starlight 渲染）
+      get-started/            # 开始使用
+        introduction.mdx      # 概述
+        quickstart.mdx        # 快速上手
+        why-peri.mdx          # 为什么选择 Peri
+      features/               # 功能文档
+        ultracode.mdx         # ultracode 工作流
+        subagent.mdx          # 子代理
+        skills.mdx            # Skills
+        tools.mdx             # 工具系统
+        theme.mdx             # /theme 主题
+        goal.mdx              # /goal 长任务
+      reference/              # 参考文档
+        architecture.mdx      # 架构设计
+        config.mdx            # 配置参考
+      community/              # 社区
+        contributing.mdx      # 贡献指南
+      developer/              # 开发者文档
+        index.mdx             # 开发者指南
+    blog/                     # 博客内容（独立 Astro collection）
+      engineering/            # 工程实践
+      product/                # 产品介绍
+      research/               # 研究分析
+      news/                   # 版本动态
+  content.config.ts           # 内容集合配置（docs + blog 两个 collection）
+astro.config.mjs              # Starlight 配置 + sidebar + head scripts
 ```
+
+仿照 [Claude Code 文档](https://docs.anthropic.com) 的目录结构——博客和文档物理分离，各自内部按专题分类。
 
 ## 主题系统
 
@@ -68,11 +91,18 @@ bun run build    # 构建
 bun run preview  # 预览构建产物
 ```
 
-## 添加新页面
+## 添加新文档页
 
-1. 在 `src/content/docs/guides/` 下创建 `.mdx` 文件
-2. 在 `astro.config.mjs` 的 sidebar 中添加条目
+1. 在 `src/content/docs/<专题>/` 下创建 `.mdx` 文件
+2. 在 `astro.config.mjs` 的 sidebar 对应 section 中添加条目
 3. frontmatter 必须包含 `title` 和 `description`
+
+## 添加新博客
+
+1. 在 `src/content/blog/<category>/` 下创建 `.mdx` 文件
+2. frontmatter 包含 `title`, `description`, `date`, `category`
+3. category 可选值：`engineering`, `product`, `research`, `news`
+4. 自动出现在 `/blog/` 列表页，无需手动编辑路由
 
 ## 内容规范
 
