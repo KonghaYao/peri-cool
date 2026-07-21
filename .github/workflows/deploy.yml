@@ -21,16 +21,17 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 安装 Bun
-        uses: oven-sh/setup-bun@v2
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: 22
+          cache: npm
 
       - name: 安装依赖
-        run: bun install
+        run: npm ci
 
       - name: 构建网站
-        run: bun run build
+        run: npm run build
 
       - name: 上传构建产物
         uses: actions/upload-pages-artifact@v3
