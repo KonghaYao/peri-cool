@@ -1,10 +1,28 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { visit } from 'unist-util-visit';
+
+/** 将 mermaid 代码块直接转为 <pre class="mermaid">，绕过 ExpressiveCode */
+function remarkMermaid() {
+	return (tree) => {
+		visit(tree, 'code', (node, index, parent) => {
+			if (node.lang === 'mermaid' && parent && typeof index === 'number') {
+				parent.children[index] = {
+					type: 'html',
+					value: `<pre class="mermaid">${node.value}</pre>`,
+				};
+			}
+		});
+	};
+}
 
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://peri.pages.dev',
+	markdown: {
+		remarkPlugins: [remarkMermaid],
+	},
 	integrations: [
 		starlight({
 			title: 'Peri',
@@ -18,32 +36,40 @@ export default defineConfig({
 			],
 			sidebar: [
 				{
-					label: '开始使用',
+					label: '文档',
 					collapsed: false,
 					items: [
 						{ slug: 'docs/get-started/introduction' },
-						{ slug: 'docs/get-started/quickstart' },
-						{ slug: 'docs/get-started/why-peri' },
-					],
-				},
-				{
-					label: '功能',
-					collapsed: false,
-					items: [
-						{ slug: 'docs/features/ultracode' },
-						{ slug: 'docs/features/subagent' },
+						{ slug: 'docs/features/agent-selection-guide' },
+						{
+							label: 'ultracode 工作流',
+							collapsed: true,
+							items: [
+								{ slug: 'docs/features/ultracode' },
+								{ slug: 'docs/features/ultracode-primitives' },
+								{ slug: 'docs/features/ultracode-scenarios' },
+								{ slug: 'docs/features/ultracode-tui' },
+							],
+						},
+						{
+							label: 'Subagent',
+							collapsed: true,
+							items: [
+								{ slug: 'docs/features/subagent' },
+								{ slug: 'docs/features/subagent-builtin' },
+								{ slug: 'docs/features/subagent-modes' },
+								{ slug: 'docs/features/subagent-custom' },
+								{ slug: 'docs/features/subagent-practices' },
+							],
+						},
+						{ slug: 'docs/features/goal' },
+						{ slug: 'docs/features/claude-md' },
+						{ slug: 'docs/features/permissions' },
+						{ slug: 'docs/features/hooks' },
 						{ slug: 'docs/features/skills' },
+						{ slug: 'docs/features/mcp' },
 						{ slug: 'docs/features/tools' },
 						{ slug: 'docs/features/theme' },
-						{ slug: 'docs/features/goal' },
-					],
-				},
-				{
-					label: '参考',
-					collapsed: true,
-					items: [
-						{ slug: 'docs/reference/architecture' },
-						{ slug: 'docs/reference/config' },
 					],
 				},
 				{
@@ -61,7 +87,7 @@ export default defineConfig({
 			head: [
 				{
 					tag: 'script',
-					content: `!function(){var e=document.documentElement;e.dataset.theme='light';try{localStorage.setItem('starlight-theme','light')}catch(e){}}();`,
+					content: "!function(){var e=document.documentElement;e.dataset.theme='light';try{localStorage.setItem('starlight-theme','light')}catch(e){}}();",
 				},
 				{
 					tag: 'link',
@@ -70,6 +96,14 @@ export default defineConfig({
 				{
 					tag: 'link',
 					attrs: { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: true },
+				},
+				{
+					tag: 'script',
+					attrs: { src: 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js' },
+				},
+				{
+					tag: 'script',
+					content: "(function r(){var b=document.querySelectorAll('pre.mermaid');if(!b.length)return;(function w(){typeof mermaid!=='undefined'?(mermaid.initialize({startOnLoad:!1,theme:'neutral'}),mermaid.run({querySelector:'pre.mermaid'})):setTimeout(w,200)})()})();",
 				},
 			],
 		}),

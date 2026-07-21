@@ -1,0 +1,33 @@
+<!-- Mermaid client-side renderer -->
+<script is:inline>
+  (function() {
+    // 将 <code class="language-mermaid"> 替换为 <pre class="mermaid"> 容器
+    function prepareMermaidBlocks() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(c) {
+        var p = c.closest('pre');
+        if (!p) return;
+        var d = document.createElement('pre');
+        d.className = 'mermaid';
+        d.textContent = c.textContent;
+        p.replaceWith(d);
+      });
+    }
+
+    // 等待 mermaid CDN 加载完成后渲染
+    function waitForMermaid(cb) {
+      if (typeof mermaid !== 'undefined') return cb();
+      var t = setInterval(function() {
+        if (typeof mermaid !== 'undefined') {
+          clearInterval(t);
+          cb();
+        }
+      }, 200);
+    }
+
+    prepareMermaidBlocks();
+    waitForMermaid(function() {
+      mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
+      mermaid.run({ querySelector: 'pre.mermaid' });
+    });
+  })();
+</script>

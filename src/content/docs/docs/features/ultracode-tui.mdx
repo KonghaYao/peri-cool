@@ -1,0 +1,84 @@
+---
+title: 工作流面板
+description: /workflows 面板实时监控三级树展示、journal 日志和断点续跑——观察和调试工作流执行。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 打开工作流面板
+
+在 Peri TUI 中输入 `/workflows` 打开工作流面板。面板以双栏三级树结构展示所有工作流的运行状态：
+
+- 顶部 Tab 行：切换不同工作流 Run
+- 左侧 Phases 列（40%）：阶段列表，含每阶段的 agent 数量
+- 右侧 Agents 列（60%）：选中阶段下的 agent 列表，含 token 用量和工具调用数
+
+```text
+┌─ Workflows ────────────────────────────────────────────────────────┐
+│ [▶ review:verify @parallel] [✓ audit @pipeline]                    │
+├──────────────┬──────────────────────────────────────────────────────┤
+│ Phases       │ Agents                 Tokens Tools                  │
+│ ──────────── │ ────────────────────────────────                     │
+│ ✓ Review     │ #0 coder               500t   3tools                 │
+│ ▶ Verify     │ #1 review:bugs          120t   1tool                 │
+│ ○ Deploy     │ #2 review:perf          dead                         │
+└──────────────┴──────────────────────────────────────────────────────┘
+```
+
+## 面板信息
+
+面板为每个 agent 展示以下字段：
+
+| 字段 | 说明 |
+|------|------|
+| 状态图标 | ▶ running / ✓ done / ⊘ dead / ○ pending |
+| 名称（label） | workflow 脚本中 `agent()` 调用的描述文本，截断为 18 列宽 |
+| Tokens | 该 agent 已消耗的 token 数（右对齐 8 列） |
+| Tools | 该 agent 已执行的工具调用次数 |
+
+Phase 行也显示状态图标和该阶段下的 agent 总数，如 `[3]` 表示该阶段包含 3 个 agent。
+
+## 面板操作
+
+所有操作通过键盘完成，不依赖鼠标：
+
+| 按键 | 功能 |
+|------|------|
+| `Tab` | 切换到下一个 Run |
+| `BackTab` | 切换到上一个 Run |
+| `←` / `→` | 在 Phases 列和 Agents 列之间切换焦点 |
+| `↑` / `↓` | 在当前列内移动选中项 |
+| `Esc` | 关闭面板 |
+| `Enter` | 当前为 no-op（预留） |
+
+## 实时更新
+
+面板通过 **2 秒间隔轮询** 获取最新状态，无推送通道。后台任务 `spawn_workflow_poll()` 定期向 ACP Server 发起 `workflow/list_runs` RPC 请求，将响应写入 `WORKFLOW_SNAPSHOT` 全局 Atom，WorkflowPanel 组件订阅该 Atom 后自动重渲染。
+
+Session 结束时 CancellationToken 取消轮询任务。无活跃 session 时写入空快照，面板从 loading 态过渡到空态。
+
+## 工作流日志
+
+每个工作流执行都会在 `.claude/workflow-runs/<run-id>/` 下生成完整日志。最多保留 50 个 run 目录，超出时自动清理。
+
+| 文件 | 内容 |
+|------|------|
+| `script.js` | 执行的 JavaScript ESM 脚本内容（由 workflow tool 参数或 ultracode skill 生成） |
+| `journal.jsonl` | JSON-RPC 通信记录——每行一条消息，涵盖 Run/Phase/Agent 生命周期事件和 `log()` 输出 |
+| `state.json` | 最终状态快照——包含所有 agent 的状态、返回值、完成时间戳 |
+
+## 断点续跑
+
+工作流支持断点续跑。如果工作流被中断（手动 kill、进程崩溃、子进程异常退出），可以用相同的 run_id 恢复执行。
+
+续跑时 Runner 读取 `journal.jsonl` 中已完成 agent 的结果，跳过这些 agent 重新执行未完成的部分。续跑会生成新的 run_id，通过 `resumeFromRunId` 参数关联原 run。
+
+## 调试技巧
+
+- 查看 `journal.jsonl` 了解 agent 之间的消息流和生命周期事件——每行一条 JSON，按时间顺序
+- `state.json` 记录了每个 agent 的 `status`、`result` 和 `completed_at` 字段，快速定位失败节点
+- `script.js` 是实际执行的脚本，可以复制出来用 Node.js 或 Bun 独立运行调试
+
+<Aside type="tip">
+  如果工作流输出 "0 agents, 0 tool calls"，检查 `npx --version` 或 `bunx --version` 是否可用。工作流需要 Node.js 或 Bun 运行时来启动子进程执行脚本。
+</Aside>

@@ -1,0 +1,155 @@
+---
+title: 核心原语
+description: agent, parallel, pipeline, phase, log, workflow -- ultracode 工作流脚本的六个核心构建块。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 原语一览
+
+ultracode 工作流脚本提供六个核心原语，覆盖单个子代理、并发、管线、阶段标记、日志、子工作流调用：
+
+| 原语 | 用途 | 返回值 |
+|------|------|--------|
+| `agent(prompt, opts?)` | 调度一个子代理 | 子代理的输出 |
+| `parallel(tasks)` | 并发执行多个子代理 | 结果数组 |
+| `pipeline(items, ...stages)` | 对每项顺序执行多阶段 | 与 items 等长的结果数组 |
+| `phase(title)` | 标记阶段边界 | `undefined` |
+| `log(message)` | 记录日志 | `undefined` |
+| `workflow(nameOrPath, args?)` | 运行子工作流 | 子工作流的返回值 |
+
+## 脚本结构
+
+每个工作流脚本必须导出 `meta` 对象，声明名称、描述和阶段：
+
+```javascript
+export const meta = {
+  name: 'full-code-review',
+  description: '多维度深度代码审查',
+  phases: [
+    { title: 'Scan', detail: '扫描变更文件' },
+    { title: 'Review', detail: '多维度并行审查' },
+    { title: 'Verify', detail: '对抗式验证' },
+  ],
+}
+```
+
+`phases` 中的阶段定义只影响 TUI 面板的看板展示。实际的阶段边界由 `phase()` 原语控制。
+
+## agent
+
+`agent(prompt, options?)` 调度一个子代理执行任务。返回值是子代理的最终输出。
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `label` | `string` | TUI 面板中显示的名称 |
+| `model` | `string` | 指定模型，可选 `haiku` / `sonnet` / `opus` |
+| `allowedTools` | `string[]` | 工具白名单，如 `['Read', 'Grep']` |
+| `schema` | `object` | JSON Schema，要求结构化输出 |
+| `maxTokens` | `number` | 输出 token 上限 |
+
+```javascript
+const result = await agent(
+  '审查 src/api/auth.ts 的安全性',
+  { label: 'auth-review', model: 'sonnet', allowedTools: ['Read', 'Grep'] }
+)
+```
+
+`model` 省略时使用默认模型。`allowedTools` 省略时继承主代理的工具集。
+
+## parallel
+
+`parallel(tasks)` 并发执行多个子代理。`tasks` 是工厂函数数组 -- 每个元素是返回 Promise 的零参函数。
+
+<Aside type="caution">
+  入参必须是 `() =&gt; agent(...)` 工厂函数，不能直接传 `agent(...)`。直接传会导致代理串行执行，parallel 语义失效。
+</Aside>
+
+```javascript
+const [security, perf, bugs] = await parallel([
+  () => agent('审查安全性', { label: 'security' }),
+  () => agent('审查性能', { label: 'perf' }),
+  () => agent('审查 bug', { label: 'bugs' }),
+])
+```
+
+返回值保持与工厂函数数组相同的顺序，与各子代理的实际完成先后无关。
+
+## pipeline
+
+`pipeline(items, ...stages)` 对每个数据项依次执行所有 stage。每个 stage 的签名为 `(prevResult, item, index) => result`。
+
+`prevResult` 是上一个 stage 对本项的返回值（首个 stage 为 `undefined`），`item` 是当前数据项，`index` 是数据项在数组中的位置。
+
+```javascript
+const files = ['src/a.ts', 'src/b.ts']
+
+const results = await pipeline(files,
+  // stage 1: 逐个文件分析
+  (prev, file) => agent(`分析 ${file} 的代码质量`, { label: `analyze:${file}` }),
+  // stage 2: 汇总上个阶段的结果
+  (prev) => agent(`根据分析结果列出需要修复的问题: ${prev}`, { label: 'summarize' }),
+)
+```
+
+在上例中，`pipeline` 先对 `src/a.ts` 执行 stage 1，得到分析结果；再对该结果执行 stage 2，得到 `src/a.ts` 的最终输出。然后对 `src/b.ts` 重复同样的流程。返回值 `results` 与 `files` 等长，每个元素是对应文件走完所有 stage 后的最终结果。
+
+<Aside type="tip">
+  pipeline 与 parallel 的组合很常见。比如在 pipeline 的某个 stage 内用 parallel 对一个文件做多维度审查。
+</Aside>
+
+## phase
+
+`phase(title)` 标记阶段边界。调用后，后续的 `agent()` 调用自动带上该阶段名，TUI 面板中按阶段分组展示。
+
+```javascript
+phase('Analysis')
+const r1 = await agent('分析代码结构', { label: 'analyzer' })
+
+phase('Fix')
+const r2 = await agent('修复发现的问题', { label: 'fixer' })
+```
+
+`agent()` 的 options 中也可以显式指定 `phase`，覆盖当前阶段：
+
+```javascript
+phase('Review')
+const r = await agent('快速检查', { label: 'quick-check', phase: 'Review' })
+```
+
+## log
+
+`log(message)` 在工作流面板中输出日志消息。适合在阶段开始或关键节点处记录进度。
+
+```javascript
+log('开始扫描变更文件...')
+const diffStat = await agent('运行 git diff --stat HEAD~10', { label: 'scan-diff' })
+log(`扫描完成，共 ${diffStat} 个变更文件`)
+```
+
+## workflow
+
+`workflow(nameOrPath, args?)` 运行子工作流，支持一层嵌套。可以从外部脚本路径加载，也可以按名称引用注册过的子工作流。
+
+```javascript
+// 从脚本路径加载
+const subResult = await workflow(
+  { scriptPath: 'scripts/sub-analysis.mjs' },
+  { threshold: 0.8 }
+)
+
+// 按名称引用已注册的子工作流
+const checkResult = await workflow('security-check', { level: 'strict' })
+```
+
+子工作流同样通过 `args` 接收参数，在自己的脚本中读取 `args.threshold` 等字段。
+
+## 脚本约束
+
+工作流脚本运行在确定性沙箱中，以下能力受限：
+
+- **无时间 API**：`Date.now()` 和 `new Date()` 不可用。需要时间信息时通过调用方构造的 `args` 注入
+- **无随机数**：`Math.random()` 不可用。需要随机性时由调用方提供
+- **meta 必须完整**：`meta` 必须同时包含 `name` 和 `description`，否则工作流启动失败
+- **无文件系统**：不能直接读写文件。所有外部交互通过 `agent()` 内部的工具调用完成
+- **无网络访问**：不能发起 HTTP 请求。需要网络能力时委托给 agent 内部的 `WebFetch` / `WebSearch` 等工具

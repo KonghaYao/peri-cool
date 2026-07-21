@@ -1,0 +1,76 @@
+---
+title: 权限系统
+description: 从完全自动到逐条审批——四种权限模式保护你的代码和系统安全。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 为什么需要权限控制
+
+Peri 可以读写文件、执行 shell 命令、访问网络。权限系统让你控制 Peri 在什么情况下可以自主操作、什么时候必须等你确认。
+
+权限系统有两层控制：全局的**权限模式**决定审批的默认行为，工具级的**权限规则**让你对特定工具做精细调整。
+
+## 四种权限模式
+
+| 模式 | CLI 值 | 行为 | 适用场景 |
+|------|--------|------|---------|
+| **Default** | `default` | 逐个审批。大部分工具执行前需要确认 | 新项目、敏感代码、需要精细掌控时 |
+| **AcceptEdit** | `accept_edit` | 编辑类工具自动通过，其他工具仍需审批 | 日常编码、快速迭代 |
+| **Auto** | `auto` | LLM 自动判断是否需要审批，后台安全检测 | 长任务、减少打断 |
+| **Bypass** | `bypass` | 跳过所有审批，全自动执行 | 隔离容器、CI/CD pipeline |
+
+在 Bypass 之外的所有模式下，对受保护路径的写入永远不会自动批准——包括 git 配置、Peri 自身的配置文件等。
+
+## 切换模式
+
+启动时通过 CLI 参数指定：
+
+```bash
+peri --permission-mode accept_edit
+# 或
+peri --permission-mode default
+# 或
+peri --permission-mode bypass
+```
+
+运行中按 `Shift+Tab` 在 Default -> AcceptEdit -> Auto -> Bypass 之间循环切换。状态栏会显示当前模式。
+
+<Aside type="note">
+  旧版 CLI 参数 `--approve` 和 `--skip-permissions` 仍然可用，等价于 `--permission-mode` 的特定取值。
+</Aside>
+
+## HITL 审批
+
+在需要审批的模式下，Peri 执行高危操作前会弹出审批窗口（HITL，Human-in-the-Loop）。审批在工具真正执行之前完成——如果被拒绝，Peri 会生成一个错误结果记录并继续，而不是跳过该工具。
+
+审批窗口显示：
+- 即将执行的操作（工具名、参数）
+- 多个工具调用会合并为一次批量审批，不需要逐个确认
+
+你可以选择：允许本次、拒绝、或始终允许此类操作。选择"始终允许"时，规则会持久化到项目配置中。
+
+## 工具级权限
+
+除了全局模式，还可以针对特定工具设置权限规则。规则在项目配置文件（`.peri/settings.json`）中定义，优先级高于全局模式。
+
+| 规则类型 | 说明 | 示例 |
+|---------|------|------|
+| **Allow** | 该工具无论模式都不审批 | `Bash(git diff *)` 始终自动执行 |
+| **Ask** | 该工具无论模式都需审批 | `Bash(rm *)` 始终弹出确认 |
+| **Deny** | 完全禁止该工具 | `WebFetch` 不允许访问网络 |
+
+规则按 Deny -> Ask -> Allow 的顺序评估，先匹配的规则决定结果。一个裸的工具名（如 `Bash`）会从上下文中完全移除该工具，而带模式的规则（如 `Bash(rm *)`）保留工具但对匹配的调用做拦截。
+
+<Aside type="caution">
+  **Bypass 模式会跳过所有权限检查**，包括工具级的 Deny 规则。仅在完全受控的环境中使用——比如 CI/CD pipeline 或 Docker 容器。
+</Aside>
+
+## 权限模式选择指南
+
+| 你的情况 | 推荐模式 |
+|---------|---------|
+| 第一次用 Peri，不熟悉它能做什么 | Default |
+| 日常写代码，信任 Peri 的文件编辑 | AcceptEdit |
+| 跑一个需要多轮的长任务，不想频繁打断 | Auto |
+| 在 CI 或 Docker 里跑，环境完全隔离 | Bypass |

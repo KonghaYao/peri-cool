@@ -1,64 +1,74 @@
 ---
 title: ultracode 工作流
-description: 不用写脚本，告诉 Peri 要做什么，它自动拆任务、并行执行、汇总结果。
+description: JavaScript ESM 脚本驱动的多代理编排引擎——几十个 agent 并行或分阶段执行。
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
 
-## 概述
+## 什么是 ultracode
 
-ultracode 是 Peri 的工作流引擎。你把一个复杂任务描述给 Peri，它自动拆分成多个子代理并行或分阶段执行。
+ultracode 是 Peri 的工作流（Workflow）引擎。它和子代理（SubAgent）的关系是——子代理一次派发几个 agent 并行做一件事，ultracode 一次派发几十个 agent 跑一个结构化流程。
 
-使用方式：`/ultracode <任务描述>`。
+区别在于谁掌握编排逻辑：
 
-## 使用场景
+- **子代理**：Peri（LLM）逐轮判断下一步该做什么
+- **ultracode**：你（或 Peri 生成的）JavaScript 脚本定义整个流程
 
-### 重构
+## 为什么需要 ultracode
 
+<CardGrid>
+  <Card title="规模" icon="layers">
+    一次审查 5 个文件用子代理。扫描整个代码库 200 个文件找 dead code？用 ultracode。
+  </Card>
+  <Card title="可重复" icon="refresh">
+    工作流脚本是代码。审查流程可以保存、重跑、分享。子代理的决策在 LLM 的上下文里，无法重放。
+  </Card>
+  <Card title="质量控制" icon="check">
+    脚本可以定义交叉审查——两个 agent 独立检查同一个问题，不一致时启动第三个裁决。
+  </Card>
+  <Card title="不阻塞" icon="play">
+    工作流在独立 Node.js 进程中运行。你继续在主会话工作，完成后收到通知。
+  </Card>
+</CardGrid>
+
+## ultracode vs 子代理 对比
+
+| | 子代理 | ultracode 工作流 |
+|---|--------|-----------------|
+| 谁决定下一步 | LLM 逐轮判断 | 脚本定义 |
+| 并行规模 | 每轮 1-3 个 | 几十到上百个 |
+| 可重复性 | 不可重放 | 脚本可重跑 |
+| 中间结果 | 在 LLM 上下文中 | 在脚本变量中 |
+| 适用场景 | 单次委派、快速搜索 | 批量审计、大规模迁移 |
+
+## 架构速览
+
+```text
+用户输入 /ultracode 任务描述
+       ↓
+Peri (LLM) 生成 JavaScript ESM 脚本
+       ↓
+Node.js 进程执行脚本（npx / bunx）
+       ↓
+JSON-RPC 双向通信
+       ↓
+peri-acp 调度 sub-agents 执行
+       ↓
+结果汇总 → 通知用户
 ```
-/ultracode 重构 src/services/order.ts，每个函数先检查类型错误，再改为 async/await，最后审查逻辑正确性。完成后输出变更摘要。
-```
 
-### 代码审查
+## 使用方式
 
-```
-/ultracode 审查这次改动的 5 个文件，从安全性、性能、代码风格三个角度并行审查。输出问题清单。
-```
+`/ultracode &lt;任务描述&gt;`
 
-### 批量迁移
+不需要写脚本。Peri 会根据你的任务描述自动生成工作流脚本并执行。
 
-```
-/ultracode 把 src/components/ 下 8 个 class 组件改成函数组件 + Hooks。每个组件先分析 props/state，再重写，再检查类型。
-```
+<Aside type="tip">
+  需要手动控制时，可以编写脚本放到 `.claude/workflows/` 目录，然后通过 `/workflows` 面板选择执行。
+</Aside>
 
-### 多维度分析
+## 下一步
 
-```
-/ultracode 分析 src/api/ 模块，从调用链、错误处理、接口设计三个维度同时分析。汇总问题列表。
-```
-
-## 执行模式
-
-大多数时候不需要管模式，Peri 自己判断。以下只是在自动拆分结果不对时用来限定行为：
-
-| 模式 | 适用情况 | 关键词 |
-|------|---------|--------|
-| **并行** | 子任务互不依赖 | 同时、并行、分别 |
-| **阶段化** | 有步骤依赖，串行跑 | 先...再...然后...、分阶段 |
-| **管线** | 每个文件走同样的多步流程 | 每个...都先...再... |
-
-## 不适合的场景
-
-- 子任务有**紧耦合依赖**（改 B 之前必须知道 A 的改动结果）
-- 子任务**共享同一批文件**（并行写同一个文件会冲突）
-- 拆分开销大于执行开销（改 2 个文件没必要并行）
-
-## 并发限制
-
-默认最多 3 个并行子代理。免费版 DeepSeek 建议 2 个。
-
-可以在命令中指定：**"最多 2 个并行"**。
-
-## 结果
-
-执行完成后，对话中直接展示汇总结果。完整日志保存在 `.claude/workflow-runs/` 下。
+- [核心原语详解](/docs/features/ultracode-primitives/) —— agent、parallel、pipeline、phase
+- [实战场景](/docs/features/ultracode-scenarios/) —— 审查、迁移、审计、分析
+- [工作流面板](/docs/features/ultracode-tui/) —— 实时监控和调试

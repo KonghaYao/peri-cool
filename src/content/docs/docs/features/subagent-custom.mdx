@@ -1,0 +1,147 @@
+---
+title: 自定义
+description: 创建专属子代理——文件格式、作用域优先级、关键配置字段。
+---
+
+import { Aside, Steps, FileTree } from '@astrojs/starlight/components';
+
+子代理（sub-agent）是 Peri 派发独立任务的专用 Agent。每个子代理有自己的上下文窗口、工具集和系统提示词，用于执行特定类型的子任务——搜索代码、审查变更、研究文档等。
+
+Peri 内置了 explorer、coder、code-reviewer 等子代理类型。你也可以创建自定义子代理来覆盖内置行为或定义全新的任务角色。
+
+## 创建一个自定义子代理
+
+**第 1 步：在 `.claude/agents/` 下创建文件**
+
+子代理定义是 Markdown 文件，开头用 YAML frontmatter 声明元数据，正文是系统提示词。
+
+```markdown
+---
+name: code-improver
+description: 扫描文件并建议可读性、性能和最佳实践改进
+tools: Read, Grep, Glob
+model: sonnet
+---
+
+你是代码改进专家。对每个发现的问题，解释原因、展示当前代码、提供改进版本。
+```
+
+文件名决定子代理标识符：`my-agent.md` 对应标识符 `my-agent`。也支持嵌套目录 `my-agent/agent.md`，两种格式等价。
+
+### 选择作用域
+
+子代理定义有三种作用域，按优先级从高到低：
+
+| 目录 | 作用域 | 优先级 |
+|------|--------|--------|
+| `.claude/agents/` | 当前项目 | 最高 |
+| `~/.claude/agents/` | 所有项目 | 中等 |
+| 插件 `agents/` 目录 | 插件启用的项目 | 最低 |
+
+同名子代理按优先级覆盖——项目级覆盖用户级，用户级覆盖插件级。
+
+<Aside type="tip">
+  把通用子代理（如 code-reviewer、security-auditor）放在 `~/.claude/agents/`，所有项目复用。项目特有的子代理放在 `.claude/agents/`。
+</Aside>
+
+### 描述子代理的用途
+
+`description` 字段是 Peri 决定何时使用该子代理的核心依据。写得越具体，Peri 派发越准确。
+
+**好的 description**：
+
+- "扫描文件并建议可读性、性能和最佳实践改进"
+- "用多个独立角度审查代码变更的安全性"
+- "搜索项目中的 API 端点定义和使用位置"
+
+**差的 description**：
+
+- "帮助"（太模糊）
+- "审查"（没说审查什么）
+- "写代码"（与内置 coder 重复）
+
+<Aside type="note">
+  如果 description 与内置子代理高度重叠，你的自定义定义会覆盖内置行为，而不是增加一个新的子代理选项。
+</Aside>
+
+## 关键配置字段
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `name` | 是 | 子代理标识符，kebab-case 格式（如 `security-auditor`） |
+| `description` | 是 | Peri 判断何时派发此子代理的依据 |
+| `tools` | 否 | 工具白名单，逗号分隔。不填则继承主 Agent 的全部工具 |
+| `model` | 否 | 指定模型（haiku / sonnet / opus），不填则继承主会话的模型 |
+| `permissionMode` | 否 | 权限模式，不填则继承主会话的权限设置 |
+
+<FileTree>
+- .claude/
+  - agents/
+    - security-auditor.md
+    - code-reviewer.md
+</FileTree>
+
+## 工具白名单
+
+限制子代理的工具权限是安全最佳实践——只授予任务所需的工具，减少意外操作和 token 消耗。
+
+常用配置：
+
+**只读审查子代理**：
+```
+tools: Read, Grep, Glob
+```
+
+**代码编写子代理**：
+```
+tools: Read, Write, Edit, Bash, Grep, Glob
+```
+
+**Web 研究子代理**：
+```
+tools: WebFetch, WebSearch, Read
+```
+
+<Aside type="caution">
+  不填 `tools` 字段意味着子代理可以调用主 Agent 的全部工具。为安全起见，建议总是显式声明工具白名单。
+</Aside>
+
+## 系统提示词写法
+
+frontmatter 之后的正文是子代理的系统提示词。写法和普通 prompt 一样，但子代理只接收这段提示词和当前任务描述，不加载主 Agent 的完整系统提示词，因此要写清楚：
+
+- **角色和边界**：明确子代理做什么、不做什么
+- **输入输出格式**：说明期望的任务描述格式和结果返回格式
+- **禁止行为**：列出不该做的事（禁止修改文件、禁止超出范围等）
+
+```markdown
+---
+name: i18n-checker
+description: 检查项目中硬编码的中文文本，确保所有用户可见文字走 i18n 翻译
+tools: Read, Grep, Glob
+model: haiku
+---
+
+你检查代码中硬编码的用户可见中文文本。规则：
+
+1. 搜索 `"` 或 `'` 包裹的中文字符串
+2. 排除注释、日志、tracing 宏、anyhow/thiserror 消息、打印输出
+3. 对每个发现，标注文件路径和行号
+4. 只输出检查报告，不修改任何文件
+```
+
+<Aside type="tip">
+  把"禁止修改文件"写进提示词，配合 `tools: Read, Grep, Glob` 只读工具集，双重保障子代理不会意外破坏代码。
+</Aside>
+
+## 让 Peri 帮你创建
+
+不需要手写。直接对 Peri 说：
+
+> "创建一个用户级 code-improver 子代理，扫描文件并建议可读性、性能和最佳实践改进。只读，用 Sonnet。"
+
+Peri 会生成文件并放到正确的目录。
+
+<Aside type="note">
+  文件创建后 Peri 会在几秒内检测到变更，下次派发立即使用新定义，无需重启。
+</Aside>

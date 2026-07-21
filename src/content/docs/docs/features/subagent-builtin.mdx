@@ -1,0 +1,116 @@
+---
+title: 内置类型
+description: Peri 的 7 种专业子代理——各自的权限、模型策略和适用场景。
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Peri 内置 7 种专用子代理，每种针对特定任务场景优化了模型选择、工具权限和行为模式。主 Agent 根据任务类型自动选择合适的子代理类型派发。
+
+## 子代理类型一览
+
+| 子代理 | 默认模型 | 权限 | 用途 |
+|--------|---------|------|------|
+| explorer | haiku | 只读 | 搜索代码库 |
+| coder | sonnet | 可写 | 编写和修改代码 |
+| code-reviewer | sonnet | 只读 | 审查代码质量 |
+| web-researcher | haiku | 可写 | 搜索网页、抓取文档 |
+| plan | 继承 | 只读 | 设计实现方案 |
+| general-purpose | 继承 | 可写 | 通用任务兜底 |
+| verification | sonnet | 只读 | 验证实现正确性 |
+
+<Aside type="note">
+  用户级或项目级同名的自定义子代理会覆盖内置定义。如果你想确保 explorer 始终使用低成本模型，可以创建一个自定义 explorer 并设置 `model: haiku`。
+</Aside>
+
+## 逐个详解
+
+<Tabs syncKey="builtin-subagents">
+  <TabItem label="explorer">
+
+  ### explorer — 快速代码搜索
+
+  默认使用 haiku 模型，只读工具集（Read、Grep、Glob、LSP、folder_operations）。搜索时不加载 CLAUDE.md 和 git status，保持轻量快速。
+
+  支持三档搜索深度：**quick**（精准查找）、**medium**（中等探索）、**very thorough**（全面分析）。调用时需在 prompt 中指定 desired thoroughness level。
+
+  explorer 可以将搜索结果写入 `.peri/plans/` 目录供主 Agent 检索。
+
+  </TabItem>
+
+  <TabItem label="coder">
+
+  ### coder — 代码实现
+
+  默认使用 sonnet 模型。拥有完整文件操作权限——Bash、Edit、Write、Read、Grep、Glob、LSP、folder_operations。
+
+  coder 专注于纯代码实现，不做架构设计或方案评估。内置 Memory Discipline 规则防止搜索循环和上下文浪费。通过 TodoWrite 追踪每个文件的修改计划，最多 7 项。
+
+  最大 200 轮对话上限，避免无限循环。coder 在当前工作目录下运行，prompt 中涉及的文件路径应使用绝对路径。
+
+  </TabItem>
+
+  <TabItem label="code-reviewer">
+
+  ### code-reviewer — 代码审查
+
+  默认使用 sonnet 模型，只读权限。工具集包括 Read、Grep、Glob、Bash——可以搜索代码和运行测试，但不可修改任何文件。
+
+  审查重点覆盖安全漏洞、代码逻辑问题和可维护性。适合在 coder 完成修改后立即启动并行审查：一个在写代码，另一个在审查之前的变更。
+
+  </TabItem>
+
+  <TabItem label="web-researcher">
+
+  ### web-researcher — 网络研究
+
+  默认使用 haiku 模型。可调用 WebFetch 和 WebSearch 获取最新网络信息，通过 Write 将研究结果保存到 `/tmp/` 供后续合成。
+
+  支持三种研究策略：**Multi-round Progressive Search**（迭代细化查询）、**Parallel Multi-source Analysis**（多关键词并行搜索后交叉比对）、**Deep Tracing**（跟随链接深挖最多 2 层）。
+
+  最大 40 轮对话，单次研究最多 8 次 WebFetch 调用。最终输出结构化 Markdown 报告，带引用标注。
+
+  </TabItem>
+
+  <TabItem label="plan">
+
+  ### plan — 方案设计
+
+  默认继承主会话模型（`model: inherit`），只读权限。分析代码库结构后提出分步实现方案，含依赖关系和潜在挑战。
+
+  不加载 CLAUDE.md 和 git status，和 explorer 一样保持轻量。设计方案可以写入 `.peri/plans/` 目录。输出末尾需要列出 3-5 个关键文件作为实施切入点。
+
+  </TabItem>
+
+  <TabItem label="general-purpose">
+
+  ### general-purpose — 通用兜底
+
+  默认继承主会话模型，拥有全部工具权限（`tools: "*"`）。当任务不适合其他专用子代理时使用。
+
+  general-purpose 适合一次性、非标准化的任务——不需要为每个临时需求创建自定义子代理。注意它不会自动加载模型字段，完全继承主会话的配置。
+
+  </TabItem>
+
+  <TabItem label="verification">
+
+  ### verification — 实现验证
+
+  默认使用 sonnet 模型。可运行 Bash（构建、测试、lint），但不可写文件（Write 和 Edit 被禁用）。
+
+  采用与实现者完全独立的视角验证代码——拒绝"看代码就觉得没问题"的倾向，强制实际运行命令并复制终端输出。验证报告可以写入 `.peri/plans/`。
+
+  输出必须包含每项检查的**实际命令**和**终端输出**，最终给出 PASS / FAIL / PARTIAL 裁决。PARTIAL 仅限环境限制导致无法完成的检查。
+
+  </TabItem>
+</Tabs>
+
+## 何时用哪个
+
+- **搜索代码** — `explorer`：快速定位文件和模式，用最低成本的模型
+- **写/改代码** — `coder`：完整文件操作权限，专门做实现
+- **审查变更** — `code-reviewer`：独立上下文审查，避免盲区
+- **查最新文档** — `web-researcher`：多轮搜索 + 结构化报告
+- **设计方案** — `plan`：探索代码库后出分步计划
+- **验证修改** — `verification`：独立运行构建和测试
+- **都不匹配** — `general-purpose`：通用工具集兜底

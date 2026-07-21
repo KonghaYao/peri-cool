@@ -1,0 +1,189 @@
+---
+title: 插件系统
+description: Peri 的插件架构——如何发现、加载和管理插件，与 Claude Code 生态完全兼容。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 概述
+
+Peri 的插件系统**完全兼容 Claude Code 插件生态**。任何 Claude Code 插件都可以直接在 Peri 中使用，无需修改。插件可以携带多种能力——Skills（技能）、Hooks（钩子）、MCP Server、SubAgent 定义、LSP 服务器等——安装后自动注册到 Peri 运行时。
+
+<Aside type="tip">
+  没有 Claude Code？没问题。Peri 不依赖 Claude Code 安装，所有插件功能由 Peri 自主实现。
+</Aside>
+
+## 插件 Manifest
+
+每个插件的根目录或 `.claude-plugin/` 子目录下有一个 `plugin.json`，描述插件的基本信息和携带能力。Peri 兼容 Claude Code 的标准 manifest 格式：
+
+```json
+{
+  "name": "my-plugin",
+  "version": "1.0.0",
+  "description": "一个示例插件",
+  "author": { "name": "开发者", "url": "https://github.com/developer" },
+  "skills": ["./skills/"],
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "echo running" }] }
+    ]
+  },
+  "mcpServers": {
+    "my-server": "./.mcp.json"
+  },
+  "agents": [
+    { "path": "./agents/coder", "name": "coder" }
+  ],
+  "commands": ["./commands/"],
+  "lspServers": [
+    { "name": "rust-analyzer", "command": "rust-analyzer", "args": [], "extensionToLanguage": {".rs": "rust"} }
+  ],
+  "channels": [
+    { "name": "wechat", "mcpServer": "wechat-mcp" }
+  ],
+  "options": [
+    { "name": "autoFormat", "description": "启用自动格式化", "type": "boolean", "default": true }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `name` | string | 插件唯一标识名 |
+| `version` | string | 语义化版本号 |
+| `description` | string | 插件简介 |
+| `author` | object | 作者信息（`name` 必填，`url` 可选） |
+| `skills` | string[] | Skills 目录路径（相对于插件根目录），可以是字符串或数组 |
+| `hooks` | object | 按事件分组的 hook 配置，每个事件对应一组 `{matcher, hooks}` 规则 |
+| `mcpServers` | object | MCP 服务器定义。值可以是内联配置对象或 `.mcp.json` 文件路径 |
+| `agents` | object[] | SubAgent 定义目录，每个条目含 `path` 和 `name` |
+| `commands` | (string\|object)[] | 斜杠命令（`/命令名`）。可以是 `.md` 文件路径或带 `{path, name, description}` 的对象 |
+| `lspServers` | object[] | LSP 服务器配置，含 `name`、`command`、`args` 和 `extensionToLanguage` 映射 |
+| `channels` | object[] | 频道集成（如微信、Slack），每个含 `name` 和 `mcpServer` |
+| `options` | object[] | 用户可配置的选项，含 `name`、`description`、`type` 和 `default` |
+| `settings` | object | 插件默认设置（任意 JSON） |
+
+如果插件缺少原生 `plugin.json`，Peri 会从 marketplace manifest 中的插件条目自动生成合成 manifest（含 skills、MCP 等已知字段），不需要手动补救。
+
+## 三层发现机制
+
+Peri 在启动时从三个层级发现并加载插件，优先级从高到低排列，同名插件高优先级覆盖低优先级：
+
+| 层级 | 路径 | 说明 |
+|------|------|------|
+| **项目级** | `<project>/.claude/settings.json` 的 `enabledPlugins` | 仅当前项目生效，团队可在 `.claude/` 中提交配置 |
+| **用户级** | `~/.claude/settings.json` 的 `enabledPlugins` | 全局生效，所有项目都能使用 |
+| **内置** | Peri 编译时嵌入的 SubAgent 定义 | 最低优先级，提供 fallback 能力 |
+
+<Aside type="note">
+  三层配置独立存在，不是合并关系。项目级配置只影响当前项目，用户级配置对所有项目生效。项目中声明的插件会被优先加载。
+</Aside>
+
+所有已安装的插件统一存储在 `~/.claude/plugins/cache/<marketplace>/<plugin>/` 下，`installed_plugins.json` 记录每个插件的 ID、版本、安装路径和作用域（User / Project / Local）。`settings.json` 的 `enabledPlugins` 字段控制哪些插件在启动时激活，格式兼容 Claude Code 的数组和对象两种写法。
+
+## 插件市场
+
+Peri 内置**插件市场浏览器**，通过 `/plugin` 面板（TUI 快捷键 `Shift+P`）访问。市场数据从 `~/.claude/plugins/marketplaces/` 下的缓存中读取，面板分为四个视图：
+
+| 视图 | 功能 |
+|------|------|
+| **Installed** | 查看已安装的插件，启用/禁用切换 |
+| **Discover** | 浏览 marketplace 中的可用插件，按关键字搜索 |
+| **Marketplaces** | 管理已注册的 marketplace 源（添加/删除/刷新） |
+| **Updates** | 检查可更新的插件 |
+
+在 Discover 视图中，你可以按名称或描述搜索插件，选中后可以按 **User scope**（全局安装）或 **Project scope**（仅当前项目安装）进行安装。安装时，如果插件来源是 GitHub 仓库或 URL，Peri 会通过 `git clone` 拉取到缓存目录。
+
+### 包管理器 AGM
+
+AGM（Agent Package Manager）是 Peri 自研的包管理器，专注于 Skills、Agents 和 MCP 配置的依赖管理。通过项目根目录的 `agm.json` 文件声明依赖：
+
+```json
+{
+  "name": "my-project",
+  "skills": {
+    "tdd": "1.0.0",
+    "code-review": "^2.0.0"
+  },
+  "agents": {
+    "my-coder": { "git": "https://github.com/user/agent-repo" }
+  },
+  "mcp": {
+    "filesystem": "latest"
+  }
+}
+```
+
+<Aside type="tip">
+  AGM 的设计灵感来自 npm/Cargo。声明依赖 → `agm install` → 自动拉取并链接到 `.claude/skills/`、`.claude/agents/`、`.claude/mcp/` 目录。包存储在 `~/.agm/store/` 全局缓存中。
+</Aside>
+
+常用 AGM 命令：
+
+| 命令 | 说明 |
+|------|------|
+| `agm init` | 在当前目录生成 `agm.json` 模板 |
+| `agm install` | 安装 `agm.json` 中声明的所有依赖 |
+| `agm install --git <url>` | 直接从 Git 仓库安装 |
+| `agm uninstall <name>` | 卸载指定依赖 |
+| `agm list` | 列出所有已安装的依赖 |
+| `agm update` | 检查可更新的包 |
+| `agm gc` | 清理 store 中的孤立包 |
+
+## 插件能力清单
+
+安装一个插件后，它携带的所有能力会在 Peri 启动时自动加载：
+
+### (a) Skills
+
+插件的 `skills` 字段声明一个或多个 Skill 目录（相对于插件根目录）。Peri 的 Skills 扫描器会自动遍历这些目录，识别包含 `SKILL.md` 的叶子目录（leaf directory），并注册为可用技能。
+
+例如 `"skills": ["./skills/"]` 意味着插件根目录下的 `skills/` 文件夹会被扫描。子目录如 `skills/tdd/SKILL.md` 会被识别为一个名为 `tdd` 的技能，快捷键 `/tdd` 可以触发。
+
+### (b) Hooks
+
+插件的 `hooks` 字段声明事件驱动的自动化行为，与 Claude Code 的 hooks.json 格式完全兼容。每个钩子规则包含：
+- **事件**（如 `PreToolUse`、`UserPromptSubmit`）——触发时机
+- **Matcher**（可选）——粗粒度过滤，如只匹配 `Bash` 工具调用
+- **Hook 定义**——具体执行什么（Shell 命令 / HTTP 请求 / prompt 注入等）
+
+插件加载时，所有 hook 规则被注册到 HookMiddleware，运行时自动匹配触发。支持的 hook 类型包括 `command`（Shell 命令）、`http`（HTTP 请求）、`prompt`（LLM 判断后决策）、`agent`（子代理评估）。
+
+### (c) MCP Server
+
+插件的 `mcpServers` 字段定义 MCP 服务器。支持两种格式：
+- **内联配置**：直接在 `plugin.json` 中定义完整的 MCP 服务器配置
+- **文件引用**：指向 `.mcp.json` 文件路径（相对于插件根目录）
+
+插件加载后，所有 MCP 服务器使用命名空间前缀 `plugin:<插件名>:<服务器名>` 注册到全局 MCP 配置中，与其他来源的 MCP 服务器隔离。如果 manifest 中未声明 `mcpServers`，Peri 会回退到自动检测插件根目录的 `.mcp.json` 文件。
+
+### (d) SubAgent 定义
+
+插件的 `agents` 字段声明 SubAgent 定义目录。每个条目是一个 `{path, name}` 对——`path` 指向包含 `agent.md` 的目录，`name` 是该 Agent 的唯一标识。
+
+例如 `{ "path": "./agents/coder", "name": "coder" }` 会让 Peri 将 `./agents/coder/agent.md` 注册为可用的 SubAgent。SubAgent 加载优先级为：插件定义 > 项目 `.claude/agents/` > 内置定义。
+
+### (e) LSP 服务器
+
+插件的 `lspServers` 字段声明语言服务器。每个条目指定 `name`（如 `rust-analyzer`）、可执行 `command`、启动 `args` 和 `extensionToLanguage` 映射表（如 `{".rs": "rust"}`）。这些配置以 `LspConfigSource::Plugin` 注入到 Peri LSP 客户端。
+
+### (f) 命令
+
+`commands` 字段声明插件提供的斜杠命令（`/<插件名>:<命令名>`）。每个命令指向一个 `.md` 文件，其 YAML frontmatter 可定义 `description`、`shell`、`model` 等元数据。命令会出现在 TUI 的 `/` 选择菜单中。
+
+### (g) 频道集成
+
+`channels` 字段允许插件声明频道集成（如微信、Slack）。每个条目将 `name`（频道名）与 `mcpServer`（提供对应 MCP 工具的服务名）关联。
+
+## 安全考量
+
+<Aside type="caution">
+  插件以当前用户权限运行。它可以执行任意 Shell 命令、读写文件、发起网络请求。请只安装可信来源的插件。
+</Aside>
+
+- **来源审查**：在安装插件前，检查其 GitHub 仓库、作者身份和代码内容。优先选择官方 marketplace 中的插件。
+- **凭证管理**：敏感凭证（API Key、Token、密码）通过环境变量注入（在 `~/.peri/settings.json` 的 `env` 字段或系统环境变量中配置），**不要**硬编码在插件配置或项目代码中。
+- **权限控制**：Peri 的 HITL（Human-in-the-Loop）审批系统会在危险操作前弹窗确认。你可以在 `/permissions` 面板中调整审批级别，或使用 `Shift+Tab` 快速切换权限模式。
+- **项目隔离**：项目级插件只影响当前项目的工作目录。如果某个插件只需要在特定项目中使用，建议安装为 Project scope。
+- **Hook 审计**：插件的 hook 在关键生命周期节点自动触发。审查插件的 `hooks` 配置，确保它不会注入意外的指令或执行恶意脚本。

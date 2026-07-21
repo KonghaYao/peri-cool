@@ -1,0 +1,134 @@
+---
+title: MCP
+description: 通过 Model Context Protocol 接入外部工具和服务——文件系统、数据库、API 全部打通。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 什么是 MCP
+
+MCP（Model Context Protocol）是连接 AI Agent 和外部工具的标准开放协议。通过 MCP，Peri 可以调用任何实现了 MCP 协议的服务——从文件系统浏览器到数据库查询、从第三方 API 到自建工具。
+
+与直接写 Bash 脚本相比，MCP 提供结构化的工具描述（tool description）、参数校验（parameter validation）和结果类型（result schema）。Peri 知道每个工具能做什么、需要什么输入、返回什么，调用成功率远高于裸 Shell。
+
+## 快速开始
+
+在项目根目录创建 `.mcp.json`：
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-filesystem", "/path/to/data"]
+    }
+  }
+}
+```
+
+保存后 Peri 自动检测并加载。新增的 MCP 工具会出现在可用工具列表中，你可以在对话中直接使用它们。不需要重启 Peri——配置文件变更会被自动监听和重新加载。
+
+## 配置层级
+
+MCP 配置有三层，按优先级合并。同名 server 上层会覆盖下层定义。
+
+| 层级 | 配置文件 | 作用域 |
+|------|---------|--------|
+| 全局 | `~/.peri/settings.json` | 所有项目 |
+| 插件 | 插件 manifest | 启用插件的项目 |
+| 项目 | `.mcp.json` | 当前项目 |
+
+项目级配置优先级最高。假设全局和项目都定义了一个名为 `github` 的 server，项目级的定义会完全覆盖全局的定义——不会合并字段。
+
+<Aside type="note">
+  插件的 MCP server 只在插件被启用时加载。如果你卸载了某个插件，它的 MCP server 也会随之移除，不需要手动清理配置。
+</Aside>
+
+## 传输方式
+
+Peri 支持三种 MCP 传输方式（transport），覆盖本地和远程场景。
+
+| 方式 | 适用场景 | 示例 |
+|------|---------|------|
+| stdio | 本地命令行工具 | `npx` 启动的 MCP server |
+| SSE | HTTP 服务端推送 | 远程 MCP 网关 |
+| streamable HTTP | 流式 HTTP | 需要双向流的云服务 |
+
+stdio 是最常用的方式——大多数 MCP server 都是通过 `npx`、`python` 或本地二进制启动。SSE 和 streamable HTTP 适合需要连接远程服务或云托管 MCP server 的场景。
+
+### stdio 配置示例
+
+```json
+{
+  "mcpServers": {
+    "my-tool": {
+      "command": "npx",
+      "args": ["-y", "@my-org/my-mcp-server"],
+      "env": {
+        "API_KEY": "your-key"
+      }
+    }
+  }
+}
+```
+
+### HTTP 配置示例
+
+```json
+{
+  "mcpServers": {
+    "remote-service": {
+      "transport": "http",
+      "url": "https://api.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer your-token"
+      }
+    }
+  }
+}
+```
+
+## 使用 MCP 工具
+
+MCP 工具作为 Deferred Tool 加载，不属于 Core 层的 12 个基础工具。使用时有两种方式。
+
+### 自动调用
+
+在对话中直接描述需求，Peri 会自动调用 SearchExtraTools 查找匹配的 MCP 工具，然后通过 ExecuteExtraTool 执行。这对你来说是透明的——你只需要告诉 Peri 想做什么。
+
+```
+你: 帮我查一下 GitHub 上 perihelion 的最近 10 个 PR
+Peri: [自动搜索 mcp__github__* 工具，调用对应的 API]
+```
+
+### 手动搜索
+
+你也可以显式搜索，看看当前有哪些 MCP 工具可用：
+
+```
+SearchExtraTools("github")
+```
+
+找到后通过 ExecuteExtraTool 调用。这种方式适合需要精确控制工具选择的场景。
+
+<Aside type="caution">
+  MCP server 需要处于连接状态才会出现在搜索结果中。如果 server 启动失败或断连，对应的工具不会出现在可用工具列表里。可以用 `/mcp` 面板检查各 server 的连接状态。
+</Aside>
+
+## 自动重连
+
+MCP server 意外退出后，Peri 会自动尝试重连。重连策略为指数退避（exponential backoff）——首次立即重试，后续间隔递增，直到连接恢复或达到最大重试次数。
+
+重连过程在后台静默进行，不会打断你的对话。Server 恢复后，对应的工具会重新注册到工具列表，你可以在下一轮对话中继续使用。
+
+## MCP 面板
+
+用 `/mcp` 命令打开 MCP 管理面板，实时查看所有 MCP server 的状态。面板按配置来源分组显示——项目级、用户级、插件级。
+
+面板支持的操作包括查看工具列表、重新连接、禁用/启用 server、清除认证状态等。这是管理 MCP server 的主要入口，比手动编辑 JSON 配置文件更方便。
+
+## 安全提示
+
+- MCP server 以当前用户的权限运行。只连接你信任的 server，尤其是通过 HTTP 连接的远程服务器。
+- 如果 server 需要访问外部数据源（如从网页抓取内容），注意 prompt injection 风险。恶意网页内容可能通过工具返回结果注入到 Peri 的对话上下文中。
+- 敏感凭证（API key、token）建议通过环境变量注入，不要明文写在 `.mcp.json` 里提交到 git。

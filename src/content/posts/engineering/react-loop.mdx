@@ -1,0 +1,137 @@
+---
+title: ReAct 循环
+description: Peri 的核心执行引擎——五阶段循环如何驱动 Agent 推理、工具调用和上下文管理。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 概述
+
+ReAct（**Rea**soning + **Act**ing）循环是 Peri Agent 的核心执行模式。Agent 在循环中交替进行"思考"与"行动"——调用 LLM 推理下一步该做什么，然后分发工具执行，直到任务完成或触发上限。
+
+```text
+before_agent → loop(500 次):
+  Compact → Receive → Reason → Act → End
+```
+
+- **入口**：`run_react_loop(context: StageContext, max_iterations: usize)`（`peri-agent/src/agent/stages/mod.rs`）
+- **上限**：500 轮迭代，防止死循环
+- **退出条件**：LLM 输出纯文本回答（无工具调用），且 MessageQueue 中无待处理唤醒消息
+
+## 五阶段
+
+| 阶段 | 职责 | 关键行为 |
+|------|------|------|
+| **Compact** | 上下文压缩 | 检查预算使用率，超出阈值自动触发压缩（Micro / Full），防止上下文溢出 |
+| **Receive** | 消息接收 | 排空 MessageQueue，将 Prompt / Defer 类消息写入 MessageTranscript，供 Reason 阶段读取 |
+| **Reason** | LLM 推理 | 将当前消息历史发送给 LLM，获取推理结果（工具调用或文本回答）；流式输出通过 EventBus 实时推送 |
+| **Act** | 工具分发与执行 | 解析 LLM 返回的工具调用，并发执行；触发 before_tool / after_tool 中间件钩子；收集结果写入 Transcript |
+| **End** | 循环控制 | 检查 MessageQueue 是否有新消息（cron、channel、workflow、后台子代理）；有则 `should_continue=true` 重新进入循环，无则退出 |
+
+<Aside type="note">
+  **Compact 排在首位**：虽然概念上 Compact 是"在下一轮推理前压缩"，但代码控制流中它位于循环体最前——每次迭代先从预算检查开始。宏观看仍是五阶段顺序：Compact → Receive → Reason → Act → End。
+</Aside>
+
+## Compact 机制
+
+随着对话增长，消息历史会逼近 LLM 的上下文窗口上限。Compact 阶段在每次迭代开始前检查使用率，自动触发压缩。
+
+### 预算阈值
+
+预算通过 `ContextBudget` 控制，设置两个阈值：
+
+| 阈值 | 值 | 触发策略 | 含义 |
+|------|-----|------|------|
+| **Micro** | ≥ 0.70 | Micro Compact | 增量压缩——标记较早消息为 `truncated`，但不调用 LLM |
+| **Full** | ≥ 0.85 | Full Compact | 全量压缩——调用独立的 compact LLM 对历史进行摘要，摘要结果重注入到 Transcript，原始消息标记为 `excluded` |
+
+### 区别
+
+- **Micro Compact**：轻量级，仅修改消息标记位，不消耗 token。适合常规的上下文修剪。
+- **Full Compact**：重量级，调用 compact LLM 生成摘要后重注入。摘要会配合 `[最近读取的文件: ...]` / `[激活的 Skill 指令: ...]` 元信息一同追加到 Transcript 末尾。Full Compact 后 token_tracker 清零，防止下轮连续触发。
+
+```text
+pct < 0.70 → 跳过
+0.70 ≤ pct < 0.85 → Micro Compact
+pct ≥ 0.85 → Full Compact
+```
+
+<Aside type="tip">
+  设置 <code>DISABLE_COMPACT</code> 或 <code>DISABLE_AUTO_COMPACT</code> 环境变量可禁用自动压缩。手动触发通过 slash command <code>/compact</code>。
+</Aside>
+
+## MessageQueue 续跑
+
+Agent 并非"一问一答"就结束。许多场景要求 Agent 在回答后持续运行——后台子代理完成、cron 定时触发、channel 渠道消息到达、goal steering 续跑信号等。
+
+Peri 使用 **MessageQueue** 作为统一的异步消息通道：
+
+- **MessageKind::Prompt**：新用户提示 → 唤醒循环
+- **MessageKind::Defer**：后端子代理完成 / goal steering → 唤醒循环
+- **MessageKind::Info**：仅信息通知 → **不唤醒**
+
+End 阶段调用 `drain_for_end()` 检查队列：
+
+- 队列中有 Prompt 或 Defer 消息 → `should_continue = true`，循环继续
+- 队列为空或仅有 Info 消息 → `should_continue = false`，循环退出
+
+<Aside type="note">
+  Info 消息不会触发续跑，但会保留在队列中。Receive 阶段排空时 Info 消息与 Prompt/Defer 一同被消费，但不作为唤醒条件。
+</Aside>
+
+常见续跑场景：
+
+| 来源 | MessageKind | 说明 |
+|------|-------------|------|
+| TUI 用户输入 | Prompt | 用户按下 Enter 发送新消息 |
+| 后台子代理完成 | Defer | bg agent 执行完毕，结果注入主 agent |
+| Goal 续跑 | Defer | GoalMiddleware 检测到 goal 仍活跃，注入 steering 消息 |
+| Cron 触发 | Defer | 定时任务到期，注入触发消息 |
+| Channel 消息 | Defer | 微信/Slack 等外部渠道消息到达 |
+
+## 工具分发三层
+
+Peri 采用 **三层工具分发架构**，核心思路是"常用工具始终可见，生僻工具按需加载"——减少发给 LLM 的工具列表体积，保护 prompt cache。
+
+| 层级 | 数量 | 工具 | 可见性 |
+|------|------|------|--------|
+| **Core** | 12 个 | Read, Write, Edit, Glob, Grep, folder_operations, Bash, WebFetch, WebSearch, Agent, AskUserQuestion, TodoWrite | 始终发送给 LLM |
+| **Meta** | 2 个 | SearchExtraTools, ExecuteExtraTool | 始终发送给 LLM |
+| **Deferred** | 动态 | Cron, MCP 工具, LspTool, WorkflowTool, Plugin 工具等 | LLM 不可见，通过 SearchExtraTools 按需发现 |
+
+### 分层原因
+
+- **Core 工具覆盖 90%+ 的场景**——文件读写、代码搜索、Shell 执行、Web 访问是最频繁的操作。
+- **Meta 工具是延迟加载的代理**——当 LLM 需要 Core 列表之外的工具时，先调用 `SearchExtraTools` 按关键词搜索已注册的 Deferred 工具，再用 `ExecuteExtraTool` 代理执行，传入目标工具名和参数。
+- **Deferred 工具按需注册**——MCP 服务器连接后动态注册工具、Cron 注册后挂载定时工具、Workflow 启动后注入工作流工具。所有这些从不直接出现在 LLM 的工具列表中。
+
+### 判定逻辑
+
+`is_deferred_tool(tool_name)` 判定规则（`peri-middlewares/src/tool_search/core_tools.rs`）：如果工具名不在 `CORE_TOOLS` 中且不在 `META_TOOLS` 中，则为 Deferred Tool。
+
+## 中间件钩子
+
+中间件通过钩子（hooks）嵌入 ReAct 五个阶段的生命周期。以下列出与五阶段直接相关的主要钩子：
+
+| 钩子 | 所在阶段 | 职责 |
+|------|------|------|
+| **before_agent** | Receive 前（循环外） | 注入上下文（CLAUDE.md、Skills 摘要）、注册工具集合、插件初始化 |
+| **before_compact** | Compact 阶段内 | 监听压缩启动，外部观测 |
+| **after_compact** | Compact 阶段内 | 监听压缩完成，外部观测 |
+| **before_tools_batch** | Act 阶段内（批量级） | HITL 批量审批——收集所有需审批的工具调用，一次性弹出审批弹窗 |
+| **before_tool** | Act 阶段内（单个级） | 参数注入、权限校验（对每个通过 batch 审批的工具单独执行） |
+| **after_tool** | Act 阶段内（单个级） | 日志记录、结果转换 |
+| **after_tools_batch** | Act 阶段内（批量级） | 聚合检查、持久化写入 |
+| **after_agent** | End 后（Act 末尾） | 输出后处理、资源清理、Goal 续跑信号注入 |
+
+<Aside type="note">
+  Peri 共有 18 个钩子点（含 <code>before_model</code>、<code>after_model</code>、<code>on_error</code>、<code>on_turn_end</code> 等）。上表仅列出与五阶段直接相关的部分。完整列表见设计文档 <code>docs/design/peri-agent-hook-registry-v2.md</code>。
+</Aside>
+
+中间件链由 `MiddlewareChain` 统一管理，在 ACP 层构造（`peri-acp/src/agent/builder.rs`），共 15 个基础中间件 + 5 个条件中间件，顺序不可重排。v2 循环中，各阶段的钩子调用通过 `peri-agent/src/agent/stages/middleware_runner.rs` 桥接层完成——该模块将 `StageContext` 转换为 `&mut dyn MiddlewareState` 后委托给链执行。
+
+## 更多资源
+
+- [架构设计](/docs/reference/architecture/) — Peri 的分层架构与核心模块
+- [peri-agent README](https://github.com/konghayao/peri/blob/main/peri-agent/README.md) — Agent 框架完整文档
+- [Hook 注册表设计](/docs/design/peri-agent-hook-registry-v2) — 中间件钩子全流程详解

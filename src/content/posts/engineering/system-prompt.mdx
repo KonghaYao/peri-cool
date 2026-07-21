@@ -1,0 +1,98 @@
+---
+title: 系统提示词
+description: Peri 如何构建和管理系统提示词——静态段、动态段、Frozen Data Flow 与缓存策略。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+系统提示词是 Agent 的"世界观"——它决定了 Agent 能做什么、不能做什么、以什么风格回应。Peri 的提示词构建经过精心设计：把提示词拆成静态段和动态段，利用 LLM Provider 的 Prompt Cache 机制大幅降低首 token 延迟和成本。
+
+## 静态 vs 动态边界
+
+Peri 使用 `__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__` 标记来切分系统提示词：
+
+```
+[静态段：不会变的规则、工具定义、角色描述]
+    ↓ 缓存命中 ← 这部分被 Provider 缓存，不消耗推理时间
+__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__
+[动态段：每轮变化的用户消息、工具结果、上下文信息]
+    ↓ 每轮重新计算
+```
+
+- **静态段**位于标记上方，包含 Agent 的角色定义、编码规范、工具列表、Skills 描述等。这部分在会话中保持不变，因此 Provider 可以缓存它们
+- **动态段**位于标记下方，包含对话历史、工具调用结果、当前上下文状态等每轮变化的数据
+
+<Aside type="caution">
+  静态段的结构必须保持不变，否则会破坏 Provider 的前缀缓存。如果你需要中途注入指令，请使用 <code>BaseMessage::human()</code> 而非 <code>BaseMessage::system()</code>——后者会被 hoist 到 system prompt 区域，改变静态段结构。
+</Aside>
+
+## Frozen Data Flow
+
+Peri 在 Agent 启动时一次性读取并"冻结"（frozen）关键数据，避免每轮对话都重新读盘。冻结数据流水线如下：
+
+```
+frozen_date → frozen_claude_md → frozen_skill_summary → frozen_system_prompt
+```
+
+| 阶段 | 数据 | 说明 |
+|------|------|------|
+| `frozen_date` | 当前日期 | 一次性获取，防止 Agent 在不同轮次看到不同日期 |
+| `frozen_claude_md` | CLAUDE.md 内容 | 项目级和用户级 CLAUDE.md 合并后的文本 |
+| `frozen_skill_summary` | Skills 列表摘要 | 所有可用 Skills 的名称和描述汇总 |
+| `frozen_system_prompt` | 完整系统提示词 | 14 个段落拼装后的最终文本 |
+
+SubAgent 启动时必须**复用** main agent 的 frozen 数据——禁止重新读盘。这保证了 main agent 和子代理对项目配置、Skills 列表的理解完全一致。
+
+## 14 个提示词段落
+
+Peri 的系统提示词由 14 个段落（section）拼装而成，存储在 `peri-acp/prompts/sections/` 目录中：
+
+| 段落 | 内容 |
+|------|------|
+| 01-role | Agent 角色定义、行为准则 |
+| 02-language | 语言偏好（如"以中文回复"） |
+| 03-conventions | 编码规范、文件约定 |
+| 04-git | Git 操作规范与安全策略 |
+| 05-tools-core | Core 层 12 个工具的描述和使用规则 |
+| 06-tools-deferred | Deferred 工具的加载说明 |
+| 07-middleware | 中间件链说明 |
+| 08-subagent | SubAgent 调度规范 |
+| 09-skills | 可用 Skills 列表 |
+| 10-hooks | Hooks 系统说明 |
+| 11-compact | 上下文压缩信号 |
+| 12-goal | Goal 长期任务追踪 |
+| 13-ultracode | Ultracode 工作流说明 |
+| 14-claude-md | 用户自定义的 CLAUDE.md 指令 |
+
+段落文件是 Markdown 格式（`.md`）。除非你清楚自己在做什么，否则不要修改静态段的结构——它会破坏 prompt cache。
+
+## 消息注入规则
+
+有几条硬规则用于保护系统提示词的稳定性：
+
+**规则一：中途纠正用 human()，禁用 system()**
+
+如果你需要在 Agent 推理过程中注入纠正指令，必须使用 `BaseMessage::human()`。`BaseMessage::system()` 会被 Provider 适配层 hoist 到系统提示词区域，改变静态段结构，破坏缓存。
+
+**规则二：尾部追加，禁止 prepend**
+
+非 System 消息通过 `add_message()` 追加到消息列表尾部。`prepend_message()` 会改变消息顺序，影响上下文连贯性。
+
+**规则三：SubAgent 复用 frozen 数据**
+
+SubAgent 启动时必须从 main agent 继承 frozen 数据——frozen_claude_md、frozen_skill_summary 等所有 frozen 字段都通过 StageContext 传递，子代理不自行读盘。
+
+## CLAUDE.md 的作用
+
+CLAUDE.md 是项目的"记忆文件"——你可以在里面写项目约定、编码风格、技术栈说明、常见陷阱等。
+
+Peri 在 Agent 启动时扫描以下位置的 CLAUDE.md：
+1. 项目根目录 `CLAUDE.md`
+2. `.claude/CLAUDE.md`（如果有）
+3. `~/.claude/CLAUDE.md`（全局）
+
+这些文件的内容被合并后进入 Frozen Data Flow，成为系统提示词的**静态段**。因此 CLAUDE.md 的内容会享受 prompt cache 加速——写在这里的指令不会增加每轮的推理成本。
+
+<Aside type="tip">
+  CLAUDE.md 适合放"稳定的项目知识"——编码规范、架构约定、常见陷阱。Skills 适合放"可按需激活的能力"——需要时才注入上下文，不占用主干。
+</Aside>

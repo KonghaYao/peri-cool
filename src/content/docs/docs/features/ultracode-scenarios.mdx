@@ -1,0 +1,170 @@
+---
+title: 实战场景
+description: 代码审查、大规模迁移、代码库审计、多维分析——ultracode 工作流的四个典型场景。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+ultracode 工作流用 JavaScript 脚本编排子代理。以下是四个典型的实战场景，每个场景的脚本都是完整可运行的。
+
+## 场景一：多维度代码审查
+
+对一批变更从安全性、性能、代码风格三个角度并行审查。每个审查维度用独立的子代理，最终汇总对比结果。
+
+```javascript
+export const meta = {
+  name: 'multi-aspect-code-review',
+  description: '三路并行审查：安全性、性能、代码风格'
+}
+
+const [security, perf, style] = await parallel([
+  () => agent(
+    '审查本次变更的安全性：注入风险、认证绕过、数据暴露、权限检查缺失。\n'
+    + '仅审查 .rs 文件中的变更，输出问题清单。',
+    { label: 'security', allowedTools: ['Read', 'Grep'] }
+  ),
+  () => agent(
+    '审查本次变更的性能：N+1 查询、不必要的内存分配、热路径中的同步阻塞。\n'
+    + '重点关注循环和数据库访问代码。',
+    { label: 'perf', allowedTools: ['Read', 'Grep'] }
+  ),
+  () => agent(
+    '审查本次变更的代码风格：命名一致性、模块结构、错误处理模式。\n'
+    + '对照项目 CLAUDE.md 中的编码规范逐条检查。',
+    { label: 'style', allowedTools: ['Read', 'Grep'] }
+  ),
+])
+
+return { security, perf, style }
+```
+
+<Aside type="tip">
+  三个审查子代理应全部设为只读工具（Read、Grep），避免误修改代码。如有修复需求，在汇总结果后另起子代理处理。
+</Aside>
+
+## 场景二：大规模代码迁移
+
+对 50 个文件逐个执行相同的重构操作。用管线模式保证每个文件依次经过分析、重写、检查三个阶段。
+
+```javascript
+export const meta = {
+  name: 'react-class-to-hooks-migration',
+  description: '批量将 class 组件改写为函数组件 + Hooks',
+  phases: [
+    { title: '迁移', detail: '逐个文件：分析 → 重写 → 类型检查' },
+  ]
+}
+
+const files = [
+  'src/components/Header.tsx',
+  'src/components/Sidebar.tsx',
+  'src/components/DataTable.tsx',
+  // ...共 50 个文件
+]
+
+const results = await pipeline(files,
+  (file) => agent(
+    `重构 ${file}：\n`
+    + '1. 先分析该组件的 props、state 和生命周期方法\n'
+    + '2. 将 class 组件改写为函数组件 + Hooks（useState/useEffect）\n'
+    + '3. 确保 TypeScript 类型完整无报错\n'
+    + '4. 不修改任何业务逻辑，仅做语法转换',
+    {
+      label: `migrate:${file.split('/').pop()}`,
+      allowedTools: ['Read', 'Write', 'Edit', 'Grep']
+    }
+  ),
+)
+
+return results
+```
+
+pipeline 模式下每个文件串行处理，前一个完成才进入下一个，避免了同一文件被多个子代理并行修改的风险。对于不共享文件的独立迁移，可以用 parallel 替代 pipeline 以加速。
+
+<Aside type="caution">
+  管线模式下修改顺序仍然是串行的。如果 50 个文件互不依赖，使用 parallel 可以大幅提速——Peri 默认最多 3 个并行。
+</Aside>
+
+## 场景三：代码库审计
+
+将代码库分成若干目录，每个目录派一个只读子代理扫描：未使用的导入、安全隐患、性能反模式、遗留的 TODO/FIXME。并行执行，汇总后得到一份完整的审计报告。
+
+```javascript
+export const meta = {
+  name: 'codebase-audit',
+  description: '多目录并行审计：安全、性能、代码质量',
+}
+
+const dirs = ['src/api/', 'src/services/', 'src/db/', 'src/utils/']
+
+const results = await parallel(dirs.map(dir =>
+  () => agent(
+    `扫描 ${dir} 目录，找出以下问题：\n`
+    + '- 未使用的导入和变量\n'
+    + '- 安全隐患：unwrap() 无保护、unsafe 块、明文密钥\n'
+    + '- 性能反模式：不必要的 clone()、大对象传值、同步 I/O\n'
+    + '- 遗留的 TODO / FIXME / HACK 注释\n'
+    + '\n'
+    + '输出结构化清单，每项包含：文件路径、行号、问题类别、严重程度、修复建议。',
+    {
+      label: `audit:${dir}`,
+      allowedTools: ['Read', 'Grep', 'Glob']
+    }
+  )
+))
+
+return results
+```
+
+<Aside type="note">
+  审计子代理用 haiku 模型即可——扫描和分类不需要强推理能力，haiku 足够完成任务且成本更低。
+</Aside>
+
+## 场景四：多维分析报告
+
+从调用链、错误处理、接口设计三个维度同时分析同一个模块。三个子代理独立工作，最终汇总成一份多维度的分析报告。
+
+```javascript
+export const meta = {
+  name: 'module-multi-dimension-analysis',
+  description: '三路并行分析 src/api/ 模块',
+}
+
+const [callChain, errorHandling, apiDesign] = await parallel([
+  () => agent(
+    '分析 src/api/ 模块的调用链和依赖关系。\n'
+    + '绘制完整的调用图：每个公开函数的入口、下游依赖、外部服务调用。\n'
+    + '标注循环依赖和冗余调用路径。',
+    { label: 'call-chain', allowedTools: ['Read', 'Grep', 'Glob'] }
+  ),
+  () => agent(
+    '分析 src/api/ 模块的错误处理完整性和一致性。\n'
+    + '检查：错误类型是否覆盖所有异常路径、错误传播是否规范、\n'
+    + '错误信息是否对调用方有意义、是否存在吞掉错误的 catch。',
+    { label: 'error-handling', allowedTools: ['Read', 'Grep'] }
+  ),
+  () => agent(
+    '分析 src/api/ 模块的接口设计合理性。\n'
+    + '检查：函数签名一致性、参数组合是否合理、返回值设计是否清晰、\n'
+    + '是否存在过度抽象的 trait 或过度暴露的内部类型。',
+    { label: 'api-design', allowedTools: ['Read', 'Grep'] }
+  ),
+])
+
+return {
+  call_chain: callChain,
+  error_handling: errorHandling,
+  api_design: apiDesign,
+}
+```
+
+三个维度并行分析时互不干扰——错误处理分析不需要等调用链分析完成。汇总后再人工判断结果之间的关联性。
+
+## 不适合 ultracode 的场景
+
+ultracode 不是银弹。以下场景用常规 Agent 工具或 Fork 模式更合适：
+
+- **子任务需要 LLM 判断的紧耦合依赖。** 比如 B 的修改方案取决于 A 审查出来的具体问题，无法在脚本中预判分支逻辑。这种场景用子代理的同步模式逐轮推进。
+- **需求本身需要动态决策。** 工作流脚本必须在启动前写定，如果任务边界在执行过程中才逐渐清晰，用 `/ultracode` 自然语言描述更合适。
+- **编排开销大于执行开销。** 改 3 个文件写一个工作流脚本不值得。ultracode 的价值起点大约是 8 个以上的独立子任务。
+- **子任务共享同一批文件。** 多个子代理并行写同一个文件会发生冲突。如果必须并行，确保每个子代理的操作范围毫无交集。
