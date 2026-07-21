@@ -35,12 +35,11 @@ export default defineConfig({
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/konghayao/peri' },
 			],
 			sidebar: [
+				{ slug: 'docs/get-started/introduction' },
 				{
-					label: '文档',
+					label: 'Agent 编排',
 					collapsed: false,
 					items: [
-						{ slug: 'docs/get-started/introduction' },
-						{ slug: 'docs/features/agent-selection-guide' },
 						{
 							label: 'ultracode 工作流',
 							collapsed: true,
@@ -63,6 +62,13 @@ export default defineConfig({
 							],
 						},
 						{ slug: 'docs/features/goal' },
+					],
+				},
+				{
+					label: 'Agent 能力',
+					collapsed: false,
+					items: [
+						{ slug: 'docs/features/agent-selection-guide' },
 						{ slug: 'docs/features/claude-md' },
 						{ slug: 'docs/features/permissions' },
 						{ slug: 'docs/features/hooks' },
@@ -70,14 +76,6 @@ export default defineConfig({
 						{ slug: 'docs/features/mcp' },
 						{ slug: 'docs/features/tools' },
 						{ slug: 'docs/features/theme' },
-					],
-				},
-				{
-					label: '其他',
-					collapsed: true,
-					items: [
-						{ slug: 'docs/community/contributing' },
-						{ slug: 'docs/developer' },
 					],
 				},
 			],
