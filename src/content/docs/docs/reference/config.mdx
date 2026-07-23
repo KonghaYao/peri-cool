@@ -1,0 +1,263 @@
+---
+title: 配置参考
+description: Peri 的所有配置项、环境变量和 settings.json 字段说明
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+## 配置文件位置
+
+Peri 使用两层配置体系：
+
+| 位置 | 作用域 | 格式 | 用途 |
+|------|--------|------|------|
+| `~/.peri/settings.json` | 全局（所有项目） | JSON | 默认模型、API Key、主题 |
+| `.peri/settings.json` | 项目级 | JSON | 项目专属配置，覆盖全局设置 |
+| `.claude/settings.json` | 项目级（兼容） | JSON | 兼容 Claude Code 格式的项目配置 |
+| `.claude/settings.local.json` | 项目级（本地） | JSON | 不提交 Git 的本地配置 |
+
+加载优先级：项目 `.peri/settings.json` > `.claude/settings.json` > 全局 `~/.peri/settings.json`。后加载的字段覆盖前面同名字段。
+
+<Aside type="caution">
+  不要把包含 API Key 的 <code>settings.json</code> 提交到 Git。Peri 的 <code>.gitignore</code> 已包含 <code>.peri/settings.json</code>，但切换机器时需要手动迁移。
+</Aside>
+
+## 模型配置
+
+```json
+{
+  "model": "deepseek-chat",
+  "api_key": "sk-...",
+  "base_url": "https://api.deepseek.com/v1",
+  "env": {
+    "ANTHROPIC_API_KEY": "sk-ant-...",
+    "OPENAI_API_KEY": "sk-..."
+  }
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `model` | string | 是 | 默认模型 ID。会话中可通过 `/model` 命令切换 |
+| `api_key` | string | 否 | API 密钥（优先于 `env` 中的同名变量） |
+| `base_url` | string | 否 | API 端点地址。OpenAI 兼容的 API 需包含 `/v1` |
+| `env` | object | 否 | 环境变量注入对象。Provider 的 API Key 推荐放这里 |
+
+### 模型切换
+
+Peri 支持**会话中动态切换模型**，无需重启：
+
+```bash
+# TUI 中输入
+/model claude-sonnet-4-20250514
+/model deepseek-chat
+/model glm-4-flash
+```
+
+### 已测试的模型
+
+| 模型 | 提供商 | 推荐用途 |
+|------|--------|----------|
+| Claude 4 Sonnet | Anthropic | 复杂编码、架构设计 |
+| DeepSeek V3 / R1 | DeepSeek | 高性能、低成本的日常编码 |
+| GLM-5.x | 智谱 | 中文场景最优 |
+| Qwen 3 Max | 阿里云 | 通用编码任务 |
+| GPT-4o / 4.1 | OpenAI | 全面推理 |
+
+## 权限配置
+
+```json
+{
+  "permission_mode": "accept_edits",
+  "permissions": {
+    "allow": ["Bash(git *)", "Bash(cargo *)"],
+    "ask": ["Bash(rm *)"],
+    "deny": ["WebFetch"]
+  }
+}
+```
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `permission_mode` | string | `"default"` | 全局权限模式：`default`、`dont_ask`、`accept_edits`、`bypass`、`plan`、`auto` |
+| `permissions.allow` | string[] | `[]` | 无论模式，这些工具始终自动执行 |
+| `permissions.ask` | string[] | `[]` | 无论模式，这些工具始终需要审批 |
+| `permissions.deny` | string[] | `[]` | 完全禁止这些工具 |
+
+### 权限模式说明
+
+| 模式 | 行为 | 适用场景 |
+|------|------|---------|
+| `"default"` | 逐个审批，高危操作弹出确认 | 新项目、需要精细掌控 |
+| `"dont_ask"` | 不弹窗但保留安全检测 | 信任度高的日常编码 |
+| `"accept_edits"` | 编辑类工具自动通过，其他需审批 | 快速迭代 |
+| `"bypass"` | 跳过所有审批（包括 deny 规则） | CI/CD、Docker 容器 |
+| `"plan"` | 只读模式，所有写操作被拒绝 | 代码审查、架构设计 |
+| `"auto"` | LLM 自动判断是否需要审批 | 长任务，减少打断 |
+
+### 工具权限规则
+
+规则支持模式匹配：
+
+```
+Bash(git *)         — 匹配所有 git 命令
+Bash(rm *)          — 匹配所有 rm 命令
+Edit|Write          — 匹配 Edit 或 Write 工具
+*                   — 匹配所有工具
+```
+
+评估顺序：Deny → Ask → Allow。先匹配的规则决定结果。
+
+<Aside type="caution">
+  <code>bypass</code> 模式跳过所有权限检查，包括工具级 Deny 规则。仅在完全受控的环境中使用。
+</Aside>
+
+## 外观配置
+
+```json
+{
+  "theme": "peri-dark"
+}
+```
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `theme` | string | `"peri-dark"` | TUI 主题名 |
+
+Peri 内置主题：
+
+| 主题 | 风格 |
+|------|------|
+| `peri-dark` | 暗色主题（默认） |
+| `peri-light` | 亮色主题 |
+| `tokyo-night` | Tokyo Night 风格暗色 |
+| `catppuccin` | Catppuccin 风格 |
+
+## 环境变量
+
+Peri 支持以下环境变量，优先级低于 `settings.json` 中的同名字段：
+
+| 环境变量 | 对应字段 | 说明 |
+|---------|---------|------|
+| `PERI_MODEL` | `model` | 默认模型 ID |
+| `PERI_API_KEY` | `api_key` | API 密钥 |
+| `PERI_BASE_URL` | `base_url` | API 端点地址 |
+| `PERI_PERMISSION_MODE` | `permission_mode` | 权限模式 |
+| `ANTHROPIC_API_KEY` | `env.ANTHROPIC_API_KEY` | Anthropic API 密钥 |
+| `ANTHROPIC_BASE_URL` | `env.ANTHROPIC_BASE_URL` | Anthropic API 端点 |
+| `OPENAI_API_KEY` | `env.OPENAI_API_KEY` | OpenAI / 兼容 API 密钥 |
+| `OPENAI_BASE_URL` | `env.OPENAI_BASE_URL` | OpenAI / 兼容 API 端点 |
+| `DEEPSEEK_API_KEY` | `env.DEEPSEEK_API_KEY` | DeepSeek API 密钥 |
+| `DEEPSEEK_BASE_URL` | `env.DEEPSEEK_BASE_URL` | DeepSeek API 端点 |
+| `GLM_API_KEY` | `env.GLM_API_KEY` | 智谱 GLM API 密钥 |
+| `GLM_BASE_URL` | `env.GLM_BASE_URL` | 智谱 GLM API 端点 |
+| `GROQ_API_KEY` | `env.GROQ_API_KEY` | Groq API 密钥 |
+| `DISABLE_COMPACT` | — | 设为 `"true"` 禁用自动上下文压缩 |
+| `DISABLE_AUTO_COMPACT` | — | 同上，别名 |
+| `LANGFUSE_PUBLIC_KEY` | — | Langfuse 可观测性公钥 |
+| `LANGFUSE_SECRET_KEY` | — | Langfuse 可观测性密钥 |
+
+<Aside type="tip">
+  推荐将 API Key 放在 <code>~/.peri/settings.json</code> 的 <code>env</code> 字段中，而非系统环境变量——这样切换不同 Provider 的 Key 更方便，且不会泄露到 Shell 历史中。
+</Aside>
+
+## CLAUDE.md
+
+Peri 在会话启动时自动扫描 `CLAUDE.md` 文件。其内容被冻结在系统提示词中，享受 prompt cache 加速。
+
+### 加载层级
+
+```
+~/.claude/CLAUDE.md              ← 全局（低优先级）
+     ↓
+项目根/.claude/CLAUDE.md         ← 项目级（中优先级）
+     ↓
+项目根/CLAUDE.md                 ← 项目级（高优先级）
+     ↓
+项目根/子目录/CLAUDE.md          ← 子目录按需加载（最高优先级）
+```
+
+后加载的覆盖前面同名字段。CLAUDE.md 中可用 `@path/to/file` 语法导入外部文件，支持递归导入（最多 4 层）。
+
+### 编写指南
+
+CLAUDE.md 适合放"稳定的项目知识"，不应该放临时 todo 或大段示例代码。
+
+```markdown
+# 编码规范
+- 禁止 println!，统一用 tracing 宏
+- Rust edition 2024
+- 2 空格缩进
+
+# 模块索引
+- peri-agent: ReAct 循环引擎
+- peri-acp: ACP 协议服务器
+
+# 陷阱速查
+- [TRAP] CJK 截断必须用 chars().take()，不能用 bytes().take()
+```
+
+详细指南见 [项目记忆](/docs/features/claude-md/) 文档。
+
+## 完整配置示例
+
+```json
+{
+  "model": "deepseek-chat",
+  "api_key": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "base_url": "https://api.deepseek.com/v1",
+  "permission_mode": "accept_edits",
+  "theme": "peri-dark",
+  "permissions": {
+    "allow": [
+      "Bash(git diff *)",
+      "Bash(git status)",
+      "Bash(git log *)",
+      "Bash(cargo check)",
+      "Bash(cargo test *)"
+    ],
+    "ask": [
+      "Bash(rm *)",
+      "Bash(git push *)",
+      "Bash(git commit *)"
+    ],
+    "deny": [
+      "Bash(curl * | sh)",
+      "Bash(> /etc/*)"
+    ]
+  },
+  "env": {
+    "ANTHROPIC_API_KEY": "sk-ant-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "OPENAI_API_KEY": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "DEEPSEEK_API_KEY": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  },
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "osascript -e 'display notification \"Peri 需要你的关注\" with title \"Peri\"'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import json,sys,os; d=json.load(sys.stdin); p=d.get('tool_input',{}).get('file_path',''); os.system(f'npx prettier --write {p}') if p else None\""
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+<Aside type="tip">
+  这个配置将日常操作（git diff、cargo check）设为自动通过，危险操作（rm、git push）设为需要审批，同时禁止了管道执行和系统文件写入。这是一个适合日常开发的配置。
+</Aside>

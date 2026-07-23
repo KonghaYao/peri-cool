@@ -45,7 +45,7 @@ export default defineConfig({
 					],
 				},
 				{
-					label: '使用指南',
+					label: '日常开发',
 					collapsed: false,
 					items: [
 						{ slug: 'docs/features/explore-codebase' },
@@ -55,12 +55,29 @@ export default defineConfig({
 						{ slug: 'docs/features/debugging' },
 						{ slug: 'docs/features/write-tests' },
 						{ slug: 'docs/features/code-review' },
-						{ slug: 'docs/features/parallel-work' },
-						{ slug: 'docs/features/long-running-tasks' },
-						{ slug: 'docs/features/polish-claude-md' },
-						{ slug: 'docs/features/model-strategy' },
 					],
 				},
+				{
+					label: '任务编排',
+					collapsed: false,
+					items: [
+						{ slug: 'docs/features/parallel-work' },
+						{ slug: 'docs/features/long-running-tasks' },
+					],
+				},
+				{
+					label: '工程实践',
+					collapsed: false,
+					items: [
+						{ slug: 'docs/features/polish-claude-md' },
+						{ slug: 'docs/features/model-strategy' },
+						{ slug: 'docs/features/superpowers' },
+						{ slug: 'docs/features/claude-official-plugins' },
+						{ slug: 'docs/features/mattpocock-skills' },
+						{ slug: 'docs/features/openspec' },
+					],
+				},
+
 				{
 					label: 'Agent 编排',
 					collapsed: false,

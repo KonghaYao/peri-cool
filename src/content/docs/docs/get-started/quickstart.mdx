@@ -1,0 +1,192 @@
+---
+title: 快速上手
+description: 10 分钟内从零开始使用 Peri 完成日常编码任务
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+这篇教程带你从安装到日常使用，大约 10 分钟。
+
+## 1. 安装
+
+Peri 是单个静态链接的二进制文件，不需要 Node.js、Python 或任何运行时依赖。
+
+### 系统要求
+
+| 平台 | 架构 |
+|------|------|
+| macOS | x86_64 / Apple Silicon |
+| Linux | x86_64 / aarch64 / riscv64 |
+| Windows | x86_64 |
+
+打开终端，运行以下命令：
+
+<Tabs syncKey="install">
+  <TabItem label="macOS / Linux">
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/konghayao/peri/main/scripts/install.sh | bash
+```
+
+  </TabItem>
+  <TabItem label="Windows">
+
+```powershell
+irm https://raw.githubusercontent.com/konghayao/peri/main/scripts/install.ps1 | iex
+```
+
+  </TabItem>
+</Tabs>
+
+安装完成后，验证一下：
+
+```bash
+peri --version
+# 输出类似: peri 0.x.x
+```
+
+## 2. 首次启动
+
+直接运行 `peri`，会进入交互式配置向导：
+
+```bash
+peri
+```
+
+向导会引导你完成两件事：
+
+1. **选择模型** — 从预设的模型列表中选择，或输入自定义的 OpenAI 兼容 API 端点
+2. **设置 API Key** — 输入对应提供商的 API Key，Peri 会自动加密存储
+
+<Aside type="tip">
+  配置存储在 <code>~/.peri/config.toml</code>，以后想改可以直接编辑，也可以用 <code>peri config</code> 命令。
+</Aside>
+
+配置完成后，你会看到 Peri 的 TUI 界面——流式 Markdown 渲染、状态栏、输入区都在一个终端窗口里。
+
+## 3. 第一次对话
+
+先从简单任务开始。在 Peri 的对话区直接输入：
+
+```text
+用 Python 写一个函数，把驼峰命名转成蛇形命名。带上测试用例。
+```
+
+Peri 会写出函数和测试，然后直接运行。整个过程大概是这样：
+
+```text
+你: 用 Python 写一个函数，把驼峰命名转成蛇形命名。带上测试用例。
+
+Peri: [思考中...]
+
+       写好了 `camel_to_snake` 函数，同时写了 4 个测试用例。运行测试：
+
+       ===== test session starts =====
+       4 passed in 0.03s
+
+       代码已写入 `snake_case.py`。
+```
+
+<Aside type="note">
+  对话历史和上下文都保存在本地。关闭终端后下次启动 <code>peri</code> 会自动恢复上次的会话。
+</Aside>
+
+## 4. 日常使用
+
+Peri 适合各种日常编码任务。以下是最常见的三种场景。
+
+### 改 bug
+
+把错误信息或堆栈 trace 贴给 Peri，告诉它代码在哪：
+
+```text
+src/api/auth.ts 第 42 行报 TypeError: Cannot read properties of undefined，
+帮我查一下原因并修复。
+```
+
+Peri 会读代码、分析原因、编辑文件、跑测试——一轮完成。
+
+### 重构
+
+描述你想要的结果：
+
+```text
+把 src/utils/ 下所有日期处理函数从 moment.js 迁移到 dayjs，保持所有测试通过。
+```
+
+Peri 会逐个文件修改，每次改完验证测试。
+
+### 写测试
+
+指向要测的模块：
+
+```text
+给 src/services/order.ts 写单元测试，覆盖正常流程和 3 种异常情况。
+```
+
+<Aside type="tip">
+  不确定 Peri 能做什么就直接问。它不是只能写代码——你也可以问它解释代码、分析架构、审查 PR，和跟同事讨论差不多。
+</Aside>
+
+## 5. 进阶功能速览
+
+日常用熟了之后，这几个功能能显著提升效率。
+
+### 切换模型
+
+一次会话中可以随时切换，不用重启：
+
+```bash
+/model                    # 列出可用模型
+/model deepseek-v3        # 日常编码用便宜模型
+/model claude-sonnet      # 遇到难题切到更强推理
+```
+
+### 设置长任务
+
+一个任务要跑很多轮，中间你可能去做别的事：
+
+```bash
+/goal create "把 src/auth/ 下 5 个文件从回调风格改成 async/await"
+```
+
+Peri 在后续每一轮自动提醒自己"这事还没做完"。做完后：
+
+```bash
+/goal complete
+```
+
+详细用法见 [长任务](/docs/features/goal/)。
+
+### 并行工作流
+
+把复杂任务拆成多个子代理并行执行。直接告诉 Peri：
+
+```text
+用 ultracode 并行审查我刚改的代码
+```
+
+Peri 会把审查、编码、探索分给不同子代理同时跑。详细用法见 [UltraCode](/docs/features/ultracode/)。
+
+<Aside type="tip">
+  说"用 ultracode"就能触发并行模式——不需要记任何特殊命令。
+</Aside>
+
+## 6. 下一步
+
+你已经可以用 Peri 完成大部分日常编码。想深入了解某个功能，从这里开始：
+
+- **[长任务](/docs/features/goal/)** — 多轮自动化任务推进
+- **[UltraCode 并行工作流](/docs/features/ultracode/)** — 任务拆分与并行执行
+- **[Hooks](/docs/features/hooks/)** — 事件驱动的自动化钩子
+- **[主题](/docs/features/theme/)** — 自定义终端配色
+- **[MCP 服务器](/docs/features/mcp/)** — 扩展外部工具接入
+- **[CLI 命令参考](/docs/features/cli-reference/)** — 所有命令速查
+
+遇到问题？运行 `/doctor` 让 Peri 自检：
+
+```bash
+/doctor
+```
+
+Peri 会检查配置完整性、API 连通性、工具可用性，并给出修复建议。

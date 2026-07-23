@@ -1,0 +1,113 @@
+---
+title: OpenSpec
+description: Spec-driven development 框架——先定规格书再写代码，强制 RFC 2119 标准与 Given/When/Then 场景
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+OpenSpec 是 Fission AI 开源的 spec-driven development 框架。核心理念：**在写代码之前先定 spec**，spec 是产物，代码是实现细节。区别于"先写代码再补文档"的惯性——OpenSpec 把规格书作为唯一事实来源，代码只是对规格书的实现。
+
+## 安装
+
+```bash
+npx skills add https://github.com/Fission-AI/OpenSpec --skill openspec
+```
+
+安装后获得三个独立命令。
+
+## 三个核心命令
+
+| 命令 | 做什么 | 真实用例 |
+|------|--------|---------|
+| `/openspec-explore` | 探索需求，理解问题域 | `我们探索一下，如果要制定滚动条鼠标滚动，如何制定` |
+| `/openspec-propose` | 生成技术规格书（RFC 2119 标准） | 输出含 Given/When/Then 场景的 spec |
+| `/openspec-apply-change` | 按 spec 执行实现 | 对照 spec 逐条实现和验证 |
+
+### /openspec-explore
+
+探索阶段不做任何决定，只做信息收集。它会搜索现有代码、分析相关模块、理解数据流——然后把发现整理成结构化笔记。
+
+```text
+/openspec-explore 我们探索一下，如果要制定滚动条鼠标滚动，如何制定
+```
+
+输出包括：涉及的模块列表、现有行为分析、潜在影响范围、需要澄清的边界条件。
+
+### /openspec-propose
+
+基于探索结果，生成符合 RFC 2119 标准的技术规格书。关键词严格使用 MUST / MUST NOT / SHOULD / MAY。
+
+```text
+/openspec-propose 基于刚才的探索结果，生成滚动条鼠标行为的规格书
+```
+
+典型输出结构：
+
+```text
+# Scroll Behavior Specification
+
+## Scope
+影响范围：文件列表滚动、编辑器滚动、终端滚动
+
+## Requirements
+
+### REQ-1: Mouse Wheel Scroll Direction
+The system MUST scroll content in the direction of mouse wheel rotation.
+  - Given 用户处于文件列表视图中
+  - When 向下滚动鼠标滚轮
+  - Then 列表内容向下滚动，视口向上移动
+
+### REQ-2: Scroll Speed
+The system SHOULD respect the OS native scroll speed setting.
+...
+```
+
+### /openspec-apply-change
+
+对照 spec 逐条实现，每完成一个 requirement 就验证合规性。
+
+```text
+/openspec-apply-change docs/specs/scroll-behavior.md
+```
+
+执行流程：
+1. 解析 spec 中的每个 requirement（REQ-1, REQ-2, ...）
+2. 按依赖关系排序
+3. 逐个实现，每个 requirement 实现后验证
+4. 输出合规性报告（PASS/FAIL/PARTIAL）
+
+## 工作流模式
+
+完整路径：
+
+```text
+/openspec-explore → /openspec-propose → /openspec-apply-change
+```
+
+典型场景：接手一个涉及多个模块的需求，不想边改边猜。先探索（了解全貌），再规格化（锁定契约），最后实现（对照执行）。
+
+```text
+# 步骤 1：探索
+/openspec-explore 用户认证模块目前支持 JWT，要新增 OAuth 2.0 登录
+
+# 步骤 2：生成规格书
+/openspec-propose 基于探索结果生成 OAuth 2.0 集成的规格书
+
+# 步骤 3：按 spec 实现
+/openspec-apply-change docs/specs/oauth-integration.md
+```
+
+## 与 Superpowers 的对比
+
+| 维度 | OpenSpec | Superpowers |
+|------|---------|-------------|
+| 规格标准 | RFC 2119（MUST/SHOULD/MAY） | Markdown 计划文件 |
+| 场景格式 | Given/When/Then 强制 | 自由格式 |
+| 执行方式 | 逐 requirement 验证合规 | 按 task 列表执行 |
+| 变更追踪 | 内置 requirement 状态 | 手动勾选 task |
+| 适合场景 | 需求复杂、多人协作、需要追溯 | 日常功能开发、单人项目 |
+| 学习曲线 | 高 —— 需要写正式规格 | 低 —— 随手写计划 |
+
+<Aside type="tip">
+  OpenSpec 更适合"确定要做什么"之后的阶段；Superpowers 更适合"还不确定要做什么"的探索阶段。两者可以接力：用 Superpowers brainstorming 讨论方案 → 用 OpenSpec propose 生成规格书 → 用 Superpowers subagent-driven-development 执行。
+</Aside>

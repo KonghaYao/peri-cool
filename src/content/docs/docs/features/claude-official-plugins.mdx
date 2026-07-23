@@ -1,0 +1,69 @@
+---
+title: Claude 官方插件
+description: claude-plugins-official 插件集——创建自定义 Skill、改进 CLAUDE.md、生成前端界面等核心能力
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+`claude-plugins-official` 是 Anthropic 官方维护的 Claude Code 插件集，包含 6 个子包（Superpowers 已单独介绍）。每个子包安装后以独立 skill 形式运行。
+
+## 安装
+
+```bash
+# 添加官方插件市场
+claude plugin marketplace add anthropics/claude-plugins-official
+
+# 安装需要的子包（支持批量）
+claude plugin install skill-creator claude-md-improver frontend-design
+```
+
+## 插件速览
+
+| 子包 | 说明 | 真实用例 |
+|------|------|---------|
+| **skill-creator** | 创建、修改、评测自定义 skill | `现在新增一个 skill 叫 auto-issue-fixer，功能是 Issue 全生命周期管理` |
+| **claude-md-improver** | 审计并改进项目 CLAUDE.md | `我们来进行 claude.md 的修正` |
+| **frontend-design** | 高质量前端界面生成 | `初始化这个 astro 项目, 需要使用最新的初始化方法` |
+| **commit-commands** | Git commit 相关命令 | `/commit` 按规范生成提交信息 |
+| **typescript-lsp** | TypeScript LSP 支持 | 代码补全、类型检查、跳转定义 |
+| **superpowers** | 14 个工程流程 skill | 详见 [Superpowers 工作流](/docs/features/superpowers/) |
+
+## 重点技能详解
+
+### skill-creator
+
+将自己的工作流沉淀为可复用的 skill——不需要手写 SKILL.md 的 YAML frontmatter，skill-creator 会引导你完成全流程。
+
+**创建流程：**
+
+```text
+/skill-creator 现在新增一个 skill 叫 auto-issue-fixer，功能是 Issue 全生命周期管理
+```
+
+skill-creator 会依次引导：
+1. **定义技能范围**：这个 skill 解决什么问题？输入输出是什么？
+2. **编写指令**：skill 的核心 prompt，定义行为约束和流程
+3. **内置测试**：编写几个典型场景验证 skill 行为是否符合预期
+4. **迭代优化**：根据测试反馈调整指令
+
+生成的文件会落到 `~/.claude/skills/`（用户级）或 `.claude/skills/`（项目级），立即可用。
+
+**适用场景：** 你发现自己反复用同样的 prompt 模式——比如"改完代码必须跑测试+lint"、"排查 bug 先缩小范围再加诊断"——用 skill-creator 把它固化为 skill。
+
+### claude-md-improver
+
+CLAUDE.md 写完之后跑一遍质量检查。它会扫描所有 CLAUDE.md 文件，对照模板评估完整性。
+
+```text
+/claude-md-improver 我们来进行 claude.md 的修正
+```
+
+输出的审计报告覆盖：
+- 项目概览是否清晰
+- 构建/测试命令是否完整
+- 架构描述是否准确
+- 编码规范是否明确
+
+<Aside type="tip">
+  skill-creator 沉淀工作流，claude-md-improver 确保 AI 理解项目。二者结合是团队效率的基础设施。
+</Aside>

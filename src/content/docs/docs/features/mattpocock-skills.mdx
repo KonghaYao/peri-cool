@@ -1,0 +1,112 @@
+---
+title: mattpocock/skills
+description: Matt Pocock 开源的 21 个工程化 Skill 集合——从方案讨论、PRD 生成到代码实现和审查的完整工作流
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Matt Pocock（TypeScript 教育家、Total TypeScript 创始人）开源的工程化 skill 集合，GitHub 20.4k stars。这 21 个 skill 覆盖了从需求到交付的全流程，是 Claude Code 生态中 Star 数最高的独立 skill 仓库。
+
+## 安装
+
+```bash
+npx skills add https://github.com/mattpocock/skills --skill ask-matt
+```
+
+首次使用前运行初始化：
+
+```text
+/setup-matt-pocock-skills
+```
+
+它会扫描你的项目环境，为新用户生成必要的配置文件。
+
+## 核心工作流
+
+mattpocock/skills 的精髓在于**流水线式推进**，每个阶段都有对应的 skill：
+
+```text
+/ask-matt → /grill-me → /to-prd → /to-issues → /implement → /code-review
+```
+
+每一步产出都是下一步的输入，形成从模糊想法到可交付代码的完整链路。
+
+## 技能速览
+
+| 阶段 | 技能 | 做什么 |
+|------|------|--------|
+| 入口 | `ask-matt` | 根据场景推荐该用哪个 skill，新手友好 |
+| 设计 | `grill-me` | 方案讨论、压力测试假设 |
+| 设计 | `brainstorming` | 开放式方案头脑风暴 |
+| 规划 | `to-prd` | 将对话总结为结构化 PRD |
+| 规划 | `to-issues` | PRD 拆解为独立 issue |
+| 实现 | `implement` | 按 issue/spec 编码实现 |
+| 实现 | `tdd` | 测试先行：红 → 绿 → 重构 |
+| 审查 | `code-review` | 完工前代码审查 |
+| 审查 | `verification-before-completion` | 强制验证（构建/测试/lint） |
+| 进阶 | `improve-codebase-architecture` | 架构成熟度评估与改进 |
+| 进阶 | `subagent-driven-development` | 多 agent 协同按计划执行 |
+
+## 工作流模式
+
+### 模式一：从想法到交付
+
+最常见的完整路径：
+
+```text
+/ask-matt 我想给项目加一个用户邀请功能，从哪里开始？
+```
+
+`ask-matt` 判断你的需求处于设计阶段，建议走 `grill-me` → `to-prd` 路径：
+
+```text
+/grill-me 用户邀请功能，支持邮箱邀请和链接邀请两种方式，来挑战一下我的方案
+```
+```text
+/to-prd 把刚才的讨论整理成 PRD
+```
+```text
+/to-issues 按 PRD 拆解为独立 issue
+```
+```text
+/implement 按 issue 列表逐个实现
+```
+```text
+/code-review 审查刚才的实现
+```
+
+### 模式二：TDD 驱动实现
+
+对质量要求高的功能，换用测试先行路径：
+
+```text
+/tdd 实现 PRD 中的用户邀请核心逻辑
+```
+
+skill 会先写失败的测试，再写通过测试的最小实现，最后重构。
+
+### 模式三：架构成熟度提升
+
+接手老项目或发布前摸底：
+
+```text
+/improve-codebase-architecture
+```
+
+扫描项目结构 → 评估模块划分、依赖方向、抽象层次 → 产出改进建议。如果评估结论需要大规模改动，接 `/subagent-driven-development` 多 agent 并行改造。
+
+## 与 Superpowers 的区别
+
+Superpowers 的很多 skill 派生自 mattpocock/skills，但两者定位不同：
+
+| 维度 | mattpocock/skills | Superpowers |
+|------|-----------------|-------------|
+| 来源 | GitHub 独立仓库 | 打包的 Claude Code 插件 |
+| 完整度 | 21 个 skill，更全面 | 14 个 skill，精选子集 |
+| 安装 | `npx skills add <url>` | `claude plugin install` |
+| 更新 | `npx skills update` | `claude plugin update` |
+| 自定义 | 直接改仓库内的 SKILL.md | 通过插件机制，隔离更好 |
+
+<Aside type="tip">
+  想要最大灵活性、愿意自己维护 → 用 mattpocock/skills。想要开箱即用、由插件系统管理 → 用 Superpowers。两者可以并存，不冲突。
+</Aside>

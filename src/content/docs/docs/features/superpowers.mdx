@@ -1,0 +1,137 @@
+---
+title: Superpowers 工作流
+description: Peri + Superpowers 插件——结构化规划、工程化执行、自动化验证的完整工作流
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Superpowers 是一套 Claude Code 工程化技能插件，提供 14 个工程流程 skill。配合 Peri 原生能力，形成从规划到交付的完整闭环。
+
+## 安装
+
+```bash
+npx skills add https://github.com/konghayao/peri --skill using-superpowers
+```
+
+安装后 Superpowers 的 14 个 skill 会出现在 Peri 的 skill 列表中，直接在对话中调用。
+
+## 核心技能速览
+
+| 技能 | 做什么 | 搭配 Peri 的 |
+|------|--------|------------|
+| `brainstorming` | 设计讨论、方案对比 | `/auto-devflow` 实现阶段 |
+| `writing-plans` | 生成结构化实现计划（Markdown） | `/goal` 跟踪执行进度 |
+| `subagent-driven-development` | 按计划驱动多 agent 协同实现 | `/ultracode` 并行调度 |
+| `executing-plans` | 按已有计划逐步执行 | `/goal` 长期跟踪 |
+| `systematic-debugging` | 系统化排查：复现→缩小→假设→验证 | `/auto-issue-fixer` 问题追踪 |
+| `verification-before-completion` | 完工前强制验证（测试/构建/lint） | 审查代码、编写测试 |
+| `test-driven-development` | 测试先行：红→绿→重构 | 编写测试用例 |
+| `using-git-worktrees` | 隔离工作空间，并行开发不冲突 | 安全重构代码 |
+| `dispatching-parallel-agents` | 异构任务并行派发 | 并行执行多任务 |
+| `finishing-a-development-branch` | 分支收尾：合并/PR/清理 | 管理长任务 |
+
+## 工作流模式
+
+### 模式一：Plan → Execute
+
+从需求到代码的标准路径。先规划再动手，避免改了又改。
+
+```text
+/brainstorming 讨论一下：用户认证从 JWT 迁移到 session，有哪些方案？
+```
+
+讨论清楚后，生成实现计划：
+
+```text
+/writing-plans 基于刚才的讨论，生成详细实现计划
+```
+
+计划文件会落到 `docs/superpowers/plans/` 目录，然后派 agent 执行：
+
+```text
+/subagent-driven-development docs/superpowers/plans/2026-07-23-jwt-to-session.md
+```
+
+Peri 会按计划中的 task 列表逐个执行，每完成一步打勾。
+
+### 模式二：Debug → Fix → Verify
+
+排查复杂 bug 不用"猜→改→猜"，走系统化流程：
+
+```text
+/systematic-debugging '/Users/konghayao/code/pazhou/remote-control-server'
+排查定时任务每 2 分钟一个 opencode 实例持续增长的问题
+```
+
+Superpowers 会引导你走标准调试流程：复现 → 确定范围 → 提出假设 → 添加诊断 → 验证。确定根因后，再上 `/auto-issue-fixer` 做结构化修复。修完之后：
+
+```text
+/verification-before-completion
+```
+
+强制跑完构建、测试、lint 才允许声明"修好了"。
+
+### 模式三：隔离开发 + 并行协作
+
+同时做多个改动但不想互相污染：
+
+```text
+/using-git-worktrees
+
+用 ultracode 并行：worktree 1 做 auth 模块迁移，
+worktree 2 做 middleware 适配，worktree 3 独立跑测试验证
+```
+
+`using-git-worktrees` 为每个任务创建独立的 git worktree，三个任务在三个隔离空间中并行跑，互不干扰。完成后 `finishing-a-development-branch` 收尾合并。
+
+### 模式四：架构评测 → 改进计划
+
+```text
+/project-maturity
+/ultra-batch 评估架构的成熟度
+```
+
+`project-maturity` 扫描项目完整性，产出评估报告。结合 `ultra-batch` 并行派多个 agent 从不同维度扫描（安全、性能、可维护性），汇总为改进计划。
+
+## 实际案例
+
+从 2000+ 会话中提取的真实 Superpowers 使用案例：
+
+**opencode 实例泄漏排查**
+```text
+/systematic-debugging 排查定时任务为何 opencode 实例一直涨
+→ 确定根因在 ACP 连接未正常关闭
+→ /writing-plans 生成修复计划
+→ /subagent-driven-development + /using-git-worktrees 隔离执行
+→ /verification-before-completion 验证
+```
+该会话 273 条消息 + 16 个子代理，Superpowers 的结构化流程让复杂排查可控。
+
+**架构成熟度全量扫描**
+```text
+/ultra-batch 评估架构的成熟度
+→ 并行派发 agent 扫描安全/性能/可维护性/测试覆盖
+→ 产出 229 条消息的诊断报告
+```
+
+**Claude Code 插件兼容性验证**
+```text
+帮我设计一个自动化方案验证对 claude code plugin 的兼容性
+→ /writing-plans 出方案
+→ /auto-issue-fixer 按方案实现
+```
+
+## 什么时候用 Superpowers，什么时候直接用 Peri
+
+| 场景 | 用 Superpowers | 直接用 Peri |
+|------|:---:|:---:|
+| 不确定方案、需要讨论 | `/brainstorming` | / |
+| 任务大（5+ 步骤）需要结构化计划 | `/writing-plans` | / |
+| 复杂 bug 需要系统化排查 | `/systematic-debugging` | 简单错误直接贴给 Peri |
+| 改完需要验证 | `/verification-before-completion` | 小改动直接说"跑测试" |
+| 单个文件的小改动 | / | 直接告诉 Peri |
+| 探索代码/问答 | / | Peri 本身更快 |
+
+<Aside type="tip">
+  Superpowers 是流程骨架，Peri 是执行肌肉。小任务不需要走全套流程——不要为了流程而流程。
+</Aside>
