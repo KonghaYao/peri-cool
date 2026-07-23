@@ -1,0 +1,138 @@
+---
+title: CLAUDE.md
+description: Peri 的项目级操作手册——架构速览、常用命令、编码规范、防错规则和关键决策
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## CLAUDE.md 是什么
+
+CLAUDE.md 是 Peri 的项目级记忆文件，放在项目根目录。它不是 README（给人类看），也不是 API 文档（给编译器看）——它是给 Peri 的**操作手册**。每次对话开始前，Peri 读取 CLAUDE.md 并冻结进前缀缓存（命中率 95-99%），所以它直接影响 Peri 的每一次操作。
+
+## CLAUDE.md 能写什么
+
+按重要程度排列：
+
+### 1. 项目架构速览
+
+让 Peri 快速了解模块职责和调用关系。一句话一个模块，用箭头表达依赖：
+
+```markdown
+# 架构
+peri-tui（TUI 前端） → peri-acp（服务层） → peri-agent（ReAct 引擎）
+peri-agent → peri-mcp（工具调用协议）
+peri-tui ← peri-event（事件总线） → peri-agent
+```
+
+Peri 读完后就知道：改 TUI 不会影响 agent 逻辑，新增工具要改 peri-mcp 和 peri-agent 两处。
+
+### 2. 常用命令
+
+用代码块格式，Peri 可以直接复制执行：
+
+```markdown
+# 命令
+cargo build --workspace           # 全量构建
+cargo test -p peri-agent --lib     # 测试 agent 模块
+cargo clippy -- -D warnings        # lint 检查
+cargo fmt -- --check               # 格式检查
+```
+
+### 3. 编码规范
+
+负面清单比正面清单有效——告诉 Peri 什么**不能做**：
+
+```markdown
+# 编码
+- 禁止 println!，统一用 tracing
+- 禁止 unwrap()，用 anyhow::Context 提供错误上下文
+- CJK 截断必须用 chars().take(N)，禁止 &s[..N]
+- 新增 API 端点必须同步更新 OpenAPI spec
+```
+
+### 4. 陷阱与防错规则（TRAP）
+
+每条来自真实 bug 修复。格式：`[TRAP] 问题 → 原因 → 正确做法`：
+
+```markdown
+# TRAP
+[TRAP] 文件名含空格 → glob 结果被截断 → 始终为路径加引号
+[TRAP] CJK 字符截断 → 中文字符占 3 字节，bytes().take(10) 会切断中间
+  → s.chars().take(10).collect::<String>()
+[TRAP] 新增 Core 工具必须同步修改 6 处
+  → agent prompt / tool registry / capability JSON / schema 定义 / TUI 展示 / CLI --help
+```
+
+### 5. 关键决策记录
+
+记录为什么选了方案 A 而不是 B，避免未来"重新发现"已知问题：
+
+```markdown
+# 决策
+- 选择 tokio 而非 async-std：需要 ecosystem 支持（hyper、tonic 等）
+- Session drop 时机在 response 生成后：保证 token 统计准确
+- 子代理用独立 event loop：避免阻塞主代理的消息处理
+```
+
+## 好例子 vs 坏例子
+
+坏例子——信息 dump，Peri 用不上：
+
+```markdown
+本项目是一个 Rust 终端应用，使用 ratatui 框架，
+支持多面板和异步操作，目录结构如下：src/agent/、src/tui/…
+```
+
+好例子——Peri 读完能直接干活：
+
+```markdown
+# 架构
+peri-tui → peri-acp → peri-agent
+
+# 命令
+cargo build --workspace      # 构建
+cargo test -p peri-agent --lib  # 测试 agent
+
+# 编码
+- 禁止 println!，用 tracing
+- CJK 截断: s.chars().take(N)
+
+# TRAP
+[TRAP] 文件名含空格 → glob 结果被截断 → 始终为路径加引号
+```
+
+## 怎么写好
+
+**架构部分：** 一句话一个模块，用箭头表达依赖，不要列目录树。
+
+**命令部分：** 代码块格式，附带注释说明用途。Peri 看到 `# 构建` 就知道什么时候跑。
+
+**规范部分：** 禁止 > 推荐。`禁止 unwrap()` 比 `建议用 anyhow` 有效 10 倍——Peri 对禁止性指令的遵循率远高于建议性指令。
+
+**TRAP 部分：** 不是在项目开始时一次性写 30 条，是**每次修完一个非显而易见的 bug 就立刻追加**。流程：修 bug → 根因明确 → 写 TRAP → 追加。下周再写已经忘了细节。
+
+**拆分大文件：** 主 CLAUDE.md 保持 50 行，细节用 `@` 引用：
+
+```markdown
+@.claude/rules/coding-style.md    # Rust 编码规范细节
+@.claude/rules/testing.md         # 测试框架和 mock 策略
+@.claude/rules/bug-history.md     # 历史 bug 的 TRAP 全集
+```
+
+被 `@` 引用的文件同样进入前缀缓存，但文件层面分离后维护简单。
+
+## 迭代方式
+
+- **`/init`**：自动生成基础版（含架构和命令，约 500 行）
+- **手动维护**：每修完一个 bug → 立即写 TRAP → 追加到 CLAUDE.md
+- **`/learn-from-history`**：从对话历史自动提炼改进建议。它会扫历史中 Peri 反复犯的错、你反复纠正的事，覆盖手动遗漏的盲区。安装：
+
+  ```
+  npx skills add https://github.com/konghayao/peri --skill learn-from-history
+  ```
+
+- **定期瘦身**：从 500 行删到 200 行，只保留"删掉会犯错"的内容。500 行 vs 50 行，每轮多烧约 2250 tokens，一天几百轮就是四位数人民币的差别
+
+<Aside type="tip">
+  CLAUDE.md 写到位后，单会话平均消息数从 80+ 降到 40-60——代理不需要反复试错才理解项目约束。这个效果比省钱更值。
+</Aside>

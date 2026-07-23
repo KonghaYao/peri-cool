@@ -1,0 +1,80 @@
+---
+title: 管理长任务
+description: 任务要跑很久、中间会走开？用 /goal 声明目标，Peri 持续自动推进
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 你的真实场景
+
+不是"改一行代码就跑"，是下面这种：
+
+- **单会话 946 条消息**：重构整个模块，中间睡了一觉，第二天 `peri --resume last` 回来继续编
+- **273 条消息 + 16 个子代理**：排查"opencode 实例一直涨"，需要同时翻 4-5 个文件的日志、trace 调用链、写修复
+- **工作日标准姿势**：早上 `/goal` 开任务，白天 Peri 自己推，你时不时回来看一眼、补充上下文、确认方向
+
+这些不是一次性对话。消息数上去了，上下文会变脏，模型会忘掉最初的意图。**`/goal`**（Peri 内置）就是给你挂着方向盘的。
+
+## /goal：不只是声明目标
+
+```text
+/goal create "把 src/auth/ 下 5 个文件从回调改成 async/await。
+验收标准：
+1. cargo build 无错误
+2. cargo test auth 全部通过
+3. 不改任何公开 API 签名"
+```
+
+关终端走人。下次 `peri --resume last` 回来继续——Peri 会从上次断点处接着推。
+
+**关键是验收标准。** 写清楚了，Peri 和 Stop hooks 能形成自动验证闭环：
+
+```json
+{
+  "hooks": {
+    "Stop": [{
+      "matcher": "goal_complete",
+      "command": "cargo build && cargo test auth"
+    }]
+  }
+}
+```
+
+任务推进到目标声明完成 → Stop hook 自动跑验收 → 没过就接着推，过了就停。你不需要盯着。
+
+<Aside type="caution">
+  Peri 最多跑 500 轮推理——硬限制，防止死循环。超大规模任务拆成多个 /goal。
+</Aside>
+
+## 子代理 vs ultracode：别再选错了
+
+Peri 里并行任务有两条路：子代理（Agent）和 ultracode。别凭感觉选，看任务特征：
+
+| 任务特征 | 选什么 | 实际例子 |
+|---------|--------|---------|
+| 3-8 个文件，有上下文关联 | 子代理（Agent） | "重构 auth 模块，4 个文件都要互相引用" |
+| 多个任务互不依赖 | ultracode 并行 | "同时修 3 个独立 bug" |
+| 任务有先后顺序 | ultracode pipeline | "先生成接口定义，再实现后端，最后写测试" |
+| 20+ 文件，每批无关联 | ultra-batch | "全局替换 API 调用方式" |
+
+**真实数据**：perennelion 项目中你单会话最多调了 58 个子代理。子代理模型默认按任务复杂度自动选——探索用 haiku，实现用 sonnet，审查用 code-reviewer 代理。不用手动切。
+
+### 什么时候不用子代理
+
+- 只改 1-2 个文件 → 直接在对话里让 Peri 改
+- 子代理跑完发现方向错了 → `/rewind` 回退，别又派一个去修
+- 子代理的输出涉及架构判断 → 先看结果，判断清楚了再往下派
+
+## 长会话的真实节奏
+
+不是一条直线走到黑。实际节奏：
+
+1. `/goal` 开任务，Peri 开始推
+2. 推 50-80 轮 → 上下文脏了，`/compact` 压缩
+3. 压缩完发现方向偏了 → 补充一句话纠正
+4. 再推 40 轮 → 遇到硬骨头，手动介入敲几行
+5. 继续推 → 验收通过，Goal 自动关闭
+
+中间你可能：开会去了、下班了、切去写别的代码了。Peri 停着等你 `resume`。
+
+如果你在 `/auto-issue-fixer`（需先安装：`npx skills add https://github.com/konghayao/peri --skill auto-issue-fixer`）的追踪流程里——先让 Peri 定位问题、分析根因、生成修复方案——别再单开一个对话，把整个流程放到一个 `/goal` 里，阶段间用验收标准隔开。

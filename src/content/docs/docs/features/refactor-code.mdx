@@ -1,0 +1,65 @@
+---
+title: 安全重构代码
+description: 批量改代码时，先搜清影响面再动手，每改完一批文件跑一次验证
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 重构不是改几个文件——是跨模块迁移
+
+最常见的高风险场景：大量逻辑内联在单个文件中，需要拆分到独立模块。这不是"改几行代码"，而是**动十几处引用、重新组织模块边界**。
+
+```text
+/ultracode 有非常多的代码被内联在开发代码中，逐个搜查并分离出来
+```
+
+如果只交给单个 Peri 会话串行处理，上下文很快会被撑爆。正确做法是并行拆解。
+
+## 用 ultracode 并行拆解大规模迁移
+
+**`/ultracode`**（Peri 内置）本质上是一次派多个 agent 各管一个模块，互不干扰：
+
+```text
+/ultracode 把 src/core/handler.rs 中的内联逻辑分离到独立模块：
+- agent 1：提取 auth 相关逻辑到 src/auth/
+- agent 2：提取 config 解析逻辑到 src/config/
+- agent 3：提取中间件逻辑到 src/middleware/
+每个 agent 完成后跑对应模块的测试
+```
+
+关键约束：**不要让两个 agent 同时编辑同一个文件**——结果不可预测。拆分任务时按文件边界划清。
+
+## 重构的安全网
+
+**动手前先 git commit。** Peri 可以 `/rewind` 回退，但 git 是你的最后防线。
+
+```text
+git add -A && git commit -m "pre-refactor snapshot"
+```
+
+如果重构方向走偏了，用 `/rewind` 回到某个关键节点重新来过——不用从头开始。
+
+## 每改完一批就验证，不要攒到最后
+
+大规模重构最怕改完 20 个文件再跑构建——爆了不知道是哪一步引入的。正确节奏：
+
+```text
+agent 1 完成 auth 模块提取 → 立即 cargo build -p auth
+agent 2 完成 config 模块提取 → 立即 cargo test config::
+agent 3 完成 middleware 提取 → 立即 cargo clippy -p middleware
+```
+
+## 重构后派独立审查
+
+自己拆自己写的代码一定有盲区。派子代理用不同视角过一遍：
+
+```text
+派 code-reviewer 子代理审查这次模块拆分：
+1. 公共 API 边界是否合理
+2. 有没有残留的内联代码未迁移
+3. 引入的 pub 导出是否精当
+```
+
+<Aside type="tip">
+  真实项目中单会话最多派过 58 个子代理。但日常重构 3-5 个就够——太多 agent 即使按文件边界划分，公共依赖也可能互相踩。
+</Aside>

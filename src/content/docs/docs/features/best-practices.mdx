@@ -1,0 +1,291 @@
+---
+title: 最佳实践
+description: 高效使用 Peri 的工程实践——从日常编码到自动化工作流
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 验证闭环
+
+Peri 能写代码，但写完不等于对了。形成验证闭环——让 Peri 写完代码后自己验证自己的输出——是区分"能用"和"好用"的关键分界线。
+
+### 四种验证方式
+
+**1. 对话内迭代。** 最简单的方式：Peri 写完代码，你回复"跑一下测试"或"现在 lint"。Peri 会在同一会话中执行、读输出、修正问题——一个自然形成的验证循环。适合日常小改动。
+
+**2. `/goal` 设置验证条件。** 在任务开始前就设定验收标准，Peri 会持续对照目标检查自己的进度：
+
+```
+/goal 实现用户登录功能，验收标准：
+1. cargo build 无错误
+2. cargo test auth 全部通过
+3. 登录失败返回 401 而非 500
+```
+
+Peri 在每轮推理后自动对比当前状态与 goal 中的条件，任务完成前就发现偏差，而不是事后返工。
+
+**3. Stop hooks 拦截验证。** 在 `Stop` 事件上挂一个 hook，Peri 每轮推理结束后自动运行检查：
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cargo check 2>&1 | grep -q error && echo '{\"decision\":\"block\",\"reason\":\"编译错误未修复\"}' || echo '{\"decision\":\"allow\"}'",
+            "timeout": 30000
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+当编译失败时，hook 返回 `block`，Peri 会进入下一轮推理继续修复，直到编译通过。这比每次手敲 `cargo build` 高效得多。
+
+**4. 验证子代理。** 为复杂任务派一个独立的验证子代理，用不同的视角审视主 Agent 的输出：
+
+```
+派一个 verification 子代理，验证以下内容：
+1. 所有新增文件是否遵循项目编码规范
+2. 错误处理是否覆盖异常路径
+3. 是否有遗漏的测试用例
+```
+
+子代理独立于主 Agent 的上下文，不存在"自己写的代码自己审"的盲区。
+
+<Aside type="tip">
+  四种方式不是互斥的。日常编码用对话内迭代，复杂需求用 /goal，长期项目用 Stop hooks，提交前用验证子代理。组合使用效果最好。
+</Aside>
+
+## CLAUDE.md 设计哲学
+
+CLAUDE.md 每次会话自动加载，是 Peri 对项目理解的"第一印象"。写得好，Peri 一开始就走对方向；写得差，每次会话都要花大量 token 纠正它的假设。
+
+### 核心原则：每行自问"删掉会犯错吗？"
+
+CLAUDE.md 不是项目文档，是**防错指南**。每写一行，想象 Peri 在没有这一行的情况下完成任务：会犯错吗？会走弯路吗？如果不会——删掉。
+
+| 该写 | 不该写 |
+|------|--------|
+| "CJK 截断必须用 `chars().take()`，不能用 `bytes().take()`" | "项目使用 Rust 编写，异步运行时为 tokio" |
+| "新增 Core 工具需同步修改 6 个位置：tool_def、dispatch、acl..." | "src/ 目录下包含 agent、tui、mcp 等子模块" |
+| "`get_config` 在 macOS 和 Linux 上返回路径不同，详见 TRAP-42" | "建议使用 clippy 检查代码质量" |
+
+**TRAP 标记是硬约束。** 当你修了一个只在特定条件下触发的 bug，把教训写成 TRAP：
+
+```
+[TRAP] 文件名含空格时 glob 结果被截断
+  → 原因：shell 分词按空格分割路径
+  → 正确做法：始终为路径加引号，使用 --null 分隔符
+```
+
+格式统一为 `问题描述 → 原因 → 正确做法`。Peri 将 TRAP 视为硬约束，在所有迭代中强制遵守。
+
+### 文件引用与多层加载
+
+CLAUDE.md 支持 `@path/to/file` 语法引用外部文件，导入的文件展开后一起进入上下文。相对路径以当前 CLAUDE.md 所在目录为基准。
+
+```markdown
+# 项目规范
+@.claude/rules/coding-style.md
+@.claude/rules/test-conventions.md
+
+# 模块索引
+@docs/architecture.md
+```
+
+多层加载策略：全局 `~/.claude/CLAUDE.md` 放个人偏好（如"默认用中文回复"），项目根 `CLAUDE.md` 放项目规则（如"禁止 println!"），子目录 `CLAUDE.md` 放路径级规则（如"src/api/ 的 handler 必须返回统一错误格式"）。
+
+<Aside type="caution">
+  <code>@</code> 引用最多嵌套 4 层。不要把整个文档树都引进来——每多一个引用就多占一份上下文窗口。
+</Aside>
+
+## 先探索再动手
+
+Peri 有 glob 和 grep 能力，但不会主动使用——你需要告诉它"先看后写"。
+
+### 差的做法
+
+```
+把用户认证模块从 JWT 改成 session
+```
+
+Peri 会直接开始写代码，可能改错文件、漏掉调用方、引入不一致。
+
+### 好的做法
+
+```
+把用户认证模块从 JWT 改成 session。先 grep 所有 JWT 相关的引用位置，确认影响范围后再动手。
+```
+
+Peri 先搜索 `JWT`、`jwt`、`Token`、`verify_token` 等关键词，列出受影响文件，然后逐一修改——每一步都有依据。
+
+### 为 Peri 提供导航索引
+
+在 CLAUDE.md 中列出常用目录结构，Peri 就不需要盲目探索：
+
+```markdown
+## 模块速查
+| 目录 | 职责 | 入口 |
+|------|------|------|
+| peri-agent/ | ReAct 循环引擎 | agent.rs |
+| peri-tui/ | 终端 UI | app.rs |
+| peri-mcp/ | MCP 客户端 | client.rs |
+| peri-tools/ | 内置工具定义 | mod.rs |
+```
+
+这样 Peri 在搜索前就知道去哪里找，一个 grep 就能定位到关键位置。
+
+## 分阶段工作
+
+把复杂任务拆成独立阶段，每个阶段有明确的输入和输出。不要让 Peri 跳过规划直接写代码。
+
+```
+阶段 1：探索 → 输出受影响文件清单和改动范围
+阶段 2：规划 → 输出修改方案和文件间依赖顺序
+阶段 3：编码 → 按方案逐文件修改
+阶段 4：验证 → 运行测试、构建、lint
+```
+
+实际操作中不一定要跑完四个阶段再回来——可以跑完阶段 3 后先让 Peri 自我验证，发现的问题在阶段 3 内部迭代修正，最后再交给验证子代理做独立检查。
+
+<Aside type="note">
+  并不是每次都要四阶段。改一个变量名不需要规划步骤。判断标准：如果任务涉及 3 个以上文件或影响跨模块接口，至少做探索和规划。
+</Aside>
+
+## 会话管理
+
+### 两次纠错无效就 `/clear`
+
+同一个问题连续两次给出错误方案，会话上下文已经包含了错误的假设，继续在同一会话中迭代只会越陷越深。`/clear` 重置对话，让 Peri 从头开始。
+
+**之前：**
+```
+改用户认证模块 → Peri 改了但编译不过 → 告诉它修 → 修完又出新问题 → 再告诉它修 → 不停循环
+```
+
+**之后：**
+```
+改用户认证模块 → Peri 改了但编译不过 → 告诉它修 → 还是不过 → /clear，重新描述需求
+```
+
+### `/rewind` 回退到之前状态
+
+当 Peri 某步操作（比如删了一个不该删的文件）造成了不可逆破坏，用 `/rewind` 回退到操作前的对话状态，而不是手动 `git checkout`。
+
+```bash
+/rewind   # 回到上一条消息之前
+/rewind 3  # 回退 3 步
+```
+
+相比 `/clear`，`/rewind` 保留了之前正确的推理路径，只回退到出错点重新开始——更省 token。
+
+## 自动化
+
+### 非交互模式
+
+`peri -p "..."` 在非交互模式下运行 Peri，适合脚本集成、CI/CD 和定时任务：
+
+```bash
+# 代码审查
+peri -p "审查 src/services/ 下所有文件的错误处理，输出问题清单"
+
+# 批量重构
+peri -p "将 src/ 下所有 unwrap() 替换为 ? 操作符，逐个文件处理"
+
+# 自动修复
+peri -p "运行 cargo clippy 并修复所有 warning"
+```
+
+### 组合参数
+
+按场景选择合适的模型和权限模式：
+
+```bash
+# 日常编码：用 haiku 省钱，自动批准编辑
+peri --model claude-haiku-4-5-20251001 --permission-mode acceptEdits -p "为 auth 模块添加单元测试"
+
+# 高风险操作：用 sonnet 保证质量，手动审批
+peri --model claude-sonnet-4-20250514 --permission-mode default -p "重构数据库迁移逻辑"
+
+# CI 环境：完全自动化
+peri --model claude-sonnet-4-20250514 --permission-mode bypassPermissions -p "运行完整测试套件并修复失败用例" --max-turns 30
+```
+
+<Aside type="caution">
+  <code>bypassPermissions</code> 会跳过所有权限提示。只在受控环境（CI/CD、容器）中使用，并配合 <code>--max-turns</code> 限制执行轮次。
+</Aside>
+
+## 权限分层
+
+按风险等级为不同场景配置不同的权限策略，而非一刀切。
+
+### 分层策略
+
+| 场景 | 权限模式 | 允许 | 禁止 |
+|------|---------|------|------|
+| 日常编码 | `acceptEdits` | Edit、Write、Grep、Glob | Bash(写入)、git push |
+| 代码审查 | `default` | Grep、Glob、Read | 全部写入工具 |
+| 危险重构 | `default` | 全部手动审批 | Bash 中 `rm -rf`、`git push --force` |
+| CI 自动化 | `bypassPermissions` + `--max-turns` | 全部 | —（由 CI 环境限制） |
+
+### 配置示例
+
+在 `settings.json` 中为默认模式配置工具白名单：
+
+```json
+{
+  "permissions": {
+    "default": {
+      "allowed_tools": ["Read", "Grep", "Glob", "Edit", "Write"],
+      "disallowed_tools": ["Bash(git push:*)", "Bash(rm -rf:*)", "Bash(curl:*)"]
+    }
+  }
+}
+```
+
+日常开发时用 `--permission-mode acceptEdits` 跳过 Write/Edit 的审批弹窗，用 `default` 模式处理 Bash 和外网请求。
+
+## 子代理策略
+
+### 代码审查用独立审查子代理
+
+主 Agent 写代码 → 同一个 Agent 审代码，本质上是"裁判兼运动员"。用独立子代理打破这个盲区：
+
+```
+主 Agent：实现用户登录功能
+  └── 审查子代理：独立审查实现，输出问题清单
+```
+
+审查子代理有自己的上下文窗口，不受主 Agent 的推理偏见影响——会发现主 Agent 自己看不到的问题。
+
+### 复杂重构拆成并行子代理
+
+一个需要改 20 个文件的重构，不要用一个 coder 串行改。拆成独立的任务，并行执行：
+
+```
+并行子代理 1：迁移 src/services/ 下的数据层接口
+并行子代理 2：迁移 src/handlers/ 下的路由处理
+并行子代理 3：更新 tests/ 下的测试用例
+```
+
+三个子代理并行运行，完成后再用一个审查子代理统一验证。前提：三个子代理不修改相同文件——如果操作的文件集有重叠，改为串行执行或 Fork 模式。
+
+<Aside type="tip">
+  子代理并行上限为 3 个。拆分任务时优先找依赖最少、文件重叠最小的切入点，而非简单按目录拆分。
+</Aside>
+
+### 子代理模型选择
+
+| 子代理任务 | 推荐模型 | 原因 |
+|-----------|---------|------|
+| 代码搜索 / 网络研究 | haiku | 搜索不需要强推理 |
+| 代码编写 / 审查 | sonnet | 需要较深的代码理解 |
+| 方案设计 | 继承主会话 | 方案质量取决于所用模型 |
+
+在自定义子代理定义中指定 `model` 字段可永久绑定模型策略，不依赖主 Agent 的选择。

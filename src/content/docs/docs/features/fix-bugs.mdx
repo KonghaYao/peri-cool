@@ -1,0 +1,73 @@
+---
+title: 定位并修复 Bug
+description: 代码报错了，让 Peri 帮你定位并修复
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 不要贴个报错让 Peri 猜——先走结构化流程
+
+单次"帮我修这个错"只对一眼能看穿的 bug 管用。涉及多个模块、复现条件复杂的 bug，直接上结构化工作流：
+
+```text
+/auto-issue-fixer 排查 compact 提示重复问题
+```
+
+> 安装：`npx skills add https://github.com/konghayao/peri --skill auto-issue-fixer`
+
+Peri 自动走完整条链路：派 explorer 子代理探索影响范围 → 分析根因 → plan 子代理出修复方案 → coder 子代理实施 → verification 子代理独立验证。每个阶段有明确输出——你不会迷失在几十轮来回里。
+
+## 长会话深度调试：让 Peri 自己看、自己搜
+
+复杂 bug 不是三五轮能了结的。真实案例：单会话冲击 367 条消息，Peri 自己 Read 日志、Grep 调用链、跑测试验证。你只需要在关键分叉点拍板。
+
+```text
+// 第 1 轮
+cargo test auth:: -- --nocapture，把全部输出给我
+
+// 第 23 轮（Peri 已经读了十几处源码、跑了几轮测试）
+根因在 langfuse layer 初始化时 settings 未加载。
+修改 src/infra/langfuse.rs，让 Layer::default 从全局 config 读取。
+
+// 第 45 轮（修改 + 验证）
+cargo test auth:: —— 全部通过
+```
+
+核心心态：你不是在指挥 Peri，而是在和它一起查。让它读、搜、自己建假设——你只管判断假设对不对。
+
+## 复杂 bug 先派兵探路，再动手
+
+涉及 5 个以上文件的 bug，让 Peri 直接动手大概率改错地方。先用子代理摸清范围：
+
+```text
+并行派 3 个 explorer 子代理：
+1. 搜所有 config/Layer 初始化路径
+2. 搜所有 langfuse 相关调用链
+3. 检查测试中 mock 配置的模式
+```
+
+探索结果汇总回来后，你对问题边界了然于胸，再决定切入点。
+
+## 两次修不好就 `/clear`
+
+不是玄学。上下文被错误假说、试错的代码片段、过时的 grep 结果污染了。数据说话：同 bug 纠缠超过 3 轮修不好，继续死磕成功率断崖式下跌。
+
+```text
+/clear
+// 从头来。这次不对 Peri 说你怀疑是哪里——让它自己重新探索
+```
+
+## 修完必须独立验证
+
+不要让 Peri 自己改完自己说"好了"。显式派 verification 子代理：
+
+```text
+派 verification 子代理审查这次修复：
+1. cargo test 全部通过
+2. 没引入新 warning
+3. 相关模块测试覆盖率没下降
+```
+
+<Aside type="tip">
+  Peri 工具错误率仅 2.0%（12.6 万次调用的真实统计）。如果反复失败，先 `/clear` 清上下文再试——大概率不是模型问题，是上下文污染。
+</Aside>

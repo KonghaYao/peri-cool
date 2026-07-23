@@ -1,0 +1,66 @@
+---
+title: 编写测试用例
+description: 给模块补测试，指定覆盖场景和框架风格
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 不只是"给模块写测试"——是测试即验收标准
+
+测试不是你写完代码之后的附属品。在用 Peri 的开发流里，测试是你和 Peri 之间的**合同**：测试通过 = 任务完成。
+
+```text
+修复 test 问题 failures:
+langfuse::config::tests::test_load_with_settings_env_override
+```
+
+这个命令背后的真实 workflow：Peri 自己跑测试看报错 → 搜索相关代码定位测试断点 → 修改实现或测试 → 再跑 → 直到通过。
+
+## 用 `/goal`（Peri 内置）设验收标准
+
+不要让 Peri 模糊地"写测试"。设明确目标：
+
+```text
+/goal "cargo test auth:: 全部通过，不引入新 clippy warning"
+```
+
+goal 设好后，Peri 会自己循环"修改→构建→测试"直到达标。你不需要盯着它敲命令。
+
+## Stop Hooks：自动化验证闭环
+
+Peri 支持在关键节点自动执行钩子。你可以配置：每次 Edit 后自动跑 `cargo build`，build 失败就自动进下一轮修复——不需要你说"跑一下"。
+
+```text
+// 在 CLAUDE.md 中配置 stop hooks（假设已支持）
+stop_hooks:
+  - after_edit: cargo build 2>&1 | head -20
+    on_failure: auto_fix
+```
+
+你只需要喝茶等它自行收敛。
+
+## 用 verification 子代理做独立审查
+
+自己写的测试自己审——再强的人也逃不过确认偏误。派一个独立视角来审：
+
+```text
+派 verification 子代理审查刚才写的测试：
+1. 是否覆盖了异常路径（不只是 happy path）
+2. 断言是否精确（没漏掉关键字段）
+3. 有没有遗漏边界情况（空输入、超长输入、并发冲突）
+```
+
+子代理独立于主代理的上下文，不存在"自己写的测试自己觉得没毛病"的盲区。
+
+## 指定风格比指定框架更重要
+
+说"参考已有测试风格"比说"用 vitest 写干净的测试"有效十倍——Peri 看到具体模式，不是猜你的标准。
+
+```text
+给 src/utils/format.rs 写测试，
+参考 src/utils/__tests__/ 中已有用例的命名和断言风格
+```
+
+<Aside type="tip">
+  追求缓存命中率 95%+ 的话，测试文件的组织方式尽量稳定——频繁改测试结构会导致 CLAUDE.md 中路径缓存失效，白白浪费 token。
+</Aside>

@@ -1,0 +1,74 @@
+---
+title: 实现新功能
+description: 从需求到代码——用 /auto-devflow 驱动探索→规划→编码→审查完整流水线
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 用 /auto-devflow 驱动完整流水线
+
+别指望说一句话就让 Peri 生成全部代码。真实工作流是**分阶段、多代理协作**的：
+
+```text
+/auto-devflow 实现 Skill 工具，仿照 claude code 的 skill 机制
+```
+
+> 安装：`npx skills add https://github.com/konghayao/peri --skill auto-devflow`
+
+Peri 自动走完整条链路：
+
+1. **explorer 探索**：搜索 claude code 的 skill 机制实现，了解接口定义和加载流程
+2. **plan 设计方案**：基于探索结果，输出 skill 注册→加载→管理→执行的架构方案
+3. **coder 实现**：按 plan 的设计逐文件编码，每个阶段跑构建验证
+4. **code-reviewer 审查**：从独立视角检查接口一致性和错误处理
+
+这不是"一句话生成代码"，而是你有节奏地**引导 Peri 走完设计到交付的全流程**。
+
+## 用 /brainstorming 做设计讨论
+
+需求不清晰时，不要在脑子里空想方案。让 Peri 帮你发散：
+
+```text
+/brainstorming peri 的 skill 系统应该怎么设计？
+和 claude code 的 skill 机制有什么可以借鉴的差异点？
+```
+
+> 安装：`npx skills add https://github.com/konghayao/peri --skill brainstorming`
+
+Peri 会提 3-4 种方案，分析各自的适用场景、复杂度、耦合度。你选方案它才动手——**共识在前，代码在后**。
+
+## Stop hooks 自动验证
+
+编译失败不需要你手动说"修一下"。配置 stop hooks 后，每次 Edit 自动跑构建：
+
+```text
+// 在 CLAUDE.md 中配置
+stop_hooks:
+  - after_edit: cargo build 2>&1 | head -20
+    on_failure: auto_fix
+```
+
+构建挂了 → Peri 自动读报错 → 进下一轮修复 → 再构建。你只需要在它收敛后看一眼结果。
+
+## 分阶段策略
+
+| 功能规模 | 策略 | 验证节奏 |
+|----------|------|----------|
+| 小功能（1-3 文件） | 单轮 /auto-devflow 直接实现 | 实现完统一验证 |
+| 大功能（5+ 文件） | 按模块拆子任务，分批派发 | 每批 2-3 文件跑一次构建 |
+
+大功能别一口气改完再跑——爆了不知道是哪一步引入的。
+
+## 关键技巧
+
+实现前先让 Peri 出方案：
+
+```text
+帮我设计一个方案，列出需要改的文件和改动顺序
+```
+
+Plan 子代理会输出文件清单 + 依赖关系图。你对改动范围了然于胸后，再放手让它编码。这是使用 Peri 最高杠杆率的技巧——**五分钟对齐方案，省掉两小时返工**。
+
+<Aside type="tip">
+  /auto-devflow 本质是把四个代理串成流水线，每个代理的上下文都从前一阶段接过输入。不要在同一个会话里混用探索和编码——上下文会污染。
+</Aside>

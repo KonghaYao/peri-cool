@@ -1,0 +1,201 @@
+---
+title: 命令参考
+description: Peri 所有内置命令、斜杠命令和 CLI 参数的完整参考
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+本文档是 Peri 所有命令的速查手册——CLI 参数、斜杠命令和自定义命令三种形态。
+
+## CLI 参数
+
+在终端中直接使用的命令行参数。
+
+### 基础参数
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `peri` | 启动交互式 TUI | `peri` |
+| `peri --version` | 查看版本号 | `peri --version` |
+| `peri --help` | 查看帮助信息 | `peri --help` |
+
+### 单次对话
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `peri -p "<prompt>"` | 非交互式单次对话 | `peri -p "用 Rust 写一个快速排序"` |
+| `peri -p "<prompt>" --max-turns 1` | 单次对话，只执行一轮 | `peri -p "解释 src/main.rs" --max-turns 1` |
+| `peri -p "<prompt>" --model <name>` | 单次对话使用指定模型 | `peri -p "审查代码" --model deepseek-v3` |
+| `peri -p "<prompt>" --resume <session_id>` | 在指定会话中继续 | `peri -p "刚才的 bug 再查一下" --resume abc123` |
+
+<Aside type="note">
+  <code>-p</code> 模式下 Peri 完成任务后自动退出，不会进入交互式 TUI。
+</Aside>
+
+### 模型与会话
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `peri --model <name>` | 启动时指定默认模型 | `peri --model claude-sonnet` |
+| `peri --resume <session_id>` | 恢复指定会话 | `peri --resume abc123` |
+| `peri --resume last` | 恢复最近一次会话 | `peri --resume last` |
+| `peri --list-sessions` | 列出所有历史会话 | `peri --list-sessions` |
+
+### 配置管理
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `peri config` | 查看当前配置 | `peri config` |
+| `peri config show` | 完整显示当前配置 | `peri config show` |
+| `peri config set <key> <value>` | 修改配置项 | `peri config set model.default deepseek-v3` |
+| `peri config path` | 查看配置文件路径 | `peri config path` |
+
+### 更新
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `peri update` | 更新到最新版本 | `peri update` |
+| `peri update --check` | 仅检查是否有新版本 | `peri update --check` |
+
+## 斜杠命令
+
+在 Peri TUI 中，以 `/` 开头输入。以下为完整列表。
+
+### 会话管理
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `/clear` | 清空当前会话的所有对话历史 | `/clear` |
+| `/compact` | 压缩上下文——保留摘要，释放 token | `/compact` |
+| `/undo` | 撤销最近一次工具操作 | `/undo` |
+
+<Aside type="tip">
+  <code>/compact</code> 在长会话后期非常有用。它会用 LLM 生成对话摘要，压缩到原始上下文的 10-20%，避免 token 溢出。
+</Aside>
+
+### 模型与主题
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `/model` | 列出所有可用模型 | `/model` |
+| `/model <name>` | 切换到指定模型 | `/model deepseek-v3` |
+| `/theme` | 在 dark 和 light 之间切换 | `/theme` |
+| `/theme <name>` | 切换到指定主题 | `/theme peri-light` |
+
+### 任务控制
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `/goal create "<描述>"` | 创建长任务目标 | `/goal create "重构 auth 模块"` |
+| `/goal complete` | 标记目标完成 | `/goal complete` |
+| `/goal block "<原因>"` | 声明目标阻塞 | `/goal block "需要 API 权限"` |
+| `/goal get` | 查看当前目标状态 | `/goal get` |
+| `/goal clear` | 清空当前目标 | `/goal clear` |
+| `/todos` | 查看当前任务列表 | `/todos` |
+
+### 代码审查
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `/review` | 审查当前未提交的修改 | `/review` |
+| `/review <path>` | 审查指定文件或目录 | `/review src/api/` |
+
+### 子代理管理
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `/agents` | 列出所有已注册的子代理 | `/agents` |
+| `/agents <name>` | 查看指定子代理详情 | `/agents coder` |
+
+### 调试与诊断
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `/doctor` | 运行系统诊断——检查配置、API 连通性、工具可用性 | `/doctor` |
+| `/cost` | 查看当前会话的 API 费用统计 | `/cost` |
+| `/memory` | 查看自动记忆中的内容 | `/memory` |
+
+<Aside type="note">
+  <code>/doctor</code> 会自动检测常见问题（API Key 未配置、模型不可达、权限不足等）并给出修复建议。
+</Aside>
+
+### 扩展与配置
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `/mcp` | 打开 MCP 服务器管理面板 | `/mcp` |
+| `/hooks` | 查看当前会话的 hooks 配置 | `/hooks` |
+| `/init` | 初始化项目配置——自动生成 `.claude/` 或 `.peri/` 目录结构 | `/init` |
+| `/sandbox` | 切换沙箱模式——限制文件操作范围到当前项目 | `/sandbox` |
+
+### 权限
+
+在 TUI 中操作文件、执行命令或访问网络时，Peri 会根据权限模式弹出确认。以下命令控制权限行为：
+
+| 命令 | 说明 |
+|------|------|
+| `/permissions` | 查看和调整当前权限模式 |
+| `/permissions accept` | 临时接受所有待处理的权限请求 |
+| `/permissions reject` | 拒绝所有待处理的权限请求 |
+
+详细说明见 [权限管理](/docs/features/permissions/)。
+
+## 自定义命令
+
+Peri 支持通过 Markdown 文件定义自定义命令，与 Claude Code 完全兼容。
+
+### 创建自定义命令
+
+在项目根目录下创建 `.claude/commands/` 目录，每个 `.md` 文件就是一个自定义命令。
+
+```bash
+mkdir -p .claude/commands
+```
+
+目录结构示例：
+
+```text
+.claude/commands/
+├── fix-lint.md       # /fix-lint 命令
+├── pr-review.md      # /pr-review 命令
+└── deploy.md         # /deploy 命令
+```
+
+### 命令文件格式
+
+一个自定义命令文件就是一个 Markdown 文件，内容是你想让 Peri 执行的指令：
+
+```markdown
+# .claude/commands/fix-lint.md
+
+修复所有 lint 错误：
+
+1. 运行项目的 lint 工具
+2. 逐个修复所有错误和警告
+3. 确认修复后 lint 全部通过
+```
+
+然后用 `/fix-lint` 调用。
+
+<Aside type="tip">
+  文件名（不含 <code>.md</code>）就是命令名。文件名用 kebab-case，不支持空格。
+</Aside>
+
+### 带参数的命令
+
+Peri 会自动把命令后的参数注入为 `$ARGUMENTS`，在命令文件中可以引用：
+
+```markdown
+# .claude/commands/deploy.md
+
+将 $ARGUMENTS 部署到预发布环境，然后验证服务健康状态。
+```
+
+```text
+/deploy frontend-v2
+# $ARGUMENTS 会被替换为 "frontend-v2"
+```
+
+<Aside type="note">
+  自定义命令与 Claude Code 的 commands 目录完全兼容。已有的 <code>.claude/commands/</code> 配置可无缝迁移。
+</Aside>
