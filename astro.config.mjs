@@ -75,6 +75,10 @@ export default defineConfig({
 						{ slug: 'docs/features/claude-official-plugins' },
 						{ slug: 'docs/features/mattpocock-skills' },
 						{ slug: 'docs/features/openspec' },
+						{ label: 'Agent Loop 循环引擎', link: '/posts/engineering/agent-loop/' },
+						{ label: 'Hook 系统', link: '/posts/engineering/hook-system/' },
+						{ label: 'Multi Agent 架构', link: '/posts/engineering/multi-agent/' },
+						{ label: '配置参考', link: '/posts/engineering/config/' },
 					],
 				},
 
@@ -124,14 +128,6 @@ export default defineConfig({
 				],
 			},
 			{
-				label: '参考',
-				collapsed: false,
-				items: [
-					{ slug: 'docs/reference/architecture' },
-					{ slug: 'docs/reference/config' },
-				],
-			},
-			{
 				label: '社区与开发',
 				collapsed: false,
 				items: [
@@ -158,11 +154,11 @@ export default defineConfig({
 				},
 				{
 					tag: 'script',
-					attrs: { src: 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js' },
+					attrs: { src: 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js', defer: true },
 				},
 				{
 					tag: 'script',
-					content: "(function r(){var b=document.querySelectorAll('pre.mermaid');if(!b.length)return;(function w(){typeof mermaid!=='undefined'?(mermaid.initialize({startOnLoad:!1,theme:'neutral'}),mermaid.run({querySelector:'pre.mermaid'})):setTimeout(w,200)})()})();",
+					content: "document.addEventListener('DOMContentLoaded',function(){var b=document.querySelectorAll('pre.mermaid');if(!b.length)return;mermaid.initialize({startOnLoad:!1,theme:'neutral'});mermaid.run({querySelector:'pre.mermaid'});});",
 				},
 			],
 		}),

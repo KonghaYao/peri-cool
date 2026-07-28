@@ -36,7 +36,7 @@ const sidebar = [
 ];
 ---
 
-<StarlightPage frontmatter={{ title: post.data.title }} sidebar={sidebar}>
+<StarlightPage frontmatter={{ title: post.data.title }} sidebar={sidebar} tableOfContents={{}}>
 	<p style="color:var(--sl-color-gray-3);font-size:0.9rem;margin-bottom:0.25rem;">
 		{sectionLabels[section] || section}
 	</p>

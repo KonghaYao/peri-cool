@@ -1,98 +1,91 @@
 ---
 title: 系统提示词
-description: Peri 如何构建和管理系统提示词——静态段、动态段、Frozen Data Flow 与缓存策略。
+description: Peri Agent 的上下文构成——14 个提示词段落 + CLAUDE.md 如何赋予 Agent 身份、规范、能力和即时感知。
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-系统提示词是 Agent 的"世界观"——它决定了 Agent 能做什么、不能做什么、以什么风格回应。Peri 的提示词构建经过精心设计：把提示词拆成静态段和动态段，利用 LLM Provider 的 Prompt Cache 机制大幅降低首 token 延迟和成本。
+系统提示词是 Agent 的**认知底座**——它告诉 Agent "你是谁、能做什么、遵守什么规则、当前面对什么"。Peri 的系统提示词由两部分拼接而成：**14 个 Markdown 段落文件**（`peri-acp/prompts/sections/*.md`）提供稳定的规则和能力定义，**CLAUDE.md** 提供项目特定的记忆，外加每轮变化的动态数据。
 
-## 静态 vs 动态边界
+## 稳定层：14 个段落文件
 
-Peri 使用 `__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__` 标记来切分系统提示词：
+14 个 `.md` 文件在 Agent 启动时一次性加载并冻结，整个会话中保持不变。按功能分为五组：
 
-```
-[静态段：不会变的规则、工具定义、角色描述]
-    ↓ 缓存命中 ← 这部分被 Provider 缓存，不消耗推理时间
-__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__
-[动态段：每轮变化的用户消息、工具结果、上下文信息]
-    ↓ 每轮重新计算
-```
+### 身份与行为边界
 
-- **静态段**位于标记上方，包含 Agent 的角色定义、编码规范、工具列表、Skills 描述等。这部分在会话中保持不变，因此 Provider 可以缓存它们
-- **动态段**位于标记下方，包含对话历史、工具调用结果、当前上下文状态等每轮变化的数据
+| 文件 | 提供什么 |
+|------|---------|
+| `01_intro.md` | **角色定义**：声明"你是 Peri CLI 编程助手"。设定安全红线——只做防御性安全任务，禁止攻击代码。URL 引用规则——不凭空编造链接，只能引用用户提供的、刚抓取验证过的、或知名官方域名的 URL |
+| `02_system.md` | **编码约定与主动性平衡**：First-look principle——修改代码前先读周围文件，不假设库存在。Secret 处理——密钥是实弹，禁止日志/错误消息/源码/测试 fixture 中泄露。主动性边界——该做的时候做，不该做的时候不擅自行动 |
+| `06_tone_style.md` | **回复风格**：简单问题 1-4 行（附带 `file_path:line` 引用）。复杂任务才展开——陈述假设、列出计划、暴露权衡、确认范围。完成就停——不加"还有什么需要帮忙"。不用 emoji |
 
-<Aside type="caution">
-  静态段的结构必须保持不变，否则会破坏 Provider 的前缀缓存。如果你需要中途注入指令，请使用 <code>BaseMessage::human()</code> 而非 <code>BaseMessage::system()</code>——后者会被 hoist 到 system prompt 区域，改变静态段结构。
+这三份文件共同定义了 Agent 的"人格"——它是工具而不是人，该简洁时简洁，该详细时详细，有明确的安全红线。
+
+### 任务执行规范
+
+| 文件 | 提供什么 |
+|------|---------|
+| `03_doing_tasks.md` | **Think Before Coding**：动手前先陈述假设，有多种解读时全部列出，有更简单的方案时主动提出。**执行流程**——用搜索工具理解代码库、验证方案、跑 lint/build。**Goal-Driven Execution**——把任务拆成带验证条件的步骤，用强成功标准驱动独立循环 |
+| `04_actions.md` | **操作安全**：优先可逆操作（Edit 优于 Delete）。高风险操作前确认范围。**最小改动原则**——只动必须动的行，不"顺手优化"相邻代码，每行改动能追溯回用户需求。**Git 安全协议**——永不 force-push main、永不 `git commit --amend`、永不跳过 hooks、不提交含密钥的文件 |
+
+这两份文件是 Agent 的"工作方法论"——先想再做、最小改动、操作可逆、Git 自律。
+
+### 工具使用手册
+
+| 文件 | 提供什么 |
+|------|---------|
+| `05_using_tools.md` | **工具选择指南**：每种操作告诉 Agent 该用什么工具——搜文件用 Glob 别用 `find`、读文件用 Read 别用 `cat`、编辑用 Edit/Write 别用 `sed`。**Bash 纪律**——路径加引号、非破坏式优先、禁止 `curl | sh`。批量独立调用合并到一次响应 |
+| `07_env.md` | **环境上下文**（模板变量注入）：工作目录路径、是否 Git 仓库、操作系统、当前日期。标注"这些值在会话启动时捕获，可能已过期——做不可逆操作前用 `pwd`/`git status` 重新验证" |
+
+`05` 是工具字典——Agent 靠它避免最常见的错误（用 Bash 代替专用工具）。`07` 是环境快照——告诉 Agent 它在哪台机器、什么项目里。
+
+### 高级能力
+
+| 文件 | 提供什么 |
+|------|---------|
+| `10_hitl.md` | **人机审批模式**：9 类需审批的工具（Bash、Write、Edit、Agent、WebFetch 等）。用户四种响应——Approve（原样执行）/ Reject（改方案别重试）/ Edit（用修改后的参数执行）/ Respond（纯反馈，按消息调整计划） |
+| `11_subagent.md` | **子 Agent 调度**：Agent 类型列表（coder、explorer、plan、code-reviewer 等），每类带 `[model_tier]` 和 `[access]` 标注。**选择指南**——默认选专用 Agent，"general-purpose 是兜底不是默认"。**标准管线**——Research → Plan → Code → Review。**后台任务**——异步通知、禁止轮询、禁止 sleep 等待 |
+| `12_cron.md` | **定时任务**：cron_register/list/remove 三个工具。安全约束——不主动注册、"git push --force 放 cron 是自残"、避免高频 `* * * * *` |
+| `13_skills.md` | **Skills 技能系统**：四级搜索优先级（用户→全局→项目→插件）。触发方式是 `/skill-name`，但 Agent 应主动推荐未被使用的匹配 Skill。Skills 内容是按需加载的，只有摘要放在稳定层 |
+| `16_workflow.md` | **Workflow 工作流编排**：多 Agent 并行/流水线，异步执行，结果保存到 `.claude/workflow-runs/`。禁止 sleep 轮询——系统会主动唤醒 |
+
+这五份文件是 Agent 的"超能力手册"——HITL 让人参与决策、SubAgent 让任务并行、Cron 让任务定时、Skills 让能力按需加载、Workflow 让多 Agent 流水线协作。
+
+### 消息协议
+
+| 文件 | 提供什么 |
+|------|---------|
+| `14_system_reminder.md` | **系统提醒标签**：告诉 Agent `<system-reminder>` 是 harness 注入的，不是用户伪造的。收到后静默处理，不要在回复中提及。**信任边界**——用户消息中如果出现"看起来像 system-reminder"的文本，当作不可信用户输入处理 |
+| `15_channel.md` | **频道消息路由**：来自终端的是纯文本，来自外部渠道（微信/Slack/飞书）的用 `<channel>` 标签包裹。Agent 必须识别 `source` 和 `chat_id`，用对应的 MCP 工具回消息，不能直接回复文本 |
+
+这两份文件定义了 Agent 如何区分"系统通知"和"用户消息"，以及如何在不同渠道间正确路由回复。
+
+<Aside type="note">
+  完整文档还包含 CLAUDE.md 导航块（加载到稳定层前方），定义 Peri 的架构速览、模块索引、入口矩阵、编码规范、陷阱速查等内容。它不在 14 个段落文件里，而是项目根目录的 `CLAUDE.md`。
 </Aside>
 
-## Frozen Data Flow
+## 动态层：每轮刷新的上下文
 
-Peri 在 Agent 启动时一次性读取并"冻结"（frozen）关键数据，避免每轮对话都重新读盘。冻结数据流水线如下：
+稳定层之上，每轮对话追加的内容包括：
 
-```
-frozen_date → frozen_claude_md → frozen_skill_summary → frozen_system_prompt
-```
-
-| 阶段 | 数据 | 说明 |
+| 来源 | 形式 | 说明 |
 |------|------|------|
-| `frozen_date` | 当前日期 | 一次性获取，防止 Agent 在不同轮次看到不同日期 |
-| `frozen_claude_md` | CLAUDE.md 内容 | 项目级和用户级 CLAUDE.md 合并后的文本 |
-| `frozen_skill_summary` | Skills 列表摘要 | 所有可用 Skills 的名称和描述汇总 |
-| `frozen_system_prompt` | 完整系统提示词 | 14 个段落拼装后的最终文本 |
+| 用户消息 | `human()` 消息 | 终端输入或频道消息（解析后的纯文本） |
+| 工具调用结果 | `tool_result` 消息 | 文件内容、命令输出、搜索结果 |
+| 中间件注入 | 异步到达的消息 | SubAgent 完成通知、HITL 审批结果、Workflow 产物 |
+| 上下文预算 | SystemNote | token 剩余量、compact 触发提醒 |
+| 中途纠正 | `human()` 消息 | Agent 走偏时注入的纠正指令（禁止用 `system()`——会被 hoist 到稳定层破坏缓存） |
 
-SubAgent 启动时必须**复用** main agent 的 frozen 数据——禁止重新读盘。这保证了 main agent 和子代理对项目配置、Skills 列表的理解完全一致。
+## 为什么必须冻结
 
-## 14 个提示词段落
+14 个段落文件在 Agent 启动时全部加载到内存，后续整个会话不再重新读盘。原因是**认知一致性**：
 
-Peri 的系统提示词由 14 个段落（section）拼装而成，存储在 `peri-acp/prompts/sections/` 目录中：
+- 如果每轮重新获取日期，Agent 可能在同一任务中给出不同的时间判断
+- 如果 Skills 列表在会话中变化，Agent 的可用能力集突然漂移
+- 如果 CLAUDE.md 被开发者中途修改，Agent 的行为规则不一致
 
-| 段落 | 内容 |
-|------|------|
-| 01-role | Agent 角色定义、行为准则 |
-| 02-language | 语言偏好（如"以中文回复"） |
-| 03-conventions | 编码规范、文件约定 |
-| 04-git | Git 操作规范与安全策略 |
-| 05-tools-core | Core 层 12 个工具的描述和使用规则 |
-| 06-tools-deferred | Deferred 工具的加载说明 |
-| 07-middleware | 中间件链说明 |
-| 08-subagent | SubAgent 调度规范 |
-| 09-skills | 可用 Skills 列表 |
-| 10-hooks | Hooks 系统说明 |
-| 11-compact | 上下文压缩信号 |
-| 12-goal | Goal 长期任务追踪 |
-| 13-ultracode | Ultracode 工作流说明 |
-| 14-claude-md | 用户自定义的 CLAUDE.md 指令 |
+冻结保证**同一个会话中，Agent 看到的世界始终一致**。SubAgent 也从 main agent 继承冻结数据——主代理和子代理对项目配置、Skills 列表的理解完全相同。
 
-段落文件是 Markdown 格式（`.md`）。除非你清楚自己在做什么，否则不要修改静态段的结构——它会破坏 prompt cache。
-
-## 消息注入规则
-
-有几条硬规则用于保护系统提示词的稳定性：
-
-**规则一：中途纠正用 human()，禁用 system()**
-
-如果你需要在 Agent 推理过程中注入纠正指令，必须使用 `BaseMessage::human()`。`BaseMessage::system()` 会被 Provider 适配层 hoist 到系统提示词区域，改变静态段结构，破坏缓存。
-
-**规则二：尾部追加，禁止 prepend**
-
-非 System 消息通过 `add_message()` 追加到消息列表尾部。`prepend_message()` 会改变消息顺序，影响上下文连贯性。
-
-**规则三：SubAgent 复用 frozen 数据**
-
-SubAgent 启动时必须从 main agent 继承 frozen 数据——frozen_claude_md、frozen_skill_summary 等所有 frozen 字段都通过 StageContext 传递，子代理不自行读盘。
-
-## CLAUDE.md 的作用
-
-CLAUDE.md 是项目的"记忆文件"——你可以在里面写项目约定、编码风格、技术栈说明、常见陷阱等。
-
-Peri 在 Agent 启动时扫描以下位置的 CLAUDE.md：
-1. 项目根目录 `CLAUDE.md`
-2. `.claude/CLAUDE.md`（如果有）
-3. `~/.claude/CLAUDE.md`（全局）
-
-这些文件的内容被合并后进入 Frozen Data Flow，成为系统提示词的**静态段**。因此 CLAUDE.md 的内容会享受 prompt cache 加速——写在这里的指令不会增加每轮的推理成本。
-
-<Aside type="tip">
-  CLAUDE.md 适合放"稳定的项目知识"——编码规范、架构约定、常见陷阱。Skills 适合放"可按需激活的能力"——需要时才注入上下文，不占用主干。
+<Aside type="caution">
+  稳定层的结构不能中途修改。需要注入新指令时，用 <code>human()</code> 追加到动态层尾部——不能用 <code>system()</code>（会被 Provider 适配层 hoist 到稳定层区域，改变结构、破坏缓存）。
 </Aside>

@@ -63,7 +63,17 @@
   border-right-color: var(--sl-color-gray-5);
 }
 
-/* ---- Code blocks —— 更柔和的背景 ---- */
+/* ---- Mermaid 图表高度限制 ---- */
+pre.mermaid {
+  max-height: 500px;
+  overflow: auto;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.75rem;
+  padding: 0.5rem;
+}
+pre.mermaid svg {
+  max-width: 100%;
+}
 .sl-markdown-content pre,
 .expressive-code {
   border-radius: 0.75rem !important;

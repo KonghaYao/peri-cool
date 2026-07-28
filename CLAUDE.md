@@ -43,8 +43,6 @@ src/
         theme.mdx             # /theme 主题
         goal.mdx              # /goal 长任务
       reference/              # 参考文档
-        architecture.mdx      # 架构设计
-        config.mdx            # 配置参考
       community/              # 社区
         contributing.mdx      # 贡献指南
       developer/              # 开发者文档
