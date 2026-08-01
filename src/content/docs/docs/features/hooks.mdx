@@ -117,8 +117,9 @@ Hooks 通过 `.claude/settings.json`（项目级）或 `~/.claude/settings.json`
 Peri 按以下优先级加载 hooks，后加载的会追加到列表中：
 
 1. **插件 hooks**：插件声明中自带的 hooks
-2. **全局 hooks**：`~/.claude/settings.json` 或 `~/.peri/settings.json`
-3. **项目 hooks**：`<project>/.claude/settings.local.json`
+2. **全局 hooks**：`~/.claude/settings.json`（只读此文件）
+3. **项目 hooks**：`<project>/.claude/settings.json`
+4. **本地 hooks**：`<project>/.claude/settings.local.json`
 
 ## Hook 类型
 

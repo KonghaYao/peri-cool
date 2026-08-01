@@ -1,11 +1,11 @@
 ---
 title: 工具系统
-description: Peri 的 12 个核心工具——文件操作、搜索、Shell 执行、Web 抓取。
+description: Peri 的 14 个核心工具——文件操作、搜索、Shell 执行、Web 抓取、子代理与技能系统。
 ---
 
 import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
 
-Peri 内置 12 个核心工具，覆盖编码助手需要的大部分操作。所有工具通过 ReAct 循环的 Act 阶段分发。
+Peri 内置 14 个核心工具，覆盖编码助手需要的大部分操作。所有工具通过 ReAct 循环的 Act 阶段分发。
 
 ## 核心工具一览
 
@@ -19,23 +19,33 @@ Peri 内置 12 个核心工具，覆盖编码助手需要的大部分操作。�
   <Card title="Bash" icon="terminal">
     <strong>Shell 执行</strong>。支持超时控制、后台运行。Peri 可以通过 Bash 运行测试、构建项目、操作 git。
   </Card>
+  <Card title="folder_operations" icon="layers">
+    <strong>目录操作</strong>。列出目录内容、创建目录、检查路径是否存在，支持深度扫描目录树。
+  </Card>
   <Card title="WebFetch / WebSearch" icon="globe">
     <strong>网络工具</strong>。WebFetch 抓取网页内容为文本，WebSearch 用搜索引擎查找信息。支持指定结果数量。
+  </Card>
+  <Card title="Agent" icon="rocket">
+    <strong>子代理委派</strong>。把独立子任务派发给专用 agent（如 explorer、coder）执行，支持后台运行。
+  </Card>
+  <Card title="AskUserQuestion / TodoWrite" icon="check">
+    <strong>交互与任务跟踪</strong>。AskUserQuestion 向用户提出结构化问题，TodoWrite 维护多步任务清单。
+  </Card>
+  <Card title="SkillTool / DiscoverSkillsTool" icon="star">
+    <strong>技能系统</strong>。SkillTool 加载并执行技能，DiscoverSkillsTool 按名称或描述搜索可用技能。
   </Card>
 </CardGrid>
 
 ## 工具别名
 
-每个工具支持一个或多个别名。比如 `Bash` 也可以写成 `Shell`、`Terminal`——因为模型可能用不同名词输出。
+每个工具通过 `BaseTool::aliases()` 声明别名，在工具分发时自动解析。比如 `Bash` 也可以写成 `Shell`，`Read` 也可以写成 `reading`——因为模型可能用不同名词输出。
 
 | 工具 | 别名 |
 |------|------|
-| Bash | Shell, Terminal, Command |
-| Read | Cat, View, Open |
-| Grep | Search, Find |
-| Agent | Task |
-
-别名由工具自身声明（通过 `BaseTool::aliases()` trait 方法），在工具分发时自动解析。
+| Bash | Shell |
+| Read | reading |
+| Agent | task |
+| Grep | （无） |
 
 <Aside type="note">
   工具别名是大小写无关的。模型输出 `shell`、`SHELL`、`Shell` 都会正确路由到 Bash 工具。
@@ -43,17 +53,19 @@ Peri 内置 12 个核心工具，覆盖编码助手需要的大部分操作。�
 
 ## 工具超时
 
-不同工具有不同的超时策略：
+每个工具通过 `BaseTool::timeout()` 声明外层超时，工具分发时据此包裹调用：
 
-| 工具类型 | 超时 | 原因 |
-|---------|------|------|
-| 快速工具（Read、Grep、Glob） | 120 秒 | 本地操作，不应该慢 |
-| Shell 执行 | 300 秒 | 构建、测试可能需要更久 |
-| Agent / Workflow | 无上限 | 子代理可能跑很长时间 |
+| 工具 | 超时 |
+|------|------|
+| 大多数工具（Grep、Write、WebFetch、WebSearch、Bash、AskUserQuestion、Agent 等） | 无外层超时（返回 `None`，由工具内部自管） |
+| Skill | 30 秒 |
+| 未覆写 `timeout()` 的工具（Read、Edit、Glob、folder_operations 等） | 继承 BaseTool 默认的 120 秒 |
+
+Bash 的执行时长由 `timeout` 参数控制：默认 15 秒（15000ms），上限 600 秒（600000ms）。需要长时间运行的命令应调高该参数，或使用 `run_in_background` 后台执行。
 
 ## Meta 工具
 
-除了 12 个核心工具，Peri 还提供 2 个 Meta 工具：
+除了 14 个核心工具，Peri 还提供 2 个 Meta 工具：
 
 - **SearchExtraTools**：搜索延迟加载的工具（MCP 工具、Cron 任务等）
 - **ExecuteExtraTool**：执行通过 SearchExtraTools 找到的工具

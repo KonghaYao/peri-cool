@@ -46,15 +46,14 @@ MCP 配置有三层，按优先级合并。同名 server 上层会覆盖下层�
 
 ## 传输方式
 
-Peri 支持三种 MCP 传输方式（transport），覆盖本地和远程场景。
+Peri 支持两种 MCP 传输方式（transport），覆盖本地和远程场景。
 
 | 方式 | 适用场景 | 示例 |
 |------|---------|------|
 | stdio | 本地命令行工具 | `npx` 启动的 MCP server |
-| SSE | HTTP 服务端推送 | 远程 MCP 网关 |
 | streamable HTTP | 流式 HTTP | 需要双向流的云服务 |
 
-stdio 是最常用的方式——大多数 MCP server 都是通过 `npx`、`python` 或本地二进制启动。SSE 和 streamable HTTP 适合需要连接远程服务或云托管 MCP server 的场景。
+传输方式由配置自动判定：配置了 `command` 字段即使用 stdio，配置了 `url` 字段即使用 streamable HTTP（两者都没有则报配置错误）。stdio 是最常用的方式——大多数 MCP server 都是通过 `npx`、`python` 或本地二进制启动。streamable HTTP 适合需要连接远程服务或云托管 MCP server 的场景。
 
 ### stdio 配置示例
 
@@ -78,7 +77,6 @@ stdio 是最常用的方式——大多数 MCP server 都是通过 `npx`、`pyth
 {
   "mcpServers": {
     "remote-service": {
-      "transport": "http",
       "url": "https://api.example.com/mcp",
       "headers": {
         "Authorization": "Bearer your-token"
@@ -88,9 +86,11 @@ stdio 是最常用的方式——大多数 MCP server 都是通过 `npx`、`pyth
 }
 ```
 
+注意：配置里没有 `transport` 字段——传输方式由 `command` 或 `url` 字段自动判定。
+
 ## 使用 MCP 工具
 
-MCP 工具作为 Deferred Tool 加载，不属于 Core 层的 12 个基础工具。使用时有两种方式。
+MCP 工具作为 Deferred Tool 加载，不属于 Core 层的 14 个基础工具。使用时有两种方式。
 
 ### 自动调用
 
@@ -115,17 +115,13 @@ SearchExtraTools("github")
   MCP server 需要处于连接状态才会出现在搜索结果中。如果 server 启动失败或断连，对应的工具不会出现在可用工具列表里。可以用 `/mcp` 面板检查各 server 的连接状态。
 </Aside>
 
-## 自动重连
-
-MCP server 意外退出后，Peri 会自动尝试重连。重连策略为指数退避（exponential backoff）——首次立即重试，后续间隔递增，直到连接恢复或达到最大重试次数。
-
-重连过程在后台静默进行，不会打断你的对话。Server 恢复后，对应的工具会重新注册到工具列表，你可以在下一轮对话中继续使用。
-
 ## MCP 面板
 
-用 `/mcp` 命令打开 MCP 管理面板，实时查看所有 MCP server 的状态。面板按配置来源分组显示——项目级、用户级、插件级。
+用 `/mcp` 命令打开 MCP 面板，实时查看 MCP server 的状态：顶部显示初始化阶段和已连接/总数汇总，列表显示每个 server 的名称、状态、传输方式和工具数量。面板为只读视图，MCP 配置仍需通过 `.mcp.json` 或 `settings.json` 管理。
 
-面板支持的操作包括查看工具列表、重新连接、禁用/启用 server、清除认证状态等。这是管理 MCP server 的主要入口，比手动编辑 JSON 配置文件更方便。
+<Aside type="note">
+  MCP server 意外退出后不会自动重连，也没有手动重连入口。`/mcp` 面板只用于查看状态；连接失败时请检查 server 配置后重新启动 Peri。
+</Aside>
 
 ## 安全提示
 

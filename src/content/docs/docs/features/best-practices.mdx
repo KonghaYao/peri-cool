@@ -88,7 +88,7 @@ CLAUDE.md 不是项目文档，是**防错指南**。每写一行，想象 Peri 
 
 ### 文件引用与多层加载
 
-CLAUDE.md 支持 `@path/to/file` 语法引用外部文件，导入的文件展开后一起进入上下文。相对路径以当前 CLAUDE.md 所在目录为基准。
+CLAUDE.md 支持 `<!-- @import path -->` 语法引用外部文件，导入的文件展开后一起进入上下文。相对路径以当前文件所在目录为基准（仅 CLAUDE.md 系列文件解析，AGENTS.md 不处理）。
 
 ```markdown
 # 项目规范
@@ -99,10 +99,10 @@ CLAUDE.md 支持 `@path/to/file` 语法引用外部文件，导入的文件展�
 @docs/architecture.md
 ```
 
-多层加载策略：全局 `~/.claude/CLAUDE.md` 放个人偏好（如"默认用中文回复"），项目根 `CLAUDE.md` 放项目规则（如"禁止 println!"），子目录 `CLAUDE.md` 放路径级规则（如"src/api/ 的 handler 必须返回统一错误格式"）。
+多层加载策略：Peri 只取候选列表中第一个存在的文件（`AGENTS.md` → `CLAUDE.md` → `.claude/AGENTS.md` → `~/.claude/AGENTS.md`），没有子目录级加载。全局 `~/.claude/AGENTS.md` 放个人偏好（如"默认用中文回复"），项目根 `CLAUDE.md` 放项目规则（如"禁止 println!"）；针对特定路径的规则写在主文件的规则段落中，由 agent 进入对应目录时遵循。
 
 <Aside type="caution">
-  <code>@</code> 引用最多嵌套 4 层。不要把整个文档树都引进来——每多一个引用就多占一份上下文窗口。
+  <code>@import</code> 引用最多嵌套 3 层。不要把整个文档树都引进来——每多一个引用就多占一份上下文窗口。
 </Aside>
 
 ## 先探索再动手
@@ -179,11 +179,12 @@ Peri 先搜索 `JWT`、`jwt`、`Token`、`verify_token` 等关键词，列出受
 当 Peri 某步操作（比如删了一个不该删的文件）造成了不可逆破坏，用 `/rewind` 回退到操作前的对话状态，而不是手动 `git checkout`。
 
 ```bash
-/rewind   # 回到上一条消息之前
-/rewind 3  # 回退 3 步
+/rewind                    # 无参：弹出 Rewind 选择窗口（双击 Esc 效果相同）
+/rewind <消息ID>            # 回退到指定消息之前（该消息及其后的内容全部移除）
+/rewind <消息ID> --revert-files  # 同时逆向还原被移除消息中的文件改动
 ```
 
-相比 `/clear`，`/rewind` 保留了之前正确的推理路径，只回退到出错点重新开始——更省 token。
+`<消息ID>` 是目标消息的 ID，不是步数。相比 `/clear`，`/rewind` 保留了之前正确的推理路径，只回退到出错点重新开始——更省 token。
 
 ## 自动化
 
@@ -208,17 +209,17 @@ peri -p "运行 cargo clippy 并修复所有 warning"
 
 ```bash
 # 日常编码：用 haiku 省钱，自动批准编辑
-peri --model claude-haiku-4-5-20251001 --permission-mode acceptEdits -p "为 auth 模块添加单元测试"
+peri --model claude-haiku-4-5-20251001 --permission-mode accept-edit -p "为 auth 模块添加单元测试"
 
 # 高风险操作：用 sonnet 保证质量，手动审批
 peri --model claude-sonnet-4-20250514 --permission-mode default -p "重构数据库迁移逻辑"
 
 # CI 环境：完全自动化
-peri --model claude-sonnet-4-20250514 --permission-mode bypassPermissions -p "运行完整测试套件并修复失败用例" --max-turns 30
+peri --model claude-sonnet-4-20250514 --permission-mode bypass -p "运行完整测试套件并修复失败用例" --max-turns 30
 ```
 
 <Aside type="caution">
-  <code>bypassPermissions</code> 会跳过所有权限提示。只在受控环境（CI/CD、容器）中使用，并配合 <code>--max-turns</code> 限制执行轮次。
+  <code>bypass</code> 会跳过所有权限提示。只在受控环境（CI/CD、容器）中使用，并配合 <code>--max-turns</code> 限制执行轮次。
 </Aside>
 
 ## 权限分层
@@ -229,27 +230,24 @@ peri --model claude-sonnet-4-20250514 --permission-mode bypassPermissions -p "�
 
 | 场景 | 权限模式 | 允许 | 禁止 |
 |------|---------|------|------|
-| 日常编码 | `acceptEdits` | Edit、Write、Grep、Glob | Bash(写入)、git push |
+| 日常编码 | `accept-edit` | Edit、Write、Grep、Glob | Bash(写入)、git push |
 | 代码审查 | `default` | Grep、Glob、Read | 全部写入工具 |
 | 危险重构 | `default` | 全部手动审批 | Bash 中 `rm -rf`、`git push --force` |
-| CI 自动化 | `bypassPermissions` + `--max-turns` | 全部 | —（由 CI 环境限制） |
+| CI 自动化 | `bypass` + `--max-turns` | 全部 | —（由 CI 环境限制） |
 
 ### 配置示例
 
-在 `settings.json` 中为默认模式配置工具白名单：
+配置文件没有 `permissions` 字段——工具白名单通过 CLI 参数控制：
 
-```json
-{
-  "permissions": {
-    "default": {
-      "allowed_tools": ["Read", "Grep", "Glob", "Edit", "Write"],
-      "disallowed_tools": ["Bash(git push:*)", "Bash(rm -rf:*)", "Bash(curl:*)"]
-    }
-  }
-}
+```bash
+# 允许/禁止具体工具（支持 Bash(command:*) 模式匹配）
+peri --allowedTools "Bash(git:*)" "Edit" --disallowedTools "Bash(rm -rf:*)" "Bash(curl:*)"
+
+# 与权限模式组合
+peri --permission-mode accept-edit --allowedTools "Edit" "Write" "Grep" "Glob"
 ```
 
-日常开发时用 `--permission-mode acceptEdits` 跳过 Write/Edit 的审批弹窗，用 `default` 模式处理 Bash 和外网请求。
+日常开发时用 `--permission-mode accept-edit` 跳过 Write/Edit 的审批弹窗，用 `default` 模式处理 Bash 和外网请求。
 
 ## 子代理策略
 
@@ -277,7 +275,7 @@ peri --model claude-sonnet-4-20250514 --permission-mode bypassPermissions -p "�
 三个子代理并行运行，完成后再用一个审查子代理统一验证。前提：三个子代理不修改相同文件——如果操作的文件集有重叠，改为串行执行或 Fork 模式。
 
 <Aside type="tip">
-  子代理并行上限为 3 个。拆分任务时优先找依赖最少、文件重叠最小的切入点，而非简单按目录拆分。
+  后台子代理（bg/fork）并发硬上限 3 个；同步子代理按轮调度 1-3 个（行为观察，非硬限制）；Workflow 工具默认并发 3，可通过 <code>maxConcurrency</code> 参数配置。拆分任务时优先找依赖最少、文件重叠最小的切入点，而非简单按目录拆分。
 </Aside>
 
 ### 子代理模型选择

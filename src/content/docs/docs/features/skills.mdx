@@ -25,26 +25,26 @@ Skills 放在了 `.claude/skills/` 目录下，Peri 启动时自动扫描。兼�
 每个 skill 的 `SKILL.md` 定义了触发条件和行为规则。Peri 根据对话内容自动匹配需要加载哪个 skill。
 
 <Aside type="tip">
-  Peri 内置了 50+ 个 skill，分布在用户级（~/.claude/skills/）、项目级（.claude/skills/）和插件级。同名 skill 按优先级覆盖——用户级 > 项目级 > 插件级 > 内置。
+  Peri 内置（builtin）skill 只有 4 个：cron、goal、ultracode、use-artifacts，编译在 peri-middlewares 中。其余 skill 来自用户级（~/.claude/skills/）、全局（~/.peri/settings.json 的 skillsDir）、项目级（.claude/skills/）和插件级。同名 skill 按优先级覆盖——用户级 > 全局 > 项目级 > 插件级 > 内置。
 </Aside>
 
 ## 触发方式
 
-两种方式触发 skill：
+Peri 没有 `/skill-name` 斜杠命令解析——输入 `/xxx` 会作为普通文本发给 agent。实际触发方式是：
 
-1. **自动匹配**：Peri 分析你的需求，自动加载最匹配的 skill。比如你说"这段代码跑得很慢"，Peri 自动加载 `diagnose` skill。
-2. **手动调用**：用 `/skill-name` 显式调用。比如 `/blog-writer` 触发博客写作 skill。
+1. **自动匹配**：Peri 启动时将扫描到的所有 skill 的 name + description 摘要注入系统提示词，分析你的需求后自动加载最匹配的 skill。
+2. **直接描述**：输入技能名或描述任务（如"用 ultracode 编排并行工作流"、"每 5 分钟跑一次"），Peri 按需加载。消息中的 `/skill-name` 模式会被 SkillPreloadMiddleware 识别并预加载对应 skill 全文；内置 skill 的 SKILL.md 都声明了 `userInvocable: true`，被直接提及即可触发。
 
-## 内置 Skills 示例
+## 内置 Skills
+
+Peri 内置 skill 共 4 个：
 
 | Skill | 触发场景 |
 |-------|---------|
-| **diagnose** | 调试 bug、排查性能问题 |
-| **blog-writer** | 写博客、写文章 |
-| **code-review** | 审查代码变更 |
-| **tdd** | 测试驱动开发 |
-| **brainstorming** | 需求讨论、功能设计 |
-| **ultracode** | 并行工作流编排 |
+| **cron** | 定时任务、周期性提醒（标准 5 字段 cron 表达式） |
+| **goal** | 长任务目标跟踪，多轮持续推进直到完成 |
+| **ultracode** | 并行/流水线多 agent 工作流编排 |
+| **use-artifacts** | 制品（artifact）工具的使用时机与调用流程 |
 
 ## 自定义 Skill
 

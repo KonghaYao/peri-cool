@@ -56,10 +56,14 @@ peri
 向导会引导你完成两件事：
 
 1. **选择模型** — 从预设的模型列表中选择，或输入自定义的 OpenAI 兼容 API 端点
-2. **设置 API Key** — 输入对应提供商的 API Key，Peri 会自动加密存储
+2. **设置 API Key** — 输入对应提供商的 API Key，保存到本地配置文件
+
+<Aside type="note">
+  配置以 JSON 格式存储在 <code>~/.peri/settings.json</code>。API Key 是**明文**写入该文件的——Peri 没有加密存储实现（只有设备间 sync 传输是加密的）。建议确保该文件仅当前用户可读（如 <code>chmod 600 ~/.peri/settings.json</code>）。
+</Aside>
 
 <Aside type="tip">
-  配置存储在 <code>~/.peri/config.toml</code>，以后想改可以直接编辑，也可以用 <code>peri config</code> 命令。
+  以后想改配置，在 TUI 里按 <code>Ctrl+F</code> 打开 <code>/config</code> 面板编辑，或直接改 <code>~/.peri/settings.json</code>。
 </Aside>
 
 配置完成后，你会看到 Peri 的 TUI 界面——流式 Markdown 渲染、状态栏、输入区都在一个终端窗口里。
@@ -88,7 +92,7 @@ Peri: [思考中...]
 ```
 
 <Aside type="note">
-  对话历史和上下文都保存在本地。关闭终端后下次启动 <code>peri</code> 会自动恢复上次的会话。
+  对话历史和上下文都保存在本地。默认情况下关闭终端后**不会**自动恢复会话——下次启动用 <code>peri -c</code> 恢复当前目录最近的会话，或用 <code>peri -r &lt;session_id&gt;</code> 恢复指定会话。
 </Aside>
 
 ## 4. 日常使用
@@ -134,12 +138,10 @@ Peri 会逐个文件修改，每次改完验证测试。
 
 ### 切换模型
 
-一次会话中可以随时切换，不用重启：
+一次会话中可以随时切换，不用重启。Peri 预置四个档位（便宜/均衡/强推理等），点击状态栏的模型段即可快速切换档位：
 
-```bash
-/model                    # 列出可用模型
-/model deepseek-v3        # 日常编码用便宜模型
-/model claude-sonnet      # 遇到难题切到更强推理
+```text
+Ctrl+M    # 打开 Model 面板，编辑四档配置并切换
 ```
 
 ### 设置长任务
@@ -186,10 +188,4 @@ Peri 会把审查、编码、探索分给不同子代理同时跑。详细用法
 - **[MCP 服务器](/peri-cool/docs/features/mcp/)** — 扩展外部工具接入
 - **[CLI 命令参考](/peri-cool/docs/features/cli-reference/)** — 所有命令速查
 
-遇到问题？运行 `/doctor` 让 Peri 自检：
-
-```bash
-/doctor
-```
-
-Peri 会检查配置完整性、API 连通性、工具可用性，并给出修复建议。
+遇到问题？先按 `Ctrl+S` 打开 `/status` 面板查看运行时状态，或在新的最小会话里复现问题。详见 [调试技巧](/peri-cool/docs/features/debugging/)。

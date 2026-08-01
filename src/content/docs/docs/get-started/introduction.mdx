@@ -28,9 +28,9 @@ Peri 是一个用 Rust 编写的终端 AI 编码助手。它兼容 Claude Code �
 
 | 如果你在用…… | Peri 的区别 |
 |-------------|-----------|
-| **Claude Code** | 兼容 .claude/ 配置，但用 Rust 写，13MB 二进制，支持任何 LLM |
+| **Claude Code** | 兼容 .claude/ 配置，但用 Rust 写，约 13MB 二进制，支持任何 LLM |
 | **Cursor / Copilot** | 终端原生，不需要 IDE，可以跑在服务器上 |
-| **aider** | 更完整的 ReAct 循环 + 中间件管道 + 18 个并行子代理 |
+| **aider** | 更完整的 ReAct 循环 + 中间件管道 + 多个并行子代理（后台并发上限 3） |
 | **没有工具** | Peri 的安装向导在 2 分钟内完成配置，不需要手动编辑任何文件 |
 
 <Aside type="tip">
@@ -74,7 +74,7 @@ peri update
 
 ## 配置模型
 
-Peri 支持**任何 OpenAI 兼容的 API**。以下模型已通过充分测试：
+Peri 支持**任何 OpenAI 兼容的 API**。以下为示例模型（实际可用性取决于你的 API 提供商与配额）：
 
 | 模型 | 提供商 | 推荐用途 |
 |------|--------|----------|
@@ -85,7 +85,7 @@ Peri 支持**任何 OpenAI 兼容的 API**。以下模型已通过充分测试�
 | **GPT-4o / 4.1** | OpenAI | 全面推理 |
 
 <Aside type="note">
-  你可以在一次会话中**随时切换模型**，无需重启 Peri。只需用 `/model` 命令指定新模型即可。
+  你可以在一次会话中**随时切换模型**，无需重启 Peri。按 <code>Ctrl+M</code> 打开 Model 面板切换档位即可。
 </Aside>
 
 ## Claude Code 兼容性
@@ -111,8 +111,8 @@ Peri 完全兼容：
 # 查看 Peri 版本
 peri --version
 
-# 查看当前配置
-peri config show
+# 查看当前配置（配置文件在 ~/.peri/settings.json）
+ls -la ~/.peri/settings.json
 
 # 测试一次简单对话
 peri -p "用 Python 写一个快速排序" --max-turns 1
@@ -132,7 +132,7 @@ Peri 不是 Claude Code 的替代品，而是一个**兼容生态的 Rust 重实
 | **二进制大小** | ~13 MB | ~80 MB (含 Node 运行时) | N/A (IDE 插件) |
 | **运行时内存** | ~50 MB | ~300-800 MB | ~500-1500 MB |
 | **启动时间** | ~0.5s | 2-5s | IDE 启动时间 |
-| **缓存命中率** | 95-99% | ~60-80% | 取决于实现 |
+| **缓存命中率** | 约 95-99%（经验值） | ~60-80% | 取决于实现 |
 | **LLM 支持** | 任意模型，会话中切换 | 主要 Claude，有限 OpenAI | 主要 Claude / GPT |
 | **配置兼容** | 完全兼容 CC config | 原生 | 不兼容 |
 | **开源协议** | Apache 2.0 | 专有 | 专有 |
@@ -142,12 +142,12 @@ Peri 不是 Claude Code 的替代品，而是一个**兼容生态的 Rust 重实
 <Tabs syncKey="why-rust">
   <TabItem label="内存">
 
-  Node.js 的 V8 引擎在运行时占用大量内存，且不受开发者控制。Peri 不需要托管运行时——**一个 13MB 的静态链接二进制文件**，启动即用，不会膨胀。
+  Node.js 的 V8 引擎在运行时占用大量内存，且不受开发者控制。Peri 不需要托管运行时——**一个约 13MB 的静态链接二进制文件**，启动即用，不会膨胀。
 
   </TabItem>
   <TabItem label="缓存">
 
-  缓存是 AI 编码工具中**最被低估的性能杠杆**。Peri 的冻结系统提示词 + 边界标记机制，让 95-99% 的对话 token 直接从缓存命中——你几乎不为重复的上下文付费。
+  缓存是 AI 编码工具中**最被低估的性能杠杆**。Peri 的冻结系统提示词 + 边界标记机制，经验上约 95-99% 的对话 token 直接从缓存命中——你几乎不为重复的上下文付费。
 
   ```text
   传统方式: 每次对话重新发送全部上下文 → 100% 新 token
@@ -202,7 +202,7 @@ pub trait LlmProvider {
 DeepSeek、GLM、Qwen、Anthropic、OpenAI——都实现了同一个 trait。切换模型只是换一个实现，不涉及任何业务逻辑改动。
 
 <Aside type="note">
-  Peri 支持**会话中切换模型**。比如你可以用 DeepSeek V3 做日常编码，遇到难题时 `/model claude-sonnet` 切换到更强的推理模型，几分钟后再切回来——无缝、无重启。
+  Peri 支持**会话中切换模型**。比如你可以用便宜档位做日常编码，遇到难题时按 <code>Ctrl+M</code> 打开 Model 面板切到更强的推理档位，几分钟后再切回来——无缝、无重启。
 </Aside>
 
 ### AI 驱动的自我进化

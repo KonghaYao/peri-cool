@@ -34,15 +34,22 @@ import { Aside } from '@astrojs/starlight/components';
 
 连续试错不但浪费 token，更会在代码里留下僵尸逻辑——已尝试的修复路径半吊子残留在各处。
 
-## 用 /doctor 自检
+## 先判断是环境问题还是代码问题
 
-出问题先判断是环境问题还是代码问题：
+出问题先别急着改代码，用现有工具排查环境：
 
 ```text
-/doctor
+/status    # 打开状态面板，查看当前模型、上下文占用、会话状态
+/setup     # 重跑配置向导，检查 Provider / API Key 是否配置正确
 ```
 
-Peri 会检查：依赖版本一致性、配置文件完整性、构建缓存状态。不少"bug"其实是环境不对——花一小时改代码不如花一分钟跑 /doctor。
+如果怀疑是 Peri 自身的行为异常，用环境变量打开 debug 日志再复现：
+
+```bash
+RUST_LOG=debug peri 2>&1 | tee /tmp/peri-debug.log
+```
+
+不少"bug"其实是环境不对——配置错了 Provider、API Key 失效、上下文被撑爆。花一小时改代码不如花一分钟看状态。
 
 ## 最小化复现
 

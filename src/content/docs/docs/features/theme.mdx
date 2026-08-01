@@ -8,12 +8,10 @@ import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 ## 怎么用
 
 ```bash
-/theme           # 在 dark 和 light 之间切换
-/theme dark      # 切换到暗色主题，默认就是它
-/theme light     # 切换到亮色主题
+/theme           # 打开主题面板（多余的参数会被忽略）
 ```
 
-切换即时生效，不需要重启。
+面板内 `Tab` 在暗色/亮色两个分类间切换，`↑/↓` 移动选择并实时预览，`Enter` 应用并保存；鼠标点击主题行同样生效，`Esc` 关闭并恢复原主题。
 
 ## 内置主题
 
@@ -22,13 +20,13 @@ Peri 内置两套主题，都使用暖橙色 `#D77757` 作为强调色：
 <Tabs syncKey="builtin-themes">
   <TabItem label="peri-dark（默认）">
 
-  暗色背景 `#1a1b26`，文字 `#c0caf5`。类似 Tokyo Night 配色风格。
+  纯黑背景 `#000000`、白色文字 `#FFFFFF`，品牌强调色暖橙 `#D77757`。
 
   ```json
   {
     "name": "peri-dark",
     "mode": "dark",
-    "base": { "bg": "#1a1b26", "fg": "#c0caf5" },
+    "base": { "bg": "#000000", "fg": "#FFFFFF" },
     "brand": "#D77757"
   }
   ```
@@ -36,13 +34,13 @@ Peri 内置两套主题，都使用暖橙色 `#D77757` 作为强调色：
   </TabItem>
   <TabItem label="peri-light">
 
-  暖白背景 `#FAFAFA`，文字 `#1E1E1E`。同样的暖橙强调色。
+  暖白背景 `#FAFAFA`，文字 `#2E2E2A`。同样的暖橙强调色。
 
   ```json
   {
     "name": "peri-light",
     "mode": "light",
-    "base": { "bg": "#FAFAFA", "fg": "#1E1E1E" },
+    "base": { "bg": "#FAFAFA", "fg": "#2E2E2A" },
     "brand": "#D77757"
   }
   ```
@@ -54,26 +52,27 @@ Peri 内置两套主题，都使用暖橙色 `#D77757` 作为强调色：
 
 如果你不满意默认配色，可以自己写一个主题 JSON。放在 `~/.peri/themes/` 下。
 
-<Aside type="tip">
-  不需要从头写。声明 `"extends": "peri-dark"` 继承默认主题，只覆盖你想改的颜色。
+<Aside type="note">
+  `extends` 字段会被忽略——自定义主题必须提供全部颜色键（`palette.*`、`semantic.*`、`component.*`），缺失任一键都会加载失败。
 </Aside>
 
-比如只想把暗色主题的品牌色从暖橙改成紫色：
+比如一个暗色主题，把品牌色从暖橙改成紫色（其余颜色键也需要补全，这里从略）：
 
 ```json
 {
   "name": "my-purple",
-  "extends": "peri-dark",
+  "mode": "dark",
   "palette": {
+    "base": { "bg": "#000000", "fg": "#FFFFFF" },
     "brand": { "primary": "#7c3aed" }
   }
 }
 ```
 
-保存为 `~/.peri/themes/my-purple.json`，然后用 `/theme my-purple` 加载。
+保存为 `~/.peri/themes/my-purple.json`，然后在主题面板里选中它，或 `/theme` 打开面板后加载。
 
 <Aside type="note">
-  主题 JSON 支持 `$ref` 引用语法——`"semantic": { "$ref": "palette" }` 表示从调色板自动推导语义色。但大多数情况下用 `extends` 就够了。
+  主题 JSON 支持 `$ref` 引用：**字符串值**以 `$` 开头引用扁平化后的其他键，例如 `"fg": "$semantic.text.primary"`。引用的键必须存在，否则加载失败。
 </Aside>
 
 ## 可定制的颜色层级
@@ -83,7 +82,7 @@ Peri 内置两套主题，都使用暖橙色 `#D77757` 作为强调色：
 | 层级 | 作用 | 例子 |
 |------|------|------|
 | `palette` | 原始色板——基础色、品牌色、灰度、语义色（成功/警告/错误）、diff 色 | 你主要改这里 |
-| `semantic` | 文本色系、边框色、状态色、表面色 | 通常 `$ref: palette` 自动推导 |
-| `component` | 具体组件的颜色——消息气泡、输入框、面板、弹窗、状态栏 | 通常 `$ref: semantic` 自动推导 |
+| `semantic` | 文本色系、边框色、状态色、表面色 | 需显式定义，可用 `$` 引用 palette 里的值 |
+| `component` | 具体组件的颜色——消息气泡、输入框、面板、弹窗、状态栏 | 需显式定义，可用 `$` 引用 semantic 里的值 |
 
-大部分自定义只改 `palette.brand.primary` 和 `palette.base.bg/fg` 就够了。
+三层都要提供完整键值——想改哪个键就写哪个键，其余键缺失会导致加载失败，建议先复制内置主题的完整定义再修改。

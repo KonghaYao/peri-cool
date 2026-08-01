@@ -19,7 +19,7 @@ Peri 内置四个固定的模型档位（Profile）：
 每一档都**独立**持有自己的 `provider`、`model`、`effort`、`max_tokens`、`context_1m`。切换档位时整组配置一起生效——不用每次重新设模型和推理强度。
 
 <Aside type="note">
-  档位固定四个，不能增删改名。每档的模型名、effort 等可以随意配置。
+  档位固定四个，不能增删改名。每档的模型名、effort 等可以随意配置；`max_tokens` 只能在预设档位 `4096 / 8192 / 16000 / 32000 / 64000` 间循环选择。
 </Aside>
 
 ## 怎么用
@@ -29,7 +29,7 @@ Peri 内置四个固定的模型档位（Profile）：
 状态栏中间显示 `档位 · 模型 · effort` 三段，例如 `sonnet · claude-sonnet-4-5 · xhigh`：
 
 ```text
-[read-only] repo-name  sonnet · claude-sonnet-4-5 · xhigh  CPU 2% MEM 1.2G
+Don't Ask · repo-name · sonnet · claude-sonnet-4-5 · xhigh · MEM 1568MB
 ```
 
 **鼠标左键点击模型段**，弹出档位快速切换弹窗，上下选择回车确认。档位名与模型名相同时只显示一次。
@@ -40,19 +40,20 @@ Peri 内置四个固定的模型档位（Profile）：
 
 ```text
 ┌─ Model ─────────────────────────────────────────────────────┐
-│ Profiles                      sonnet · anthropic            │
+│ Model                                                       │
 │ ───────────────────────       ────────────────────────────  │
-│ ❯ fable · anthropic           Provider     anthropic        │
+│ ● fable · anthropic           Provider     anthropic        │
 │   claude-opus-4-6             Model        claude-sonnet-4-5│
 │   xhigh · 200k                Effort       xhigh            │
 │                               Max tokens   32000            │
-│   opus · anthropic            1m enable    off              │
+│ ○ opus · anthropic            1m enable    off              │
 │   claude-opus-4-6                                             │
 │   xhigh · 200k                                                │
 │                                                              │
-│   sonnet · anthropic           ←/→ 改值    esc 关闭          │
-│   claude-sonnet-4-5                                           │
-│   xhigh · 200k                                                │
+│ ○ sonnet · anthropic                                         │
+│   claude-sonnet-4-5                                          │
+│   xhigh · 200k                                               │
+│ ↑/↓ 切换  Tab 左右  ←/→ 改值  Esc 退出/关闭                  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -63,7 +64,7 @@ Peri 内置四个固定的模型档位（Profile）：
 
 Model 面板没有"保存"按钮——**改值立即生效**：
 
-- 右侧 `←/→` 修改任一字段，同时写入配置内存、持久化到 `config.toml`、推送给后端，下一次请求就用新参数，无需重启
+- 右侧 `←/→` 修改任一字段，同时写入配置内存、持久化到 `settings.json`、推送给后端，下一次请求就用新参数，无需重启
 - 切换档位（键盘或鼠标）后，**状态栏模型段闪烁约 2 秒**提示变更生效
 - 面板里看到的 `active alias` 与状态栏共用同一份状态，两边永远一致
 
@@ -79,32 +80,38 @@ provider 同理：该档 `provider` 为空时回退到第一个可用 provider�
 
 ## 配置文件
 
-档位配置存在 `~/.peri/config.toml`（项目级 `.peri/config.toml` 可以覆盖）：
+档位配置存在 `~/.peri/settings.json`（JSON 格式；项目目录下的 `.peri/settings.json` 可以覆盖）：
 
-```toml
-active_alias = "sonnet"          # 当前档位：fable/opus/sonnet/haiku
-
-[profiles.fable]
-provider = "anthropic"
-effort = "xhigh"
-max_tokens = 32000
-
-[profiles.opus]
-provider = "anthropic"
-model = "claude-opus-4-6"        # 手动指定模型名
-effort = "max"                   # 拉满推理
-max_tokens = 64000
-
-[profiles.sonnet]
-provider = "openai"              # 每一档可以用不同 provider
-model = "gpt-5.6-luna"
-effort = "high"
-context_1m = true                # 启用 1M 上下文
-
-[profiles.haiku]
-provider = "anthropic"
-effort = "low"                   # 便宜档位，低推理强度
-max_tokens = 8000
+```json
+{
+  "config": {
+    "active_alias": "sonnet",
+    "profiles": {
+      "fable": {
+        "provider": "anthropic",
+        "effort": "xhigh",
+        "max_tokens": 32000
+      },
+      "opus": {
+        "provider": "anthropic",
+        "model": "claude-opus-4-6",
+        "effort": "max",
+        "max_tokens": 64000
+      },
+      "sonnet": {
+        "provider": "openai",
+        "model": "gpt-5.6-luna",
+        "effort": "high",
+        "context_1m": true
+      },
+      "haiku": {
+        "provider": "anthropic",
+        "effort": "low",
+        "max_tokens": 8192
+      }
+    }
+  }
+}
 ```
 
 ### effort 可选值
@@ -117,7 +124,9 @@ max_tokens = 8000
 
 ### 项目级覆盖
 
-项目级配置按**档位整体替换**：项目里写了 `[profiles.sonnet]`，就用项目级的完整档位，不再和全局做字段级合并。项目级不能新增档位——只有固定四档。
+项目级配置按**档位整体替换**：项目里写了 `profiles.sonnet`，就用项目级的完整档位，不再和全局做字段级合并。项目级不能新增档位——只有固定四档。
+
+边界情况：项目级档位恰好等于默认值（`provider` 为空、`model` 未设置、`effort` 为 `"xhigh"`、`max_tokens` 为 `32000`、`context_1m` 为 `false`）时视为**未覆盖**，该档位保留全局配置。
 
 <Aside type="tip">
   省钱的正确姿势：`haiku` 档配便宜模型 + `low` effort，日常探索用它；写代码切 `sonnet`，架构设计切 `opus`。改配置在 Model 面板里点几下就行。
