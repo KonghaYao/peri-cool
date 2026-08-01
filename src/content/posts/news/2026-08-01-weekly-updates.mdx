@@ -1,0 +1,76 @@
+---
+title: "Peri 8 月更新：图片输入、模型档位、定时任务"
+description: 本周新功能——截图直接粘贴给 Peri、四档模型独立配置、自然语言注册定时任务，加上一批 TUI 交互增强。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+7 月底到 8 月初，Peri 攒了一批用户可见的更新。挑重点说。
+
+## 图片输入：截图直接粘贴
+
+之前 Peri 只能读文本，界面报错要靠手打。现在输入框 `Ctrl+V`（macOS `Cmd+V`）直接粘贴剪贴板图片，Peri 会把图片作为消息发给模型——"看到"报错窗口、设计稿、图表数据。
+
+```text
+你: [Cmd+V 粘贴报错截图]
+    [输入框出现 @image /Users/you/.peri/images/xxxx.png]
+
+你: 这个报错窗口是什么意思？怎么修？
+```
+
+底层是 `@image <路径>` 语法，支持 `~` 和相对路径，也能手动引用磁盘图片。图片会存到 `~/.peri/images/`，大小上限 20MB。详见 [图片输入](/peri-cool/docs/features/image-input/)。
+
+## 模型档位：四档独立配置
+
+模型配置从"全局一套 thinking 参数"改为**四个固定档位各自独立**：
+
+- `fable` / `opus` / `sonnet` / `haiku` 四档，各自持有 `provider`、`model`、`effort`、`max_tokens`、`context_1m`
+- 切换档位整组配置生效，不用每次重新设置
+- 新增 `fable` 档位，最强推理定位
+
+交互上也有两处改动：
+
+1. **状态栏中间改成三段式显示** `档位 · 模型 · effort`，鼠标点击模型段直接弹出快速切换弹窗
+2. **Model 面板（`Ctrl+M`）重构为左右分栏**——左侧档位列表，右侧单行 K/V 编辑，鼠标点击档位卡片行直接切换；改值即保存（写盘 + 推送给后端），没有保存按钮，切换后状态栏模型段闪烁提示生效
+
+```text
+[read-only] repo-name  sonnet · claude-sonnet-4-5 · xhigh  CPU 2% MEM 1.2G
+```
+
+省钱的正确姿势也简单了：`haiku` 配便宜模型 + `low` effort 日常探索，写代码切 `sonnet`，架构设计切 `opus`。详见 [模型档位](/peri-cool/docs/features/model-profiles/)。
+
+## 定时任务：自然语言注册 cron
+
+"每天早上 9 点检查 CI 状态"——直接说就行，Peri 注册标准 cron 任务，到点自动执行：
+
+```text
+你: 每 5 分钟检查一次构建是否成功
+
+Peri: 已注册定时任务 #3
+      表达式: */5 * * * *
+      下次执行: 11:30
+```
+
+内置 `cron_register` / `cron_list` / `cron_remove` 三个工具，"列出所有定时任务"、"把 #3 删掉"都能听懂。任务触发时作为一条消息提交给当前会话执行。详见 [定时任务](/peri-cool/docs/features/cron/)。
+
+## TUI 交互增强
+
+- **点击即确认**：所有 Enter 语义的面板和弹窗支持鼠标点击操作，键盘党鼠标党各取所需——包括 Model 面板左侧档位行点击切换
+- **输入框上边栏显示会话标题**——hash 稳定底色标签，长会话不怕认错窗口
+- **工具卡片路径精简**：显示相对路径，不再一长串绝对路径占满卡片
+- **鼠标路由防冲突**：多层面板重叠时点击让路逻辑重做，状态栏模型段被遮挡时不再误触
+- **缓存警告默认关闭**：`show_cache_warning` 默认值改为 `false`，需要时再开
+
+## 预测：标题自动更新
+
+Peri 现在会在回复过程中预测对话走向：**会话标题自动更新**（不用手动命名），spinner 名言位优先显示预测摘要——等回复时就能瞄到 Peri 接下来要干什么。
+
+<Aside type="tip">
+  以上功能都在 `main` 分支，`peri update` 后即可体验。想了解某个功能的完整用法，看对应文档页即可。
+</Aside>
+
+## 相关文章
+
+- [图片输入](/peri-cool/docs/features/image-input/)
+- [模型档位](/peri-cool/docs/features/model-profiles/)
+- [定时任务](/peri-cool/docs/features/cron/)

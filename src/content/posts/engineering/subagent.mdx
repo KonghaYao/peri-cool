@@ -11,7 +11,7 @@ import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
 
 与手动切换任务不同，Peri 会根据任务复杂度自动判断是否需要并行，然后通过 `Agent` 工具派发子代理。你只需要描述任务目标，Peri 负责选择合适的子代理类型、准备输入、在后台启动并收集结果。
 
-子代理在单个会话内运行。如需跨多个独立会话的并行任务，请查阅 [ultracode 工作流](/docs/features/ultracode/)。
+子代理在单个会话内运行。如需跨多个独立会话的并行任务，请查阅 [ultracode 工作流](/peri-cool/posts/engineering/ultracode/)。
 
 ## 为什么需要子代理
 
@@ -54,7 +54,7 @@ Peri 内置了 7 种专业子代理，每种有不同的工具权限和行为模
 | **verification** | 验证实现正确性，运行构建和测试 | 只读 | sonnet |
 | **general-purpose** | 通用复杂研究、多步骤任务 | 继承主会话 | 继承主会话 |
 
-每种类型的详细权限、策略和适用场景见 [内置子代理详解](/docs/features/subagent-builtin/)。
+每种类型的详细权限、策略和适用场景见 [内置子代理详解](/peri-cool/posts/engineering/subagent-builtin/)。
 
 ## 三种执行模式
 
@@ -64,7 +64,7 @@ Peri 提供三种子代理执行模式，每种适用不同的协作场景：
 - **Fork 模式**：子代理继承主会话的完整对话历史，在独立上下文中继续工作。适用于需要完整上下文感知的分支任务。
 - **后台模式（background）**：fire-and-forget，主 Agent 不等待。结果通过通知推送回来，适用于独立无依赖的批处理任务。
 
-模式选择和参数控制详见 [执行模式详解](/docs/features/subagent-modes/)。
+模式选择和参数控制详见 [执行模式详解](/peri-cool/posts/engineering/subagent-modes/)。
 
 ## 自定义子代理
 
@@ -72,11 +72,11 @@ Peri 提供三种子代理执行模式，每种适用不同的协作场景：
 
 自定义子代理可以设定专属的系统提示词，让子代理聚焦某个特定领域——比如"只审查安全漏洞"或"只处理数据库迁移"。也可以限制工具集，防止子代理执行超出预期的操作。
 
-创建方式和完整配置项详见 [自定义子代理](/docs/features/subagent-custom/)。
+创建方式和完整配置项详见 [自定义子代理](/peri-cool/posts/engineering/subagent-custom/)。
 
 ## 下一步
 
-- [内置子代理详解](/docs/features/subagent-builtin/) — 7 种类型的权限、策略和用途
-- [执行模式](/docs/features/subagent-modes/) — 同步、Fork、后台的选型和参数
-- [自定义子代理](/docs/features/subagent-custom/) — 从 Markdown 文件创建专属子代理
-- [最佳实践](/docs/features/subagent-practices/) — 并发限制、成本优化、常见陷阱
+- [内置子代理详解](/peri-cool/posts/engineering/subagent-builtin/) — 7 种类型的权限、策略和用途
+- [执行模式](/peri-cool/posts/engineering/subagent-modes/) — 同步、Fork、后台的选型和参数
+- [自定义子代理](/peri-cool/posts/engineering/subagent-custom/) — 从 Markdown 文件创建专属子代理
+- [最佳实践](/peri-cool/posts/engineering/subagent-practices/) — 并发限制、成本优化、常见陷阱

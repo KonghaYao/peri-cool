@@ -50,7 +50,7 @@ Hook 系统完全兼容 **Claude Code Hook 规范**——事件命名、配置�
 
 ## Layer 0：Agent Loop 如何驱动 Hook
 
-Agent Loop 是 RCRA 四阶段循环（详见 [Agent Loop 文档](/posts/engineering/agent-loop/)）。每次循环在固定的生命周期节点调用中间件链的对应方法：
+Agent Loop 是 RCRA 四阶段循环（详见 [Agent Loop 文档](/peri-cool/posts/engineering/agent-loop/)）。每次循环在固定的生命周期节点调用中间件链的对应方法：
 
 ```mermaid
 flowchart LR
@@ -386,6 +386,6 @@ Peri Hook 系统从设计之初就以 Claude Code 兼容为目标。
 
 ## 更多资源
 
-- [Agent Loop](/posts/engineering/agent-loop/) — Hook Middleware 所处的中间件链与 RCRA 循环的集成细节
-- [Multi Agent 架构](/posts/engineering/multi-agent/) — SubAgent 的 SubagentStart / Stop hook 触发路径
-- [配置参考](/posts/engineering/config/) — settings.json 中的 hooks 配置段详解
+- [Agent Loop](/peri-cool/posts/engineering/agent-loop/) — Hook Middleware 所处的中间件链与 RCRA 循环的集成细节
+- [Multi Agent 架构](/peri-cool/posts/engineering/multi-agent/) — SubAgent 的 SubagentStart / Stop hook 触发路径
+- [Hooks 文档](/peri-cool/docs/features/hooks/) — hooks 的用户级配置与用法

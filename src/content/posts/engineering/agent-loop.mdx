@@ -251,7 +251,7 @@ Peri 采用 **三层工具分发架构**，核心思路是"常用工具始终可
 
 v2 `StageContext` 与 v1 `MiddlewareChain` 通过 `AgentContext` 桥接：每个 hook 调用时从 StageContext 构造临时 `AgentContext`，middleware 双写 transcript + cache，调用后 drain recall 到 `ctx.recall_buffer`。
 
-`HookMiddleware` 是中间件链的关键节点——在 `before_tool` / `after_tool` / `before_agent` / `after_agent` 处触发 28 个生命周期事件，实现工具调用审查、输出验证和安全策略注入。详见 [Hook 系统](/posts/engineering/hook-system/)。
+`HookMiddleware` 是中间件链的关键节点——在 `before_tool` / `after_tool` / `before_agent` / `after_agent` 处触发 28 个生命周期事件，实现工具调用审查、输出验证和安全策略注入。详见 [Hook 系统](/peri-cool/posts/engineering/hook-system/)。
 
 ```mermaid
 classDiagram
@@ -334,6 +334,6 @@ classDiagram
 
 ## 更多资源
 
-- [Multi Agent 架构](/posts/engineering/multi-agent/) — SubAgent 派发流程与生命周期
+- [Multi Agent 架构](/peri-cool/posts/engineering/multi-agent/) — SubAgent 派发流程与生命周期
 - [peri-agent README](https://github.com/konghayao/peri/blob/main/peri-agent/README.md) — Agent 框架完整文档
-- [Hook 注册表设计](/docs/design/peri-agent-hook-registry-v2) — 中间件钩子全流程详解
+- [Hook 注册表设计](https://github.com/konghayao/peri/blob/main/docs/design/peri-agent-hook-registry-v2.md) — 中间件钩子全流程详解
