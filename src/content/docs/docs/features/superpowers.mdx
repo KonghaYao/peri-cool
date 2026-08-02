@@ -95,7 +95,7 @@ worktree 2 做 middleware 适配，worktree 3 独立跑测试验证
 
 ## 实际案例
 
-从 2000+ 会话中提取的真实 Superpowers 使用案例：
+真实使用中跑出来的流程组合：
 
 **opencode 实例泄漏排查**
 ```text
@@ -105,13 +105,13 @@ worktree 2 做 middleware 适配，worktree 3 独立跑测试验证
 → /subagent-driven-development + /using-git-worktrees 隔离执行
 → /verification-before-completion 验证
 ```
-该会话 273 条消息 + 16 个子代理，Superpowers 的结构化流程让复杂排查可控。
+排查跨多个文件、涉及多次假设修正，Superpowers 的结构化流程让复杂排查可控。
 
 **架构成熟度全量扫描**
 ```text
 /ultra-batch 评估架构的成熟度
 → 并行派发 agent 扫描安全/性能/可维护性/测试覆盖
-→ 产出 229 条消息的诊断报告
+→ 汇总各维度诊断报告
 ```
 
 **Claude Code 插件兼容性验证**

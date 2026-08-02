@@ -39,8 +39,8 @@ import { Aside } from '@astrojs/starlight/components';
 | 你想做什么 | 用什么 | 怎么用 |
 |-----------|--------|--------|
 | 搜索代码库中某个模式 | explorer 子代理 | 对 Peri 描述搜索目标 |
-| 改代码后立即审查 | code-reviewer 子代理 | 改完代码后让 Peri 审查 |
-| 审查 + 修复同步进行 | 后台模式 coder + code-reviewer | 对 Peri 说"同时改和审查" |
+| 改代码后立即审查 | verification 子代理 | 改完代码后让 Peri 审查 |
+| 审查 + 修复同步进行 | 后台模式 coder + verification | 对 Peri 说"同时改和审查" |
 | 先研究结构再写代码 | Fork 模式 | 先让 explorer 探索，然后 Fork coder |
 | 扫描 50 个文件找 dead code | ultracode | `/ultracode 扫描所有文件找 dead code` |
 | 多角度审查一批变更 | ultracode | `/ultracode 从安全/性能/风格审查` |
