@@ -1,65 +1,79 @@
 ---
-title: 安全重构代码
-description: 批量改代码时，先搜清影响面再动手，每改完一批文件跑一次验证
+title: 安全重构
+description: 把"快照、搜影响面、分批改、独立审查"的流程打包成 skill，重构时不再手动交代
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+重构的要点是安全：改前快照、先搜影响面、分批改分批验证、收尾独立审查。这套流程固定且每次重构都要走，值得打包成一个 skill——构建一次，以后重构一句话触发。
 
-## 重构不是改几个文件——是跨模块迁移
-
-最常见的高风险场景：大量逻辑内联在单个文件中，需要拆分到独立模块。这不是"改几行代码"，而是**动十几处引用、重新组织模块边界**。
+## 构建 refactor-code skill
 
 ```text
-/ultracode 有非常多的代码被内联在开发代码中，逐个搜查并分离出来
+帮我构建一个安全重构的 skill，命名 refactor-code，
+保存到 ~/.claude/skills/refactor-code/。
+
+流程要求：
+1. 动手前先提醒我 git commit 快照
+2. 先搜索所有受影响的位置，列出影响文件清单和每个调用方的依赖点
+3. 改动范围大时，按文件边界拆解并行实施；同一文件不能被两个实施者同时改
+4. 每改完一批跑一次构建和测试
+5. 完成后派 verification 子代理独立审查
 ```
 
-如果只交给单个 Peri 会话串行处理，上下文很快会被撑爆。正确做法是并行拆解。
+生成的 `SKILL.md` 内容类似这样：
 
-## 用 ultracode 并行拆解大规模迁移
+```markdown
+---
+name: refactor-code
+description: 重构代码时使用。用户要求提取模块、拆分函数、移动代码、批量改名时触发。
+---
 
-**`/ultracode`**（Peri 内置）本质上是一次派多个 agent 各管一个模块，互不干扰：
+# 安全重构
+
+1. **快照**：动手前先提醒用户 git commit——/rewind 只能回滚对话，
+   不能保证文件与对话一致，git 才是文件层面的退路
+2. **搜影响面**：先搜索所有受影响位置，列出影响文件清单，
+   标出每个调用方依赖被重构代码的哪些行为
+3. **分批改**：每批 2-3 个文件，批与批之间跑构建和测试；
+   大规模跨模块迁移时按文件边界拆解并行实施，同一文件不能有两个实施者
+4. **独立审查**：完成后派 verification 子代理审查公共 API 边界、
+   残留代码和导出是否精当
+```
+
+## 流程在做什么
+
+- **快照是退路**：重构方向走偏时需要退路。`/rewind` 只能回滚对话，不能保证文件与对话内容一致——改文件前必须 commit
+- **先搜影响面**：重构边界不清晰就动手，最容易改漏调用方。影响文件清单出来，风险一目了然
+- **并行按文件边界拆**：两个实施者同时改一个文件，结果不可预测
+- **独立审查**：重构最容易留下"看起来一样、语义其实变了"的坑，换个上下文审查一次
+
+## 使用
 
 ```text
-/ultracode 把 src/core/handler.rs 中的内联逻辑分离到独立模块：
-- agent 1：提取 auth 相关逻辑到 src/auth/
-- agent 2：提取 config 解析逻辑到 src/config/
-- agent 3：提取中间件逻辑到 src/middleware/
-每个 agent 完成后跑对应模块的测试
+用 refactor-code 把 src/core/handler.rs 里的 validate_token 提取到 src/auth/validate.rs，保持现有调用签名不变
 ```
 
-关键约束：**不要让两个 agent 同时编辑同一个文件**——结果不可预测。拆分任务时按文件边界划清。
+Peri 会按流程走：先提醒快照 → 搜影响面 → 分批改分批验证 → 独立审查。skill 的存放位置、自动加载机制和修改方式，见[探索陌生代码库](/peri-cool/docs/features/explore-codebase/)的说明。
 
-## 重构的安全网
+## 进阶：worktree 隔离并行重构
 
-**动手前先 git commit。** Peri 可以 `/rewind` 回退，但 git 是你的最后防线。
+大规模重构想同时推进多个方向（比如并行拆两个模块）时，可以用 superpowers 的 **using-git-worktrees**：为每个任务创建独立的 git worktree 隔离工作空间，互不干扰；完成后再用 **finishing-a-development-branch** 收尾合并。
+
+获取方式：
+
+```bash
+npx skills add https://github.com/konghayao/peri --skill using-superpowers
+```
+
+用法示例：
 
 ```text
-git add -A && git commit -m "pre-refactor snapshot"
+/using-git-worktrees
+用 ultracode 并行：worktree 1 做 auth 模块迁移，worktree 2 做 middleware 适配
 ```
 
-如果重构方向走偏了，用 `/rewind` 回到某个关键节点重新来过——不用从头开始。
+两个 worktree 各改各的，改完合并回主分支。完整的模式说明见 [Superpowers 工作流](/peri-cool/docs/features/superpowers/)。
 
-## 每改完一批就验证，不要攒到最后
+## 下一步
 
-大规模重构最怕改完 20 个文件再跑构建——爆了不知道是哪一步引入的。正确节奏：
-
-```text
-agent 1 完成 auth 模块提取 → 立即 cargo build -p auth
-agent 2 完成 config 模块提取 → 立即 cargo test config::
-agent 3 完成 middleware 提取 → 立即 cargo clippy -p middleware
-```
-
-## 重构后派独立审查
-
-自己拆自己写的代码一定有盲区。派子代理用不同视角过一遍：
-
-```text
-派 code-reviewer 子代理审查这次模块拆分：
-1. 公共 API 边界是否合理
-2. 有没有残留的内联代码未迁移
-3. 引入的 pub 导出是否精当
-```
-
-<Aside type="tip">
-  真实项目中单会话最多派过 58 个子代理。但日常重构 3-5 个就够——太多 agent 即使按文件边界划分，公共依赖也可能互相踩。
-</Aside>
+- 重构完要验证行为不变 → [编写测试](/peri-cool/docs/features/write-tests/)
+- 重构引入的问题 → [定位并修复 Bug](/peri-cool/docs/features/fix-bugs/)

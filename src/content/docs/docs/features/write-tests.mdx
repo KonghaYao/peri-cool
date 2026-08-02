@@ -1,66 +1,75 @@
 ---
-title: 编写测试用例
-description: 给模块补测试，指定覆盖场景和框架风格
+title: 编写测试
+description: 把"定风格、修复失败用例、声明完成标准、审查覆盖"的流程打包成 skill，一句话触发
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+写测试的要点：先定风格、把完成标准落到可运行的测试上、收尾审查覆盖盲区。这套流程固定且每次写测试都要走，值得打包成一个 skill——构建一次，以后写测试一句话触发。
 
-## 不只是"给模块写测试"——是测试即验收标准
-
-测试不是你写完代码之后的附属品。在用 Peri 的开发流里，测试是你和 Peri 之间的**合同**：测试通过 = 任务完成。
+## 构建 write-tests skill
 
 ```text
-修复 test 问题 failures:
-langfuse::config::tests::test_load_with_settings_env_override
+帮我构建一个编写测试的 skill，命名 write-tests，
+保存到 ~/.claude/skills/write-tests/。
+
+流程要求：
+1. 写测试前先看项目已有测试，遵循其命名、断言风格和组织方式
+2. 已有测试失败时直接修复：跑测试看报错 → 定位断点对应代码 → 修改 → 再跑
+3. 用 /goal 声明可验证的完成标准（如"相关测试全部通过、无新 warning"）
+4. 完成后派 verification 子代理审查覆盖：异常路径、断言精确性、边界情况
 ```
 
-这个命令背后的真实 workflow：Peri 自己跑测试看报错 → 搜索相关代码定位测试断点 → 修改实现或测试 → 再跑 → 直到通过。
+生成的 `SKILL.md` 内容类似这样：
 
-## 用 `/goal`（Peri 内置）设验收标准
+```markdown
+---
+name: write-tests
+description: 编写测试时使用。用户要求写测试、补覆盖、修复失败用例时触发。
+---
 
-不要让 Peri 模糊地"写测试"。设明确目标：
+# 编写测试
+
+1. **先看风格**：参考项目已有测试的命名、断言方式和组织习惯，不自己发明标准
+2. **修复失败用例**：跑测试看报错 → 定位断点对应的代码 → 修改实现或测试 →
+   再跑，直到通过
+3. **声明完成标准**：用 /goal 把验收条件写成可验证目标
+   （如"相关测试全部通过、无新 warning"），每轮对照检查，完成后验证
+4. **覆盖审查**：派 verification 子代理审查：是否覆盖异常路径（不只是 happy path）、
+   断言是否精确（关键字段没漏）、边界情况（空输入、超长输入、并发冲突）
+```
+
+## 流程在做什么
+
+- **参考已有风格**：项目测试的写法就是标准。让 Peri 照现有用例执行，比描述抽象要求可靠
+- **完成标准落到测试**：目标是否达成由测试结果判定，而不是对话里的口头确认
+- **审查覆盖**：自己写的测试有盲区——只测 happy path、断言漏关键字段，独立视角能看出来
+
+## 使用
 
 ```text
-/goal "cargo test auth:: 全部通过，不引入新 clippy warning"
+用 write-tests 给 src/utils/format.rs 写测试，参考 src/utils/__tests__/ 中已有用例的风格
 ```
 
-goal 设好后，Peri 会自己循环"修改→构建→测试"直到达标。你不需要盯着它敲命令。
+Peri 会按流程走：先看风格 → 写测试 → /goal 声明完成标准 → 派 verification 审查覆盖。skill 的存放位置、自动加载机制和修改方式，见[探索陌生代码库](/peri-cool/docs/features/explore-codebase/)的说明。
 
-## Stop Hooks：自动化验证闭环
+## 进阶：TDD 流程
 
-Peri 支持在关键节点自动执行钩子。你可以配置：每次 Edit 后自动跑 `cargo build`，build 失败就自动进下一轮修复——不需要你说"跑一下"。
+想从测试出发构建新功能（而不是功能写完再补测试），用 **tdd** skill 走红-绿-重构：先写失败的测试 → 写通过测试的最小实现 → 重构。superpowers 的 test-driven-development 提供同款流程。
+
+获取方式：
+
+```bash
+npx skills add https://github.com/konghayao/peri --skill tdd
+```
+
+用法示例：
 
 ```text
-// 在 CLAUDE.md 中配置 stop hooks（假设已支持）
-stop_hooks:
-  - after_edit: cargo build 2>&1 | head -20
-    on_failure: auto_fix
+/tdd 实现用户邀请功能的核心逻辑
 ```
 
-你只需要喝茶等它自行收敛。
+skill 会先写失败测试，再写最小实现让测试通过，最后重构。完整的流程对比见 [mattpocock/skills](/peri-cool/docs/features/mattpocock-skills/)。
 
-## 用 verification 子代理做独立审查
+## 下一步
 
-自己写的测试自己审——再强的人也逃不过确认偏误。派一个独立视角来审：
-
-```text
-派 verification 子代理审查刚才写的测试：
-1. 是否覆盖了异常路径（不只是 happy path）
-2. 断言是否精确（没漏掉关键字段）
-3. 有没有遗漏边界情况（空输入、超长输入、并发冲突）
-```
-
-子代理独立于主代理的上下文，不存在"自己写的测试自己觉得没毛病"的盲区。
-
-## 指定风格比指定框架更重要
-
-说"参考已有测试风格"比说"用 vitest 写干净的测试"有效十倍——Peri 看到具体模式，不是猜你的标准。
-
-```text
-给 src/utils/format.rs 写测试，
-参考 src/utils/__tests__/ 中已有用例的命名和断言风格
-```
-
-<Aside type="tip">
-  追求缓存命中率 95%+ 的话，测试文件的组织方式尽量稳定——频繁改测试结构会导致 CLAUDE.md 中路径缓存失效，白白浪费 token。
-</Aside>
+- 测试暴露的问题 → [定位并修复 Bug](/peri-cool/docs/features/fix-bugs/)
+- 测试驱动的完整工作流 → [mattpocock/skills](/peri-cool/docs/features/mattpocock-skills/) ｜ [Superpowers 工作流](/peri-cool/docs/features/superpowers/)

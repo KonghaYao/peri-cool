@@ -1,74 +1,105 @@
 ---
 title: 实现新功能
-description: 从需求到代码——用 /auto-devflow 驱动探索→规划→编码→审查完整流水线
+description: 把"先出方案、分批实施、独立验证"的流程打包成 skill，一句话触发完整开发流程
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+实现新功能有一套固定的推进方式：先理解需求、大改动先出方案、分批实施、批间验证、收尾独立审查。流程固定且每次开发都要走，值得打包成一个 skill——构建一次，以后任何功能需求一句话触发。
 
-## 用 /auto-devflow 驱动完整流水线
+## 构建 implement-feature skill
 
-别指望说一句话就让 Peri 生成全部代码。真实工作流是**分阶段、多代理协作**的：
-
-```text
-/auto-devflow 实现 Skill 工具，仿照 claude code 的 skill 机制
-```
-
-> 安装：`npx skills add https://github.com/konghayao/peri --skill auto-devflow`
-
-Peri 自动走完整条链路：
-
-1. **explorer 探索**：搜索 claude code 的 skill 机制实现，了解接口定义和加载流程
-2. **plan 设计方案**：基于探索结果，输出 skill 注册→加载→管理→执行的架构方案
-3. **coder 实现**：按 plan 的设计逐文件编码，每个阶段跑构建验证
-4. **code-reviewer 审查**：从独立视角检查接口一致性和错误处理
-
-这不是"一句话生成代码"，而是你有节奏地**引导 Peri 走完设计到交付的全流程**。
-
-## 用 /brainstorming 做设计讨论
-
-需求不清晰时，不要在脑子里空想方案。让 Peri 帮你发散：
+把流程描述给 Peri，它会生成 skill 文件：
 
 ```text
-/brainstorming peri 的 skill 系统应该怎么设计？
-和 claude code 的 skill 机制有什么可以借鉴的差异点？
+帮我构建一个实现新功能的 skill，命名 implement-feature，
+保存到 ~/.claude/skills/implement-feature/。
+
+流程要求：
+1. 先复述需求要点；改动范围大（预计超过 3 个文件）时先出方案：
+   改动文件清单、每个文件的改动内容、改动顺序、验证方式
+2. 分批实施：每批 2-3 个文件，批与批之间跑构建和测试，报错当场修复
+3. 完成后派 verification 子代理独立验证：跑构建、测试、lint，输出 PASS / FAIL / PARTIAL 结论
+4. 每完成一个阶段提示我 git commit 快照
 ```
 
-> 安装：`npx skills add https://github.com/konghayao/peri --skill brainstorming`
+生成的 `SKILL.md` 内容类似这样：
 
-Peri 会提 3-4 种方案，分析各自的适用场景、复杂度、耦合度。你选方案它才动手——**共识在前，代码在后**。
+```markdown
+---
+name: implement-feature
+description: 实现新功能时使用。用户描述功能需求、要求加参数、加接口或加模块时触发。
+---
 
-## Stop hooks 自动验证
+# 实现新功能
 
-编译失败不需要你手动说"修一下"。配置 stop hooks 后，每次 Edit 自动跑构建：
+1. **理解需求**：先复述需求要点，确认理解正确
+2. **出方案**：改动超过 3 个文件时，先列出改动文件清单、每个文件的改动内容、
+   改动顺序、验证方式，等用户确认后再动手
+3. **分批实施**：每批 2-3 个文件，批与批之间跑构建和测试，报错当场修复；
+   每完成一个阶段提醒用户 git commit 快照
+4. **独立验证**：完成后派 verification 子代理跑构建、测试、lint，
+   输出 PASS / FAIL / PARTIAL 结论及证据
+```
+
+## 流程在做什么
+
+- **先出方案**：改动大时不确认就动手，方向错了返工成本高；方案阶段发现的问题比实施阶段便宜得多
+- **分批 + 批间验证**：问题积压到最后一次性构建，出错时无法定位是哪一批引入的
+- **独立验证**：自己改完自己说"好了"不可信。verification 子代理没有实现过程的上下文，能发现实现者视角的盲区
+- **git 快照**：每阶段一个 commit，出问题随时退回
+
+## 使用
+
+skill 构建完成后，提功能需求只需要一句话：
 
 ```text
-// 在 CLAUDE.md 中配置
-stop_hooks:
-  - after_edit: cargo build 2>&1 | head -20
-    on_failure: auto_fix
+用 implement-feature 给 CLI 加一个 --dry-run 参数：只打印将要执行的命令，不真正执行
 ```
 
-构建挂了 → Peri 自动读报错 → 进下一轮修复 → 再构建。你只需要在它收敛后看一眼结果。
+Peri 加载 skill 后按流程走：理解需求 →（大改动先出方案等你确认）→ 分批实施 → 独立验证。skill 的存放位置、自动加载机制和修改方式，见[探索陌生代码库](/peri-cool/docs/features/explore-codebase/)的说明。
 
-## 分阶段策略
+## 进阶：auto-devflow 流水线
 
-| 功能规模 | 策略 | 验证节奏 |
-|----------|------|----------|
-| 小功能（1-3 文件） | 单轮 /auto-devflow 直接实现 | 实现完统一验证 |
-| 大功能（5+ 文件） | 按模块拆子任务，分批派发 | 每批 2-3 文件跑一次构建 |
+上面构建的 implement-feature 是主代理单线执行。功能更大、跨模块多时，可以用 **auto-devflow**——它把整个开发过程编排成流水线：探索 → 方案 → 编码 → 审查 → 验证，每个阶段由独立子代理接力完成、结果写入手稿文件，主代理只做控制器。子代理各管一段，主会话的上下文始终保持干净，适合大功能。
 
-大功能别一口气改完再跑——爆了不知道是哪一步引入的。
-
-## 关键技巧
-
-实现前先让 Peri 出方案：
+获取方式：
 
 ```text
-帮我设计一个方案，列出需要改的文件和改动顺序
+npx skills add https://github.com/konghayao/peri --skill auto-devflow
 ```
 
-Plan 子代理会输出文件清单 + 依赖关系图。你对改动范围了然于胸后，再放手让它编码。这是使用 Peri 最高杠杆率的技巧——**五分钟对齐方案，省掉两小时返工**。
+安装后，描述任务时提及它即可触发：
 
-<Aside type="tip">
-  /auto-devflow 本质是把四个代理串成流水线，每个代理的上下文都从前一阶段接过输入。不要在同一个会话里混用探索和编码——上下文会污染。
-</Aside>
+```text
+/auto-devflow 实现一个插件系统，支持从远程仓库安装插件
+```
+
+auto-devflow 会自己判断任务复杂度：小任务走精简流程；复杂任务（涉及公共 API、数据迁移、并发等）自动加一道方案审查关卡，方案确认后才开始编码。
+
+两个怎么选：功能中等、边界清晰用 implement-feature，单代理流程轻、确认点少；功能大、跨模块多、希望每阶段独立审查用 auto-devflow。
+
+## 进阶：mattpocock 流水线
+
+需求模糊、还没想清楚怎么设计时，可以走 mattpocock/skills 的讨论-规划流水线，每一步的产出是下一步的输入：
+
+```text
+/grill-me 挑战方案 → /to-prd 整理成 PRD → /to-issues 拆成独立 issue → /implement 逐个实现
+```
+
+获取方式（ask-matt 是入口 skill，可以问它该用哪个）：
+
+```bash
+npx skills add https://github.com/mattpocock/skills --skill ask-matt
+```
+
+用法示例：
+
+```text
+/grill-me 用户邀请功能，支持邮箱邀请和链接邀请两种方式，来挑战一下我的方案
+```
+
+讨论清楚后再走 `/to-prd` → `/to-issues` → `/implement`。完整的流水线说明见 [mattpocock/skills](/peri-cool/docs/features/mattpocock-skills/)。
+
+## 下一步
+
+- 开发完要审查 → [审查代码变更](/peri-cool/docs/features/code-review/)
+- 写测试 → [编写测试](/peri-cool/docs/features/write-tests/)

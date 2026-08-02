@@ -1,73 +1,84 @@
 ---
 title: 定位并修复 Bug
-description: 代码报错了，让 Peri 帮你定位并修复
+description: 把"先诊断、后动手、独立验证"的排障流程打包成 skill，报 bug 时一句话触发
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+排障有一套固定节奏：给足复现信息、先诊断后动手、复杂问题并行探路、修完独立验证。每次修 bug 都要走这套节奏，值得打包成一个 skill——构建一次，以后报 bug 一句话触发。
 
-## 不要贴个报错让 Peri 猜——先走结构化流程
-
-单次"帮我修这个错"只对一眼能看穿的 bug 管用。涉及多个模块、复现条件复杂的 bug，直接上结构化工作流：
+## 构建 fix-bugs skill
 
 ```text
-/auto-issue-fixer 排查 compact 提示重复问题
+帮我构建一个修复 bug 的 skill，命名 fix-bugs，
+保存到 ~/.claude/skills/fix-bugs/。
+
+流程要求：
+1. 先收集复现信息：报错原文、操作步骤、相关文件；信息不足先问
+2. 先诊断后动手：搜索调用链、读日志，定位根因后先说明，等我确认后再改
+3. 涉及多文件的复杂 bug，先按疑点并行派探索子代理摸清范围
+4. 修完派 verification 子代理独立验证：测试通过、无新增 warning、覆盖不下降
+5. 同一 bug 连续两次没修好，建议 /clear 重来
 ```
 
-> 安装：`npx skills add https://github.com/konghayao/peri --skill auto-issue-fixer`
+生成的 `SKILL.md` 内容类似这样：
 
-Peri 自动走完整条链路：派 explorer 子代理探索影响范围 → 分析根因 → plan 子代理出修复方案 → coder 子代理实施 → verification 子代理独立验证。每个阶段有明确输出——你不会迷失在几十轮来回里。
+```markdown
+---
+name: fix-bugs
+description: 修复 bug 时使用。用户报告报错、测试失败、异常行为时触发。
+---
 
-## 长会话深度调试：让 Peri 自己看、自己搜
+# 定位并修复 Bug
 
-复杂 bug 不是三五轮能了结的。真实案例：单会话冲击 367 条消息，Peri 自己 Read 日志、Grep 调用链、跑测试验证。你只需要在关键分叉点拍板。
+1. **复现信息**：确认报错原文、操作步骤、相关文件；信息不足先问
+2. **先诊断后动手**：搜索调用链、读日志，定位根因后先说明，等用户确认再改，
+   不拿到报错直接改
+3. **复杂 bug 并行探路**：涉及多文件时，按疑点并行派探索子代理摸清范围再切入
+4. **独立验证**：修完派 verification 子代理验证：测试全部通过、
+   无新增 warning、相关模块覆盖不下降
+5. **两次没修好就重来**：同一 bug 连续两次修复未果时，建议 /clear 开新会话，
+   重新探索——旧上下文里的错误假说和试错片段只会继续干扰
+```
+
+## 流程在做什么
+
+- **复现信息决定定位速度**：报错原文和操作步骤是最便宜的线索，缺了它们 Peri 只能猜
+- **先诊断后动手**：拿到报错直接改，最容易修错地方。先找到根因，改动才有依据
+- **两次修不好就重来**：修 bug 的上下文会被错误假说、过时的搜索结论污染，重开比硬撑快
+- **独立验证**：改完自己说"好了"不可信，让不带修复过程的 verification 子代理跑一遍
+
+## 使用
 
 ```text
-// 第 1 轮
-cargo test auth:: -- --nocapture，把全部输出给我
-
-// 第 23 轮（Peri 已经读了十几处源码、跑了几轮测试）
-根因在 langfuse layer 初始化时 settings 未加载。
-修改 src/infra/langfuse.rs，让 Layer::default 从全局 config 读取。
-
-// 第 45 轮（修改 + 验证）
-cargo test auth:: —— 全部通过
+用 fix-bugs 修一下 cargo test auth:: 的失败，报错原文：
+<贴出报错原文>
+复现步骤：先启动服务，再调用 POST /auth/compact
 ```
 
-核心心态：你不是在指挥 Peri，而是在和它一起查。让它读、搜、自己建假设——你只管判断假设对不对。
+Peri 会按流程走：收集信息 → 诊断根因（先说明等你确认）→ 修复 → 独立验证。skill 的存放位置、自动加载机制和修改方式，见[探索陌生代码库](/peri-cool/docs/features/explore-codebase/)的说明。
 
-## 复杂 bug 先派兵探路，再动手
+## 进阶：系统化排查
 
-涉及 5 个以上文件的 bug，让 Peri 直接动手大概率改错地方。先用子代理摸清范围：
+难以定位的 bug 或性能回退，自定义 skill 的线性流程不够用时，用社区成熟的排查流程：
+
+- **systematic-debugging**（superpowers）：复现 → 确定范围 → 提出假设 → 添加诊断 → 验证
+- **diagnosing-bugs**（mattpocock/skills）：同款诊断循环，覆盖性能回退场景
+
+获取方式：
+
+```bash
+npx skills add https://github.com/konghayao/peri --skill using-superpowers
+npx skills add https://github.com/mattpocock/skills --skill diagnosing-bugs
+```
+
+用法示例：
 
 ```text
-并行派 3 个 explorer 子代理：
-1. 搜所有 config/Layer 初始化路径
-2. 搜所有 langfuse 相关调用链
-3. 检查测试中 mock 配置的模式
+/systematic-debugging 排查定时任务每 2 分钟一个实例持续增长的问题
 ```
 
-探索结果汇总回来后，你对问题边界了然于胸，再决定切入点。
+排查出根因后，接 `/verification-before-completion` 强制跑完构建、测试、lint 再宣布修复完成。完整的调试模式见 [Superpowers 工作流](/peri-cool/docs/features/superpowers/)。
 
-## 两次修不好就 `/clear`
+## 下一步
 
-不是玄学。上下文被错误假说、试错的代码片段、过时的 grep 结果污染了。数据说话：同 bug 纠缠超过 3 轮修不好，继续死磕成功率断崖式下跌。
-
-```text
-/clear
-// 从头来。这次不对 Peri 说你怀疑是哪里——让它自己重新探索
-```
-
-## 修完必须独立验证
-
-不要让 Peri 自己改完自己说"好了"。显式派 verification 子代理：
-
-```text
-派 verification 子代理审查这次修复：
-1. cargo test 全部通过
-2. 没引入新 warning
-3. 相关模块测试覆盖率没下降
-```
-
-<Aside type="tip">
-  Peri 工具错误率仅 2.0%（12.6 万次调用的真实统计）。如果反复失败，先 `/clear` 清上下文再试——大概率不是模型问题，是上下文污染。
-</Aside>
+- 修完确认行为 → [编写测试](/peri-cool/docs/features/write-tests/)
+- 修复涉及大改动 → [安全重构](/peri-cool/docs/features/refactor-code/)
