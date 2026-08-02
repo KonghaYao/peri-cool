@@ -49,12 +49,11 @@ export default defineConfig({
 					collapsed: false,
 					items: [
 						{ slug: 'docs/features/explore-codebase' },
-						{ slug: 'docs/features/fix-bugs' },
-						{ slug: 'docs/features/refactor-code' },
 						{ slug: 'docs/features/implement-feature' },
-						{ slug: 'docs/features/debugging' },
-						{ slug: 'docs/features/write-tests' },
+						{ slug: 'docs/features/refactor-code' },
 						{ slug: 'docs/features/code-review' },
+						{ slug: 'docs/features/fix-bugs' },
+						{ slug: 'docs/features/write-tests' },
 					],
 				},
 				{
@@ -63,7 +62,6 @@ export default defineConfig({
 					items: [
 						{ slug: 'docs/features/parallel-work' },
 						{ slug: 'docs/features/long-running-tasks' },
-						{ slug: 'docs/features/goal' },
 						{ slug: 'docs/features/cron' },
 					],
 				},
@@ -102,14 +100,6 @@ export default defineConfig({
 						{ slug: 'docs/features/claude-official-plugins' },
 						{ slug: 'docs/features/mattpocock-skills' },
 						{ slug: 'docs/features/openspec' },
-					],
-				},
-				{
-					label: '社区与开发',
-					collapsed: false,
-					items: [
-						{ slug: 'docs/community/contributing' },
-						{ slug: 'docs/developer' },
 					],
 				},
 				],

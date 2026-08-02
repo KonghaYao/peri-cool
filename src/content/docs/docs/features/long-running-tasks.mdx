@@ -1,6 +1,6 @@
 ---
 title: 管理长任务
-description: 任务要跑很久、中间会走开？用 /goal 声明目标，Peri 持续自动推进
+description: 任务要跑很久、中间会走开？用 /goal 声明目标，Peri 持续自动推进——命令用法、验收标准、长会话节奏全覆盖
 ---
 
 import { Aside } from '@astrojs/starlight/components';
@@ -9,61 +9,83 @@ import { Aside } from '@astrojs/starlight/components';
 
 不是"改一行代码就跑"，是下面这种：
 
-- **单会话 946 条消息（经验值）**：重构整个模块，中间睡了一觉，第二天 `peri -c` 回来继续编
-- **273 条消息 + 16 个子代理（经验值）**：排查"opencode 实例一直涨"，需要同时翻 4-5 个文件的日志、trace 调用链、写修复
+- **跨天重构**：重构整个模块，中间睡了一觉，第二天 `peri -c` 回来继续编
+- **多文件排查**：排查"opencode 实例一直涨"，需要同时翻 4-5 个文件的日志、trace 调用链、写修复
 - **工作日标准姿势**：早上 `/goal` 开任务，白天 Peri 自己推，你时不时回来看一眼、补充上下文、确认方向
 
 这些不是一次性对话。消息数上去了，上下文会变脏，模型会忘掉最初的意图。**`/goal`**（Peri 内置）就是给你挂着方向盘的。
 
-## /goal：不只是声明目标
+## /goal：五个操作
 
-```text
-/goal create "把 src/auth/ 下 5 个文件从回调改成 async/await。
-验收标准：
-1. cargo build 无错误
-2. cargo test auth 全部通过
-3. 不改任何公开 API 签名"
+日常主要用前三个：
+
+```bash
+/goal create "任务描述"   # 创建目标。描述必须具体可验证
+/goal complete             # 标记完成。Peri 会验证是否真的完成了
+/goal block "原因"         # 声明阻塞。拿不到权限、缺依赖、信息不够
+/goal clear                # 清空当前目标（不管是完成了还是想放弃）
+/goal get                  # 查看当前目标状态
+```
+
+同一时间只有一个 goal。创建新 goal 前要先 clear 旧的。
+
+## 完整例子：重构一个模块
+
+```
+你: /goal create "把 src/auth/ 下 5 个文件从回调风格改成 async/await"
+
+Peri: [创建目标] 好的，我先看一下这几个文件的结构。
+      [第一轮：分析了 3 个文件，开始重构]
+
+你: [继续聊别的事情，或者就让它做]
+
+Peri: [自动提醒自己目标还没完成]
+      [第二轮：重构剩下 2 个文件，跑测试]
+
+你: /goal complete
+
+Peri: [验证中...] 验证通过。5 个文件已全部改为 async/await，测试通过。Goal 完成。
 ```
 
 关终端走人。下次 `peri -c` 恢复当前目录最近的会话回来继续——Peri 会从上次断点处接着推。
 
-**关键是验收标准。** 写清楚了，Peri 和 Stop hooks 能形成自动验证闭环：
+## 目标描述要具体
 
-```json
-{
-  "hooks": {
-    "Stop": [{
-      "matcher": "goal_complete",
-      "command": "cargo build && cargo test auth"
-    }]
-  }
-}
-```
+Peri 完成 goal 时会调一个辅助 LLM 验证你是否真的完成了。验证只看你的 goal 描述和对话历史——它不会自己推断"你大概是想说这个"。
 
-任务推进到目标声明完成 → Stop hook 自动跑验收 → 没过就接着推，过了就停。你不需要盯着。
+| 不好的描述 | 好的描述 |
+|-----------|---------|
+| 改进代码 | 把 src/ 下所有函数的圈复杂度降到 10 以下 |
+| 加测试 | 给 src/services/ 下的 3 个模块写单元测试，覆盖率达到 80% |
+| 优化性能 | 把 API 响应时间从 2s 降到 200ms 以内 |
+| 修 bug | 修复 issue #42 和 #57 描述的两个登录页面 bug |
 
 <Aside type="caution">
-  Peri 最多跑 500 轮推理——硬限制，防止死循环。超大规模任务拆成多个 /goal。
+  模糊目标会导致验证失败。如果你写的目标是"改进代码质量"，验证 LLM 不知道什么叫"改进完了"。同理，验收标准写清楚后，Peri 每轮都会对照检查进度，自己判断还差什么，继续推直到达标。
 </Aside>
 
-## 子代理 vs ultracode：别再选错了
+任务推进到你觉得差不多了，用 `/goal complete` 收尾——Peri 会用一个独立模型校验目标是否真的达成（要求证据），通过才标记完成：
 
-Peri 里并行任务有两条路：子代理（Agent）和 ultracode。别凭感觉选，看任务特征：
+```text
+/goal complete
+# → Goal completed. Verification evidence: 所有测试通过
+```
 
-| 任务特征 | 选什么 | 实际例子 |
-|---------|--------|---------|
-| 3-8 个文件，有上下文关联 | 子代理（Agent） | "重构 auth 模块，4 个文件都要互相引用" |
-| 多个任务互不依赖 | ultracode 并行 | "同时修 3 个独立 bug" |
-| 任务有先后顺序 | ultracode pipeline | "先生成接口定义，再实现后端，最后写测试" |
-| 20+ 文件，每批无关联 | ultra-batch | "全局替换 API 调用方式" |
+没配独立校验模型时则直接完成。你不需要一直盯着。
 
-**真实数据（经验值）**：perihelion 项目中你单会话最多调了 58 个子代理。子代理模型默认按任务复杂度自动选——探索用 haiku 档，实现用 sonnet 档，审查用 code-reviewer 代理。不用手动切。
+## 遇到阻塞
 
-### 什么时候不用子代理
+如果确实无法继续，立刻 `block` 而不是僵着。block 不是失败——对话历史全在，下次 clear 后重建 goal，状态不会丢：
 
-- 只改 1-2 个文件 → 直接在对话里让 Peri 改
-- 子代理跑完发现方向错了 → `/rewind` 回退，别又派一个去修
-- 子代理的输出涉及架构判断 → 先看结果，判断清楚了再往下派
+```
+你: /goal create "接入第三方支付 SDK"
+
+Peri: 文档在私有 registry，我没有访问权限。需要 npm token。
+
+你: /goal block "需要找 IT 要 npm registry token"
+
+Peri: 已阻塞。原因：npm registry token。拿到后重新创建 goal 继续。
+```
 
 ## 长会话的真实节奏
 
@@ -75,6 +97,35 @@ Peri 里并行任务有两条路：子代理（Agent）和 ultracode。别凭感
 4. 再推 40 轮 → 遇到硬骨头，手动介入敲几行
 5. 继续推 → 验收通过，Goal 自动关闭
 
-中间你可能：开会去了、下班了、切去写别的代码了。Peri 停着等你 `resume`。
+中间你可能：开会去了、下班了、切去写别的代码了。Peri 停在当前进度上，等你 `peri -c` 恢复会话继续。
 
 如果你在 `/auto-issue-fixer`（需先安装：`npx skills add https://github.com/konghayao/peri --skill auto-issue-fixer`）的追踪流程里——先让 Peri 定位问题、分析根因、生成修复方案——别再单开一个对话，把整个流程放到一个 `/goal` 里，阶段间用验收标准隔开。
+
+## 子代理 vs ultracode：别再选错了
+
+Peri 里并行任务有两条路：子代理（Agent）和 ultracode。别凭感觉选，看任务特征：
+
+| 任务特征 | 选什么 | 实际例子 |
+|---------|--------|---------|
+| 3-8 个文件，有上下文关联 | 子代理（Agent） | "重构 auth 模块，4 个文件都要互相引用" |
+| 多个任务互不依赖 | ultracode 并行 | "同时修 3 个独立 bug" |
+| 任务有先后顺序 | ultracode pipeline | "先生成接口定义，再实现后端，最后写测试" |
+| 20+ 文件，每批无关联 | /ultracode 按批次拆 | "全局替换 API 调用方式，按目录分批" |
+
+**子代理模型档位是预配好的**：探索类（explorer、web-researcher）默认 haiku 档，实现与验证类（coder、verification）默认 sonnet 档，plan 和 general-purpose 跟随主会话档位（inherit）。不用手动切。
+
+### 什么时候不用子代理
+
+- 只改 1-2 个文件 → 直接在对话里让 Peri 改
+- 子代理跑完发现方向错了 → `/rewind` 回退，别又派一个去修
+- 子代理的输出涉及架构判断 → 先看结果，判断清楚了再往下派
+
+## 什么时候用 /goal，什么时候不用
+
+**用 /goal**：任务需要 3 轮以上对话，中间你可能去做别的事。比如"把这个模块从 Express 迁移到 Fastify"。
+
+**不用 /goal**：单轮就能完成的事。比如"这段代码是什么意思"、"帮我写一个排序函数"。
+
+<Aside type="caution">
+  Peri 最多跑 500 轮推理——硬限制，防止死循环。超大规模任务拆成多个 /goal。
+</Aside>
