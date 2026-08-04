@@ -42,6 +42,7 @@ export default defineConfig({
 					items: [
 						{ slug: 'docs/get-started/introduction' },
 						{ slug: 'docs/get-started/quickstart' },
+						{ slug: 'docs/get-started/termux-install' },
 					],
 				},
 				{
@@ -61,6 +62,8 @@ export default defineConfig({
 					collapsed: false,
 					items: [
 						{ slug: 'docs/features/parallel-work' },
+						{ slug: 'docs/features/ultracode-workflow' },
+						{ slug: 'docs/features/auto-devflow' },
 						{ slug: 'docs/features/long-running-tasks' },
 						{ slug: 'docs/features/cron' },
 					],

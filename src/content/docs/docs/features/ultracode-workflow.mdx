@@ -1,0 +1,92 @@
+---
+title: Ultracode 编排模式图解
+description: 一张图看懂 /ultracode 编排引擎的七种模式：并行扇出、流水线、阶段、条件分支、验证关口、模型分层、收敛循环
+---
+
+`/ultracode` 是 Peri 内置的编排引擎——你描述任务，Peri 生成并执行编排脚本，把多个代理按阶段组织起来。下面这张图是编排引擎的完整模式：**并行扇出、流水线、阶段标记、条件分支、验证关口、模型分层、收敛循环**。看懂这张图，一条复杂命令背后 Peri 是怎么拆解执行的，一目了然。
+
+图例：绿色加粗=扇出（一个任务拆给多个代理），蓝色加粗=汇聚（结果合并），紫色=条件分支，橙色虚线=收敛回灌；绿节点=低成本模型档位，蓝节点=高档位。
+
+```mermaid
+flowchart TB
+    ARGS["args = { targetDir }"]
+
+    subgraph P_SCOPE["phase('Scope')"]
+        SCOPE["agent('扫描目录', { model: 'haiku' })"]
+    end
+
+    subgraph P_AUDIT["phase('Audit')"]
+        PARALLEL["parallel([() => agent(...), ...])<br/>扇出 × N files"]
+
+        subgraph P_PIPE["pipeline(files, ...stages) — 每文件串行"]
+            SCAN["agent('扫描分类', { model: 'haiku' })"]
+            DIAM{"if (severity === 'high')"}
+            AUDIT_H["agent('深度审计', { model: 'sonnet' })"]
+            AUDIT_L["agent('快速复核', { model: 'haiku' })"]
+        end
+
+        FINDINGS["findings[] 汇聚"]
+    end
+
+    subgraph P_VERIFY["phase('Verify')"]
+        V1["agent('性能方面', { model: 'sonnet' })"]
+        V2["agent('正确性方面', { model: 'sonnet' })"]
+        V3["agent('安全性方面', { model: 'sonnet' })"]
+        VDIAM{"if (newLeads.length > 0)"}
+    end
+
+    subgraph P_REPORT["phase('Report')"]
+        RPT["agent('汇总报告', { model: 'sonnet' })"]
+    end
+
+    ARGS --> SCOPE
+    SCOPE -->|"files[]"| PARALLEL
+    PARALLEL -->|"file 1"| SCAN
+    PARALLEL -.->|"file 2..N"| SCAN
+    SCAN --> DIAM
+    DIAM -->|"true"| AUDIT_H
+    DIAM -.->|"false"| AUDIT_L
+    AUDIT_H -->|"findings[]"| FINDINGS
+    AUDIT_L -->|"findings[]"| FINDINGS
+    FINDINGS -->|"分发给 3 镜头"| V1
+    FINDINGS -->|"分发给 3 镜头"| V2
+    FINDINGS -->|"分发给 3 镜头"| V3
+    V1 --> VDIAM
+    V2 --> VDIAM
+    V3 --> VDIAM
+    VDIAM -->|"verified[]"| RPT
+    VDIAM -.->|"newLeads.length > 0（dry < 2 追加回 files[]）"| PARALLEL
+
+    linkStyle 2,9,10,11 stroke:#2e7d32,stroke-width:2px
+    linkStyle 3 stroke:#2e7d32,stroke-dasharray:5 5
+    linkStyle 5 stroke:#7b1fa2,stroke-width:2px
+    linkStyle 6 stroke:#7b1fa2,stroke-dasharray:5 5
+    linkStyle 7,8,12,13,14 stroke:#1565c0,stroke-width:2px
+    linkStyle 16 stroke:#e65100,stroke-width:2px,stroke-dasharray:6 3
+
+    classDef haiku fill:#e8f5e9,stroke:#2e7d32
+    classDef sonnet fill:#e3f2fd,stroke:#1565c0
+    classDef decision fill:#f3e5f5,stroke:#7b1fa2
+    classDef prim fill:#fff3e0,stroke:#e65100
+    class SCOPE,SCAN,AUDIT_L haiku
+    class AUDIT_H,V1,V2,V3,RPT sonnet
+    class DIAM,VDIAM decision
+    class PARALLEL,FINDINGS prim
+    style P_SCOPE fill:#fafafa,stroke:#bdbdbd
+    style P_AUDIT fill:#fafafa,stroke:#bdbdbd
+    style P_VERIFY fill:#fafafa,stroke:#bdbdbd
+    style P_REPORT fill:#fafafa,stroke:#bdbdbd
+    style P_PIPE fill:#fffbe6,stroke:#d4a017
+```
+
+## 七种模式
+
+| 模式 | 作用 | 图中位置 |
+|------|------|---------|
+| **并行扇出** | 一个任务拆给多个代理同时跑 | 橙色 `parallel` 节点，绿色双路扇出（`file 1` 实线 / `file 2..N` 虚线），同构进入同一条流水线 |
+| **流水线** | 文件逐个经过「扫描分类 → 判断 → 审计/复核」串行处理 | P_AUDIT 内浅黄框 |
+| **阶段标记** | 每个阶段独立命名，任务分阶段推进 | 子图标题 `Scope / Audit / Verify / Report` |
+| **条件分支** | 按代理输出决定走哪条路（如 `severity === 'high'` 走深审，否则快速复核） | 紫色菱形（实线 true / 虚线 false） |
+| **验证关口** | 多个视角并行审查，全部通过才放行到下一阶段 | 三节点并行投票（性能 / 正确性 / 安全）→ 蓝色汇聚 → `verified[]` 才进 Report |
+| **模型分层** | 扫描类用低成本档位，深审与汇总用高档位 | 绿=haiku，蓝=sonnet |
+| **收敛循环** | 发现新线索则回灌重新处理，直到没有新线索（`dry < 2`）才退出 | 橙色虚线回边（新线索重新入扇出） |

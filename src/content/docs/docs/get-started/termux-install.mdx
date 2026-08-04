@@ -1,0 +1,99 @@
+---
+title: Termux 安装
+description: 在 Android 手机上通过 Termux 安装和使用 Peri
+---
+
+Peri 是 glibc 版二进制，在 Termux 上需要额外的 glibc 运行库。本指南已在 Android (aarch64) 实测通过。
+
+## 1. 安装 Termux
+
+从 [F-Droid](https://f-droid.org/packages/com.termux/) 或 GitHub Releases 安装（Play 商店版已废弃）。
+
+## 2. 更新依赖
+
+```bash
+pkg update && pkg upgrade -y
+```
+
+## 3. 安装常用 CLI 工具
+
+```bash
+pkg install -y git vim curl ripgrep zip unzip wget
+```
+
+## 4. 添加 glibc 软件源并安装运行库
+
+```bash
+pkg install -y glibc-repo
+pkg install -y glibc glibc-runner
+```
+
+## 5. 配置 `~/.bashrc`
+
+```bash
+unset LD_PRELOAD
+export SSL_CERT_FILE=/data/data/com.termux/files/usr/glibc/etc/ssl/cert.pem
+```
+
+两行都必须加：
+
+- `unset LD_PRELOAD`：否则 bionic 的 preload 会加载进 glibc 二进制，报 `invalid ELF header`
+- `SSL_CERT_FILE`：否则 reqwest 找不到 CA 证书，`Client::new()` 直接 panic
+
+## 6. 安装 Peri
+
+Peri 不依赖 Node.js：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/konghayao/peri/main/scripts/install.sh | bash
+```
+
+## 7. 验证与使用
+
+```bash
+peri -p "hello"
+# 预期输出: Hello! How can I help you today?
+```
+
+- 直接运行 `peri` 或 `ccb` → 进入 TUI 交互模式
+- `peri -p "msg"` / `ccb -p "msg"` → 非交互模式，不走 TUI
+
+## 通过 SSH 远程连接
+
+在电脑上远程操作 Termux 会非常舒服，所以最好还是配置一个。
+
+### 手机端配置
+
+```bash
+pkg install -y openssh
+sshd            # 启动 ssh 服务（端口是 8022，不是 22）
+passwd          # 设置登录密码
+whoami          # 查看用户名（如 u0_a340）
+ifconfig        # 查看手机在局域网中的 IP
+```
+
+自动启动（可选）：`echo "sshd" >> ~/.bashrc`
+
+### 电脑端连接
+
+```bash
+ssh -p 8022 u0_a340@192.168.12.112
+```
+
+## 安装 claude-code-best（ccb，可选）
+
+ccb 是 npm 包，需要 Node.js：
+
+```bash
+pkg install -y nodejs
+npm i -g claude-code-best
+```
+
+## 故障排查
+
+| 症状 | 原因 | 处理 |
+| --- | --- | --- |
+| `invalid ELF header` | LD_PRELOAD 未清除 | 确认 `.bashrc` 有 `unset LD_PRELOAD` |
+| `No CA certificates were loaded from the system` | 缺 CA 证书路径 | 确认 `SSL_CERT_FILE` 指向 glibc 的 cert.pem |
+
+> 已知问题：直接运行 `peri` 进 TUI 交互模式会渲染空转（黑屏无响应），`-p` 非交互模式正常；TUI 问题待源码修复。
