@@ -2,12 +2,15 @@
 # 站点仍以 base=/peri-cool/ 构建（与 GitHub Pages 共用一份配置），
 # Netlify 上把 /peri-cool/ 前缀重定向回根路径，链接前缀不会破坏访问。
 
+# 用 bun 安装依赖：npm 有 optional dependencies bug（npm/cli#4828），
+# 会漏装 rolldown 的原生 binding，导致构建报 "Cannot find native binding"。
 [build]
-  command = "npm run build"
+  command = "bun install --frozen-lockfile && bun run build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "22"
+  BUN_VERSION = "1.3.14"
 
 # /peri-cool/xxx -> /xxx（301 永久重定向，保留 query）
 [[redirects]]
