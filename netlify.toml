@@ -1,0 +1,21 @@
+# Netlify 部署配置
+# 站点仍以 base=/peri-cool/ 构建（与 GitHub Pages 共用一份配置），
+# Netlify 上把 /peri-cool/ 前缀重定向回根路径，链接前缀不会破坏访问。
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# /peri-cool/xxx -> /xxx（301 永久重定向，保留 query）
+[[redirects]]
+  from = "/peri-cool"
+  to = "/"
+  status = 301
+
+[[redirects]]
+  from = "/peri-cool/*"
+  to = "/:splat"
+  status = 301
