@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 .astro
 .vscode
 .peri
+
+# Workflow 运行产物（journal / state / 生成的脚本）
+.claude/workflow-runs/
