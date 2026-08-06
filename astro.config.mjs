@@ -112,18 +112,6 @@ export default defineConfig({
 			head: [
 				{
 					tag: 'script',
-					content: "!function(){var e=document.documentElement;e.dataset.theme='light';try{localStorage.setItem('starlight-theme','light')}catch(e){}}();",
-				},
-				{
-					tag: 'link',
-					attrs: { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-				},
-				{
-					tag: 'link',
-					attrs: { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: true },
-				},
-				{
-					tag: 'script',
 					attrs: { src: 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js', defer: true },
 				},
 				{

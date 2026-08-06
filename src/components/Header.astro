@@ -1,61 +1,102 @@
 ---
 import config from 'virtual:starlight/user-config';
 import Search from 'virtual:starlight/components/Search';
-import SiteTitle from 'virtual:starlight/components/SiteTitle';
-import SocialIcons from 'virtual:starlight/components/SocialIcons';
 import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
 import LanguageSelect from 'virtual:starlight/components/LanguageSelect';
 
 const base = import.meta.env.BASE_URL;
+const path = Astro.url.pathname;
+
+const tabs = [
+	{ label: '文档', href: `${base}docs/get-started/introduction/`, active: path.startsWith(`${base}docs`) },
+	{ label: '工程', href: `${base}posts/engineering/agent-loop/`, active: path.includes('/posts/engineering/') },
+	{ label: '产品', href: `${base}posts/product/demo-introducing-peri/`, active: path.includes('/posts/product/') },
+	{ label: '研究', href: `${base}posts/research/demo-domestic-models/`, active: path.includes('/posts/research/') },
+	{ label: '动态', href: `${base}posts/news/demo-v2-release/`, active: path.includes('/posts/news/') },
+];
+
 const shouldRenderSearch =
 	config.pagefind || config.components.Search !== '@astrojs/starlight/components/Search.astro';
 ---
 
-<div class="header" style="display: flex">
-	<nav class="header-left-group sl-flex" style="flex: 1"  aria-label="主导航">
-		<div class="title-wrapper sl-flex">
-			<SiteTitle />
+<div class="header" style="display: flex; flex-direction: column">
+	<div class="header-top sl-flex" style="flex: 1">
+		<nav class="header-left-group sl-flex" style="flex: 1" aria-label="主导航">
+			<div class="title-wrapper sl-flex">
+				<span class="site-title sl-flex" translate="no">Peri Code</span>
+			</div>
+		</nav>
+		<div class="sl-hidden md:sl-flex print:hidden right-group">
+			<div class="sl-flex social-icons">
+				<a href="https://github.com/konghayao/peri" rel="me" class="sl-flex github-link">
+					<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg>
+					<span>Code</span>
+				</a>
+			</div>
+			<ThemeSelect />
+			<LanguageSelect />
 		</div>
-		<a href={`${base}docs/get-started/introduction/`} class="header-nav-link" style="margin-inline-start:1.5rem;">文档</a>
-		<a href={`${base}posts/engineering/agent-loop/`} class="header-nav-link">工程</a>
-		<a href={`${base}posts/product/demo-introducing-peri/`} class="header-nav-link">产品</a>
-		<a href={`${base}posts/research/demo-domestic-models/`} class="header-nav-link">研究</a>
-		<a href={`${base}posts/news/demo-v2-release/`} class="header-nav-link">动态</a>
-	</nav>
-	<div class="sl-hidden md:sl-flex print:hidden right-group">
-		<div class="sl-flex social-icons">
-			<SocialIcons />
-		</div>
-		<ThemeSelect />
-		<LanguageSelect />
 	</div>
+	<nav class="header-tabs sl-flex" aria-label="栏目">
+		{
+			tabs.map((tab) => (
+				<a
+					href={tab.href}
+					class:list={['header-tab-link', { 'is-active': tab.active }]}
+					aria-current={tab.active ? 'page' : undefined}
+				>
+					{tab.label}
+				</a>
+			))
+		}
+	</nav>
 </div>
 
 <style>
 	@layer starlight.core {
+		.header-top {
+			align-items: center;
+			gap: 0;
+			height: 4rem;
+			margin-top: 1.2rem;
+		}
 		.header-left-group {
 			align-items: center;
 			gap: 0;
 		}
-		.header-nav-link {
-			display: none;
+		/* 第二行：栏目 tab */
+		.header-tabs {
+			gap: 1.75rem;
+			align-items: stretch;
+			height: 2.4rem;
+		}
+		.header-tab-link {
+			display: inline-flex;
 			align-items: center;
-			font-size: var(--sl-text-sm);
-			font-weight: 500;
+			font-size: 0.95rem;
+			font-weight: 400;
 			color: var(--sl-color-gray-2);
 			text-decoration: none;
-			padding: 0.35rem 0.75rem;
-			border-radius: 0.5rem;
-			margin-inline-start: 0.25rem;
-			transition: color 0.2s, background 0.2s;
+			padding: 0.15rem 0 0;
+			border-bottom: 2px solid transparent;
+			transition: color 0.2s, border-color 0.2s;
 		}
-		.header-nav-link:hover {
+		.header-tab-link:hover {
 			color: var(--sl-color-white);
-			background: var(--sl-color-gray-6);
 		}
-		@media (min-width: 50rem) {
-			.header-nav-link {
-				display: inline-flex;
+		.header-tab-link.is-active {
+			color: var(--sl-color-white);
+			border-bottom-color: var(--sl-color-gray-1);
+		}
+		@media (max-width: 50rem) {
+			.header-tabs {
+				gap: 1.25rem;
+				padding-inline: 0.75rem;
+				overflow-x: auto;
+			}
+			.header-tab-link {
+				font-size: 0.875rem;
+				white-space: nowrap;
 			}
 		}
 	}

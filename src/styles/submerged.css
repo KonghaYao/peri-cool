@@ -1,92 +1,489 @@
-/* ===== 澄海天光 · Submerged Light Theme ===== */
+/* ===== Anthropic Ivory · 主题 =====
+ * 仿照 anthropic.com 的视觉语言：
+ *   亮色 ivory（#faf9f5）+ 暗色 slate（#141413）双主题
+ *   细宋体（Songti SC / 思源宋体）标题 + 宋体正文
+ *   发丝线分隔、大量留白、无阴影无卡片描边
+ */
 
-/* ---- Google Fonts ---- */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,300&family=Figtree:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+/* ---- 字体：系统中文衬线（宋体系），不加载外部字体 ---- */
+/* 标题用 Light(300)，正文用 Regular(400)。栈内字体均自带中文字形。 */
 
 /*
  * Starlight 颜色语义（反直觉！）:
- *   --sl-color-black → 背景色（暗色模式=黑底，亮色模式=白底）
- *   --sl-color-white → 前景/文字色（暗色模式=白字，亮色模式=黑字）
- *   --sl-color-gray-1..6 → 文字深→背景浅 的渐变
- *   --sl-color-gray-7 → 导航栏背景（仅亮色模式）
+ *   --sl-color-black → 页面背景
+ *   --sl-color-white → 主文字
+ *   --sl-color-gray-1..7 → 文字深 → 背景浅
+ *   --sl-color-accent-* → 强调色（链接/选中态/代码高亮）
+ *
+ * 主题切换：
+ *   Starlight 页面通过 html[data-theme='light'|'dark'] 切换；
+ *   首页（独立页面，无 data-theme）通过 prefers-color-scheme 跟随系统。
  */
 
-/* ---- 亮色模式色板 ---- */
+/* ============ 亮色 · Ivory ============ */
 :root,
-:root[data-theme='light'],
-:root[data-theme='dark'] {
-  /* 主色调 */
-  --sl-color-accent-low: #d8edf4;
-  --sl-color-accent: #5ba4bc;
-  --sl-color-accent-high: #1a3a4a;
+:root[data-theme='light'] {
+  /* 强调色：anthropic 几乎不用强调色，用近黑做链接、陶土做点缀 */
+  --sl-color-accent-low: #f0eee6;
+  --sl-color-accent: #141413;
+  --sl-color-accent-high: #30302e;
 
-  /* 背景色 ← 用暖沙白色填充 "black" 槽位 */
-  --sl-color-black: #faf7f2;
-  --sl-color-gray-7: #f7f4ef; /* 导航栏背景 */
-  --sl-color-gray-6: #ede8e0; /* 内联代码背景 / 侧栏底 */
-  --sl-color-gray-5: #d4cfc6; /* 浅分割线 */
+  /* 背景：米白 */
+  --sl-color-black: #faf9f5;
+  --sl-color-gray-7: #faf9f5; /* 导航背景 */
+  --sl-color-gray-6: #f0eee6; /* 内联代码背景 / 侧栏底 / hover */
+  --sl-color-gray-5: #e8e6dc; /* 深一档背景 */
 
-  /* 前景/文字色 ← 用深色填充 "white" 槽位 */
-  --sl-color-white: #1a1816;
-  --sl-color-gray-1: #1a1816;
-  --sl-color-gray-2: #3d3833;
-  --sl-color-gray-3: #6b6560;
-  --sl-color-gray-4: #a0988c; /* 边框色 */
+  /* 文字：近黑 */
+  --sl-color-white: #141413;
+  --sl-color-gray-1: #141413;
+  --sl-color-gray-2: #30302e;
+  --sl-color-gray-3: #5e5d59;
+  --sl-color-gray-4: #87867f; /* 边框 / 弱文字 */
 
-  /* 排版 */
-  --sl-font: 'Figtree', system-ui, -apple-system, sans-serif;
-  --sl-font-mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  /* 排版：系统细宋体。Light(300) 用于标题，Regular(400) 用于正文 */
+  --sl-font: 'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC', 'Source Han Serif CN', 'STSong', 'SimSun', serif;
+  --sl-font-mono: 'SF Mono', 'Menlo', 'Consolas', 'Liberation Mono', monospace;
 
-  /* 布局 */
-  --sl-content-width: 48rem;
+  /* 布局：正文列宽 40rem ≈ 640px，与 anthropic 阅读列一致 */
+  --sl-content-width: 40rem;
   --sl-sidebar-width: 16rem;
   --sl-nav-height: 3.5rem;
-  --sl-text-h1: clamp(1.75rem, 3vw, 2.5rem);
-  --sl-text-h2: clamp(1.35rem, 2.5vw, 1.75rem);
+  --sl-text-h1: clamp(2rem, 4vw, 2.75rem);
+  --sl-text-h2: clamp(1.4rem, 2.5vw, 1.8rem);
+
+  /* 语义别名（首页与内页共用） */
+  --peri-bg: var(--sl-color-black);
+  --peri-fg: var(--sl-color-white);
+  --peri-muted: var(--sl-color-gray-3);
+  --peri-faint: var(--sl-color-gray-4);
+  --peri-hairline: #d1cfc5; /* 发丝分隔线 */
+  --peri-surface: var(--sl-color-gray-6);
+  --peri-clay: #d97757; /* 陶土点缀 */
+  --peri-btn-hover: #3d3d3a; /* 黑色按钮 hover */
+  --peri-code-bg: #141413; /* 反色代码块底 */
+  --peri-code-fg: #f0eee6;
 }
 
-/* ---- Link underline animation ---- */
+/* ============ 暗色 · Slate ============ */
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #30302e;
+  --sl-color-accent: #faf9f5;
+  --sl-color-accent-high: #e8e6dc;
+
+  --sl-color-black: #141413;
+  --sl-color-gray-7: #141413;
+  --sl-color-gray-6: #1f1e1d;
+  --sl-color-gray-5: #30302e;
+
+  --sl-color-white: #faf9f5;
+  --sl-color-gray-1: #faf9f5;
+  --sl-color-gray-2: #e8e6dc;
+  --sl-color-gray-3: #b0aea5;
+  --sl-color-gray-4: #87867f;
+
+  --peri-bg: var(--sl-color-black);
+  --peri-fg: var(--sl-color-white);
+  --peri-muted: var(--sl-color-gray-3);
+  --peri-faint: var(--sl-color-gray-4);
+  --peri-hairline: #30302e;
+  --peri-surface: var(--sl-color-gray-6);
+  --peri-clay: #d97757;
+  --peri-btn-hover: #e8e6dc;
+  --peri-code-bg: #faf9f5;
+  --peri-code-fg: #141413;
+}
+
+/* 首页（无 data-theme）跟随系统偏好 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --sl-color-accent-low: #30302e;
+    --sl-color-accent: #faf9f5;
+    --sl-color-accent-high: #e8e6dc;
+
+    --sl-color-black: #141413;
+    --sl-color-gray-7: #141413;
+    --sl-color-gray-6: #1f1e1d;
+    --sl-color-gray-5: #30302e;
+
+    --sl-color-white: #faf9f5;
+    --sl-color-gray-1: #faf9f5;
+    --sl-color-gray-2: #e8e6dc;
+    --sl-color-gray-3: #b0aea5;
+    --sl-color-gray-4: #87867f;
+
+    --peri-bg: var(--sl-color-black);
+    --peri-fg: var(--sl-color-white);
+    --peri-muted: var(--sl-color-gray-3);
+    --peri-faint: var(--sl-color-gray-4);
+    --peri-hairline: #30302e;
+    --peri-surface: var(--sl-color-gray-6);
+    --peri-clay: #d97757;
+    --peri-btn-hover: #e8e6dc;
+    --peri-code-bg: #faf9f5;
+    --peri-code-fg: #141413;
+  }
+}
+
+/* ============ 正文排版：宋体正文 + 细宋体标题 ============ */
+.sl-markdown-content {
+  font-family: var(--sl-font);
+  font-size: 1.0625rem; /* 17px */
+  line-height: 1.76;
+  font-feature-settings: 'pnum', 'lnum';
+}
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3,
+.sl-markdown-content h4,
+.sl-markdown-content h5,
+.sl-markdown-content h6 {
+  font-family: var(--sl-font);
+  font-weight: 300; /* thin */
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+}
+.sl-markdown-content h2 {
+  margin-top: 3rem;
+}
+
+/* ============ 链接：始终下划线，近黑，hover 变灰 ============ */
 .sl-markdown-content a:not(.sl-link-card a):not([role='tab']) {
-  text-decoration: none;
-  background-image: linear-gradient(var(--sl-color-accent), var(--sl-color-accent));
-  background-size: 0% 1.5px;
-  background-position: 0% 100%;
-  background-repeat: no-repeat;
-  transition: background-size 0.3s ease;
+  color: var(--sl-color-gray-1);
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+  transition: color 0.15s ease;
 }
 .sl-markdown-content a:not(.sl-link-card a):not([role='tab']):hover {
-  background-size: 100% 1.5px;
+  color: var(--sl-color-gray-3);
 }
 
-/* ---- Sidebar subtle refinement ---- */
-.sl-sidebar {
-  border-right-color: var(--sl-color-gray-5);
+/* ============ 导航 / 侧栏：发丝线分隔 ============ */
+/* 两行 header：顶行 4rem + 栏目行 2.4rem = 6.4rem。
+ * Starlight 外层 header 是 position:fixed 且 height:var(--sl-nav-height)，
+ * sidebar 也是 inset-block:var(--sl-nav-height) 0，所以该变量必须精确等于 header 总高。
+ * 注意：构建产物中 middleware.css（Starlight 核心样式）排在 customCss 之后加载，
+ * 同具体性的 :root 声明会被覆盖，因此这里必须用 !important。 */
+:root {
+  --sl-nav-height: 6.4rem !important;
+}
+.header {
+  /* 去掉 Starlight 默认的上下 padding（--sl-nav-pad-y），
+     否则两行内容超出 height 约束，第二行会溢出 header 盒子 */
+  padding-block: 0 !important;
+}
+.sidebar {
+  border-right: 1px solid var(--peri-hairline);
 }
 
-/* ---- Mermaid 图表高度限制 ---- */
+/* ============ 顶栏：品牌与 GitHub 链接 ============ */
+/* site-title：品牌名，加大加粗 */
+.site-title {
+  font-weight: 700 !important;
+  font-size: 1.4rem;
+  letter-spacing: 0.01em;
+}
+/* GitHub 链接：图标 + Code 文字，回退后的默认链接样式 */
+.github-link {
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  line-height: 1;
+  color: var(--sl-color-gray-3);
+  text-decoration: none;
+}
+.github-link:hover {
+  color: var(--sl-color-white);
+}
+.github-link svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ============ 文档主区域：去框架化渲染 ============ */
+
+/* 标题：确保细宋体 300（Starlight 同具体性规则加载在后，需 !important） */
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: 300 !important;
+}
+
+/* 引用：发丝线左边线 */
+.sl-markdown-content blockquote:not(:where(.not-content *)) {
+  border-inline-start: 2px solid var(--sl-color-gray-4);
+  color: var(--sl-color-gray-3);
+  background: none;
+}
+
+/* 分隔线：发丝线 */
+.sl-markdown-content hr:not(:where(.not-content *)) {
+  border-color: var(--sl-color-gray-5);
+}
+
+/* 表格：发丝线 + 轻量表头 */
+.sl-markdown-content :is(th, td):not(:where(.not-content *)) {
+  border-bottom: 1px solid var(--sl-color-gray-5);
+}
+.sl-markdown-content th:not(:where(.not-content *)) {
+  font-weight: 500;
+  color: var(--sl-color-gray-2);
+}
+
+/* 提示框：去蓝绿块，统一发丝线 + 浅底 */
+.sl-markdown-content .starlight-aside {
+  border-inline-start: none !important;
+  /* border: 1px solid var(--sl-color-gray-4); */
+  border-radius: 8px;
+  background: var(--sl-color-gray-6);
+  color: var(--sl-color-gray-2);
+}
+.sl-markdown-content .starlight-aside__title {
+  color: var(--sl-color-gray-2) !important;
+  font-weight: 500 !important;
+}
+/* 图标：隐藏 Starlight 默认实心图标，换手绘线条风（陶土色） */
+.starlight-aside__icon {
+  display: none !important;
+}
+.starlight-aside__title::before {
+  content: '';
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  background-color: var(--peri-clay);
+  -webkit-mask: var(--aside-icon) center / contain no-repeat;
+  mask: var(--aside-icon) center / contain no-repeat;
+}
+.starlight-aside--note {
+  --aside-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5'/%3E%3Cpath d='M12 7.5v.01'/%3E%3C/svg%3E");
+}
+.starlight-aside--tip {
+  --aside-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3a6 6 0 0 0-3.5 10.9c.9.7 1.5 1.5 1.5 2.6v.5h4v-.5c0-1.1.6-1.9 1.5-2.6A6 6 0 0 0 12 3z'/%3E%3Cpath d='M9.5 19.5h5'/%3E%3Cpath d='M10.5 21.5h3'/%3E%3C/svg%3E");
+}
+.starlight-aside--caution,
+.starlight-aside--danger {
+  --aside-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5 2.5 20h19L12 3.5z'/%3E%3Cpath d='M12 10v5'/%3E%3Cpath d='M12 17.5v.01'/%3E%3C/svg%3E");
+}
+.sl-markdown-content .starlight-aside__title svg {
+  color: var(--peri-clay) !important;
+}
+
+/* 代码块：隐藏框架标题栏，灰调背景 */
+.expressive-code figcaption.header {
+  display: none;
+}
+.expressive-code pre {
+  background: var(--sl-color-gray-6) !important;
+  /* border: 1px solid var(--sl-color-gray-4) !important; */
+  border-radius: 8px !important;
+}
+
+/* token 色：One Dark 蓝紫 → 灰调（亮色）。
+   依赖 inline style 中的 --0 色值选择，保留高亮"形状"但去饱和 */
+.expressive-code .code span[style*='#82AAFF'],
+.expressive-code .code span[style*='#C792EA'],
+.expressive-code .code span[style*='#89DDFF'],
+.expressive-code .code span[style*='#82B1FF'],
+.expressive-code .code span[style*='#7FDBCA'],
+.expressive-code .code span[style*='#CAECE6'],
+.expressive-code .code span[style*='#C789D6'] {
+  color: #30302e !important;
+}
+.expressive-code .code span[style*='#F78C6C'],
+.expressive-code .code span[style*='#ECC48D'],
+.expressive-code .code span[style*='#7BD88F'],
+.expressive-code .code span[style*='#C5E478'],
+.expressive-code .code span[style*='#D9F5DD'],
+.expressive-code .code span[style*='#E2817F'],
+.expressive-code .code span[style*='#FF6A83'] {
+  color: #a5521e !important;
+}
+.expressive-code .code span[style*='#919F9F'] {
+  color: #87867f !important;
+}
+.expressive-code .code span[style*='#D6DEEB'],
+.expressive-code .code span[style*='#d6deeb'],
+.expressive-code .code span[style*='#D7DBE0'] {
+  color: #3d3d3a !important;
+}
+
+/* 暗色：token 与背景同套灰调 */
+:root[data-theme='dark'] .expressive-code pre {
+  background: #1f1e1d !important;
+  border-color: #30302e !important;
+}
+:root[data-theme='dark'] .expressive-code .code span[style*='#82AAFF'],
+:root[data-theme='dark'] .expressive-code .code span[style*='#C792EA'],
+:root[data-theme='dark'] .expressive-code .code span[style*='#89DDFF'],
+:root[data-theme='dark'] .expressive-code .code span[style*='#82B1FF'],
+:root[data-theme='dark'] .expressive-code .code span[style*='#7FDBCA'],
+:root[data-theme='dark'] .expressive-code .code span[style*='#CAECE6'],
+:root[data-theme='dark'] .expressive-code .code span[style*='#C789D6'] {
+  color: #e8e6dc !important;
+}
+:root[data-theme='dark'] .expressive-code .code span[style*='#F78C6C'],
+:root[data-theme='dark'] .expressive-code .code span[style*='#ECC48D'],
+:root[data-theme='dark'] .expressive-code .code span[style*='#7BD88F'],
+:root[data-theme='dark'] .expressive-code .code span[style*='#C5E478'],
+:root[data-theme='dark'] .expressive-code .code span[style*='#D9F5DD'],
+:root[data-theme='dark'] .expressive-code .code span[style*='#E2817F'],
+:root[data-theme='dark'] .expressive-code .code span[style*='#FF6A83'] {
+  color: #d9a08b !important;
+}
+:root[data-theme='dark'] .expressive-code .code span[style*='#919F9F'] {
+  color: #87867f !important;
+}
+:root[data-theme='dark'] .expressive-code .code span[style*='#D6DEEB'],
+:root[data-theme='dark'] .expressive-code .code span[style*='#d6deeb'],
+:root[data-theme='dark'] .expressive-code .code span[style*='#D7DBE0'] {
+  color: #d1cfc5 !important;
+}
+
+/* ============ 侧边栏：左对齐无缩进 + 选中灰底 ============ */
+/* 去掉 Starlight 的层级缩进：嵌套 li 的竖线 + margin + padding */
+.sidebar-pane ul li {
+  margin-inline-start: 0;
+  padding-inline-start: 0;
+  border-inline-start: none;
+}
+.sidebar-pane .top-level > li {
+  margin-bottom: 1.75rem;
+}
+/* 分组标题：降字重，贴合全站细宋体风格 */
+.sidebar-pane .group-label {
+  font-weight: 400;
+}
+.sidebar-pane a[aria-current='page'] {
+  background: var(--sl-color-gray-5);
+  color: var(--sl-color-gray-1);
+}
+.sidebar-pane a[aria-current='page']:hover {
+  background: var(--sl-color-gray-5);
+}
+
+/* ============ 滚动条：无轨道、淡色、细 ============ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(20, 20, 19, 0.2);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(20, 20, 19, 0.35);
+}
+:root[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: rgba(250, 249, 245, 0.2);
+}
+:root[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(250, 249, 245, 0.35);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) ::-webkit-scrollbar-thumb {
+    background: rgba(250, 249, 245, 0.2);
+  }
+  :root:not([data-theme='light']) ::-webkit-scrollbar-thumb:hover {
+    background: rgba(250, 249, 245, 0.35);
+  }
+}
+/* 侧边栏 / TOC 滚动条：平时隐藏，浮动到该区域才显示。
+ * 注意：background 简写会被压缩成 background:0 0（position），
+ * 在 WebKit 滚动条伪元素上解析失败导致规则失效，必须用 background-color。 */
+.sidebar-pane::-webkit-scrollbar-thumb,
+.right-sidebar-panel::-webkit-scrollbar-thumb {
+  background-color: transparent !important;
+}
+.sidebar-pane:hover::-webkit-scrollbar-thumb,
+.right-sidebar-panel:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(20, 20, 19, 0.25) !important;
+}
+:root[data-theme='dark'] .sidebar-pane:hover::-webkit-scrollbar-thumb,
+:root[data-theme='dark'] .right-sidebar-panel:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(250, 249, 245, 0.25) !important;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .sidebar-pane:hover::-webkit-scrollbar-thumb,
+  :root:not([data-theme='light']) .right-sidebar-panel:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(250, 249, 245, 0.25) !important;
+  }
+}
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(20, 20, 19, 0.25) transparent;
+}
+:root[data-theme='dark'] * {
+  scrollbar-color: rgba(250, 249, 245, 0.25) transparent;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) * {
+    scrollbar-color: rgba(250, 249, 245, 0.25) transparent;
+  }
+}
+/* Firefox：侧栏滚动条同样 hover 才显示（特异性压过上面的 * 规则） */
+.sidebar-pane {
+  scrollbar-color: transparent transparent;
+}
+.sidebar-pane:hover {
+  scrollbar-color: rgba(20, 20, 19, 0.25) transparent;
+}
+:root[data-theme='dark'] .sidebar-pane {
+  scrollbar-color: transparent transparent;
+}
+:root[data-theme='dark'] .sidebar-pane:hover {
+  scrollbar-color: rgba(250, 249, 245, 0.25) transparent;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .sidebar-pane {
+    scrollbar-color: transparent transparent;
+  }
+  :root:not([data-theme='light']) .sidebar-pane:hover {
+    scrollbar-color: rgba(250, 249, 245, 0.25) transparent;
+  }
+}
+
+
+/* ============ Mermaid 图表 ============ */
 pre.mermaid {
   max-height: 500px;
   overflow: auto;
-  border: 1px solid var(--sl-color-gray-5);
-  border-radius: 0.75rem;
+  border: 1px solid var(--sl-color-gray-4);
+  border-radius: 0.5rem;
   padding: 0.5rem;
 }
 pre.mermaid svg {
   max-width: 100%;
 }
-.sl-markdown-content pre,
-.expressive-code {
-  border-radius: 0.75rem !important;
-  border: 1px solid var(--sl-color-gray-5) !important;
-}
 
-/* ---- CardGrid organic feel ---- */
+/* ============ 卡片：去阴影，发丝线描边 ============ */
 .sl-card-grid .sl-card {
-  border-radius: 1rem 0.25rem 1rem 0.25rem;
-  border: 1px solid var(--sl-color-gray-5);
-  transition: transform 0.2s ease, box-shadow 0.25s ease;
+  border-radius: 0.75rem;
+  border: 1px solid var(--sl-color-gray-4);
+  box-shadow: none;
+  transition: border-color 0.2s ease;
 }
 .sl-card-grid .sl-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(91, 164, 188, 0.12);
+  border-color: var(--sl-color-gray-1);
+  transform: none;
+  box-shadow: none;
+}
+
+/* ============ Starlight hero（文章头图） ============ */
+/* 内置 Hero 组件：细宋体大标题 + 发丝线描边头图，与全站风格统一。
+ * Hero 组件 scoped 样式自带 font-weight:600，需 !important 压过 */
+.hero h1 {
+  font-weight: 300 !important;
+  letter-spacing: 0.01em;
+}
+.hero .tagline {
+  font-family: var(--sl-font);
+}
+.hero > img {
+  border: 1px solid var(--peri-hairline);
+  border-radius: 12px;
 }
