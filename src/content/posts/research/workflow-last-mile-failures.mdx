@@ -1,0 +1,119 @@
+---
+title: 子 agent 全部成功而工作流失败：51 次运行记录中的失败分层
+description: 51 次真实运行数据拆解多 agent 工作流的失败分层，以及 1 小时+ 长任务如何设计才能避免空耗。
+hero:
+  image:
+    file: ../../../assets/img_ladder_to_cloud_s12.png
+    alt: 云梯
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+你让 Peri 跑一个多 agent 重构，等了一个多小时回来，结果面板显示 14 个子 agent 全部成功，工作流状态却是 failed，错误信息是 None。没有失败的 agent，没有报错，任务就是没成功。这个案例真实存在，名字叫 `prompt-security-contracts-implementation`，跑了 1 小时 06 分。
+
+这不是个例。翻 `.claude/workflow-runs/` 下 2026-08-01 至 2026-08-06 的 51 次运行记录（含重跑，按脚本运行次数计），有 12 次失败或中断，约占 23%。没有一次是因为任务本身太难。失败全部发生在任务外围，脚本生成、传输层、收尾阶段。
+
+这篇用真实运行数据拆开每一层失败长什么样、影响多大，以及 1 小时+ 的长任务如何设计才能避免空耗。
+
+## 失败分层，12 次失败没有一次死在任务上
+
+| 失败类型 | 次数 | 发生时机 | 典型耗时 |
+|---|---|---|---|
+| 脚本语法错误 | 5 | 脚本生成后，秒级 | 秒级 |
+| LLM 传输层故障 | 3 | 运行中段/后段 | 23 分钟 ~ 8 小时 20 分 |
+| 用户手动 kill | 1 | 运行后段 | 3 小时 43 分后 |
+| 收尾状态不一致 | 3 | 收尾阶段 | 9 分钟 ~ 1 小时 06 分 |
+
+另外还有 1 次 `成功但产出无效`，模板占位符未替换，状态是 completed 但返回的是字面量。这条记录本身存疑，后面单独说。
+
+5 次秒级失败约占四成，重跑即可恢复。消耗最大的是小时级的 4 次，最长的一次 8 小时 20 分。
+
+一个前提需要说清，51 是目录数，不是唯一任务数。`019fc025` 这类 run_id 会因为语法错误重跑出现两次，所以下面的比例按 `脚本运行次数` 理解，不应理解为 `51 个任务`。
+
+## 秒级失败，生成脚本有 bug 是常态，重跑成本最低
+
+5 次失败都发生在脚本生成阶段，错误都是 JS 语法错误
+
+```javascript
+Unexpected token 'if'
+Unexpected identifier '边界类
+missing ) after argument l
+await is only valid in async
+Unexpected token ')'
+```
+
+第二个错误和中文内容相关。工作流脚本由 Peri 生成后直接执行，生成时的转义和引号处理偶尔出错。这是已知噪音，不是新问题。`compact-slices-4-7.mjs` 的注释里明确写过反引号已用 `\x60` 转义，脚本作者早就在防这一层。
+
+证据形态很干净，`019fc025` 那个 failed 运行目录里，state.json 存有完整脚本，但没有 journal.jsonl，说明脚本在解析阶段就挂了，一个 agent 都没跑起来。修正后立即重跑成功，这个 run_id 出现两次就是那次重跑留下的痕迹。
+
+结论很简单，看到秒级失败别慌，让 Peri 修了重跑，成本几乎为零。别为它设计重试、降级之类的复杂机制。
+
+## 小时级失败，跑得越久，越可能死于环境而非任务
+
+`peri-3.0-refactor` 第一次运行，1 小时 40 分后死在模型侧。journal 共 16 条，最后一条（seq 15）是下面这条
+
+```json
+{"kind":"dead","reason":"runagent-threw","detail":"LLM error: model retry exhausted after 6 attempts; last failure: transport"}
+```
+
+模型侧传输层重试 6 次耗尽，整个工作流崩溃。更麻烦的是连锁反应，null 结果进入 `parseVerdict` 直接抛 `Cannot read properties of null (reading 'match')`，state.json 里记录的 error 其实是这个下游异常，不是根因。排查时先看到的是误导信息。
+
+第二次运行，3 小时 43 分后用户手动 kill。这次 journal 22 条全部 ok，已经走到第 21 步（L4 review）。任务本身没死，但用户判断不值得继续等。长任务的收敛性风险在这里，每一步都成功，不等于总时间可控。
+
+没有 checkpoint 时，1 小时+ 的投入在传输层故障面前全部作废——本文数据里最长的一次跑了 8 小时 20 分，失败后一样清零。超长跑不是理论问题，自主运行记录里也有接近 5 小时（284.7 分钟）的长跑。
+
+## 最隐蔽的失败，子 agent 全成功，工作流却 failed
+
+三次 `全 ok 但 failed` 的情况
+
+- `prompt-security-contracts-implementation`，14 个 agent 全部 ok，跑了 1 小时 06 分，status=failed 且 error=None
+- `code-review-panel`，5 个 agent 全部 ok，status=failed，state.json 里根本没有 error 字段
+- `cancel-chain-fix-v2`，9 个 agent 全部 ok，跑了 25 分钟，status=failed，同样没有 error 字段
+
+为什么查不到原因？journal 只记录子 agent 结果（ok/dead），不记录收尾阶段事件。error=None 意味着失败发生在脚本自身的收尾逻辑里。但这是推断——journal 全 ok 而 failed 时，失败原因只能猜，别把猜测当成事实。
+
+方向性佐证来自脚本的收尾契约，plan 输出必须带 `SUMMARY`/`DEPENDS`/`FILES` 三行，review 输出必须以 `VERDICT: APPROVE/REJECT` 结尾，全部靠正则解析。解析失败有层层兜底，找不到 VERDICT 按 REJECT 处理、plan 解析失败用 `FALLBACK_DEPS` 保守依赖。但 `parseVerdict(null)` 会直接崩，防线本身也有 bug。
+
+另一种 `成功但无效` 的情况，`langfuse-subagent-refactor` 状态 completed、跑了 1 小时 32 分，return_value 四个字段却全是 `${implSpec}`、`${phase1}` 这类占位符字面量，模板填充环节没生效。这条记录本身存疑（可能不是最终形态），引用需谨慎。
+
+结论，看到 `全 ok 但 failed`，先怀疑收尾和契约解析，别立刻怀疑任务无效。子 agent 的产出都在，工作流状态只是收尾阶段的问题。
+
+## 解法，分阶段跑 + 可续跑
+
+同一任务三次运行，是最直接的对比组
+
+| 运行 | 状态 | 耗时 | 结局 |
+|---|---|---|---|
+| peri-3.0-refactor 第 1 次 | failed | 1 小时 40 分 | transport 重试耗尽 |
+| 第 2 次 | killed | 3 小时 43 分 | 用户放弃 |
+| resume2 续跑 | completed | 10 分钟 | 全部 8 个迁移点收尾 |
+
+resume 续跑把之前所有子 agent 结果作为已完成状态，只补没跑完的部分。前两次并非空耗，约 5 小时的产出被续跑完整消费，最终拿到全部 8 个迁移点的 code + review 记录。
+
+给 Peri 的指令写法是，把大重构切成阶段，每阶段跑完就是 checkpoint。现成范例是 `peri-3.0-refactor.mjs` 的编排：8 个 plan 并行规划，按依赖关系分波、波内按文件冲突分组执行，逐 issue code，review 审批环。基本原语只有 4 个，`phase()`、`parallel()`、`agent()`、`log()`。
+
+对 Peri 说 `把任务切成几个阶段，每个阶段跑完就是 checkpoint，我可以随时续跑`，比 `一口气做完` 稳得多。
+
+<Aside type="note">
+  resume 不是银弹。它能避免环境故障导致的空耗，防不了任务本身收敛性差，第 2 次 kill 时 22 条全 ok，重跑也可能同样慢。秒级语法错误修了重跑就是，别为它设计复杂机制。
+</Aside>
+
+## 行动清单
+
+四句话
+
+1. 秒级失败直接重跑，别慌
+2. 1 小时+ 长跑，先让 Peri 分阶段并确认可续跑
+3. 看到 `全 ok 但 failed`，先查收尾契约，别怀疑任务
+4. 跑前问一句 `最坏情况能接受丢多少进度`，接受不了就分阶段
+
+旁证，132 条自主运行记录里 131 条 completed、1 条 running，median 14.1 分钟、mean 29.5 分钟。定时自主跑大多不长，但超过 1 小时的有 18 条，超过 2 小时 7 条。长任务超时是实际存在的场景，不是理论问题。
+
+长任务要设计成可重启的，而不是指望一次成功。
+
+## 下一步
+
+- 工作流怎么设计断点续跑：[工作流设计](/peri-cool/posts/engineering/workflow-design/)
+- 子代理的机制和边界：[子代理设计](/peri-cool/posts/engineering/subagent-design/)
+- ultracode 工作流功能文档：[ultracode 工作流](/peri-cool/docs/features/ultracode-workflow/)
+- 长任务的完整指南：[长任务](/peri-cool/docs/features/long-running-tasks/)

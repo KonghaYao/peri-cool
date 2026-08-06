@@ -1,0 +1,98 @@
+---
+title: 多 agent 并发时的渲染开销：50% CPU 占用的一次归因分析
+description: 以性能诊断报告、修复 issue 与 7.6GB 运行日志三方印证，归因单 agent 正常、3 个并发时 CPU 占用 50% 的叠加成因与修复过程。
+hero:
+  image:
+    file: ../../../assets/img_waves_and_boat_s17.png
+    alt: 浪与舟
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 单 agent 正常，3 个并发就 50% CPU
+
+2026-08-02，有人报告了一个现象，macOS 桌面环境下同时跑 3 个同步 agent 并发任务，CPU 达到 50%。换成单 agent 一切正常。测量条件很明确，长会话 + 多 agent 流式输出时更明显。
+
+直觉上这是任务开多了的自然结果，但这个结论经不起追问。Peri 的 TUI 渲染成本不按任务数增长，按 token 流总量增长。3 路 token 流就是 3 倍渲染请求，加上长会话里累积的界面状态，成本被叠加放大。
+
+本文用三方证据对这个现象做归因。性能诊断报告给出机制链假设，修复 issue 里的对抗验证逐项排除嫌疑，4 天 7.6GB 运行日志提供实测支撑。结论是，单 agent 正常、3 个并发高占用，是渲染成本随 token 流总量叠加的结果，并给出使用层面的规避建议。
+
+## 排查方法
+
+诊断报告先做了两路并行探索，A 路遍历调用链，B 路做代码气味扫描，产出 7 项中风险。然后派 8 路 explorer 做对抗验证，每项按 4 个角度检查，调用频率、替代路径、实际影响、正确性必要。
+
+对抗验证没停在报告层面。issue 里又做了 2 路独立复核，不提供前轮结论，让复核者从源码独立核查。结果 7 项嫌疑里 4 项（#4-7）被降级为 LOW，合计 `<3%` CPU，和 50% 差了一个数量级。主因锁定在渲染路径（#1-3）。另有 3 项嫌疑被直接排除（含锁/阻塞类全扫描），5 项低置信度。
+
+报告明确写了局限，静态分析无法证明 CPU 归因，建议用 `PERI_RENDER_TIMING` 加 sample/Instruments 做实测拆分。静态分析只能缩小嫌疑范围，不能完成最终归因。
+
+## 三条路径，无单一元凶
+
+报告的机制链长这样，每 token 都要走一遍。它不是某一个环节单独的问题，而是五个环节全部叠加的结果。
+
+```
+每 token 到达（主/子 agent 文本、推理 chunk）
+  → acp_bridge 逐事件同步 dispatch（无批处理/无节流）
+  → push_view_models：克隆 current_turn 全部 VM（O(N) 深拷贝）+ 写 VIEW_MODELS atom
+  → 渲染一帧：message_area O(items) hash 扫描 + concat_wrap_maps O(总行数) 重建
+             + 流式 bubble 全量 markdown 重解析 O(N)
+  + loading 期固定 20Hz RENDER_HEARTBEAT → 无 token 时也整树重绘
+  + per-token tracing::info! 同步写文件（报告标 2 条，对抗复核修正为实际 1 条）
+3 个 agent = 3 路 token 流 × 上述成本，且全局 is_loading 几乎连续 → 20Hz 下限 + token 率上限
+```
+
+关键换算来自对抗验证，帧率约等于 token 率。3 个 agent × 100 token/s ≈ 300 帧/s，每帧 1-5ms，渲染线程就满负荷了。loading 期还有固定 20Hz 心跳（entry.rs:204-220，50ms tick 无条件 set），保证没有 token 时也整树重绘。值得注意的是，这心跳当初是为修 spinner 动画引入的（2026-07-17 的 issue），修 A 引入 B。
+
+三个嫌疑逐个看。前两项是渲染路径的固有成本，第三项是诊断埋点的附加成本。
+
+- **每 token 全量 VM 深拷贝**（acp_types.rs:646-679）。缓存粒度等于 1 token，必然未命中，单 token 深拷贝要数十到数百 µs。对抗验证补了一个限定，未写入的 subagent 会命中缓存，3 并发的放大实际被削弱为 2-3 倍，不是干净的 3 倍。
+- **流式 bubble 全量 markdown 重解析**。每 token 用 pulldown-cmark 重解析整个消息，4-8KB 约 20-60µs，占帧预算 `<0.5%`，3 并发约 1-3% CPU。数字不大，但设计文档承诺的流式单次 O(W) 没兑现，长消息累积下去是结构性 O(N²) 风险。
+- **per-token 同步日志**。3 处 `tracing::info!` 全标注临时 instrumentation（streaming.rs:70-73、render.rs:14-22）。报告估计每 token 2 条，对抗复核修正为实际 1 条，subagent reasoning 走其他分支不打，约 0.15-0.6% CPU。
+
+降级组里剩下值得一提的只有 #4，concat_wrap_maps 每帧线性重建，内容没变也执行，3000 逻辑行约 96KB 拷贝/帧，随会话长度线性增长。其余 #6 周期任务、#7 序列化分配都是 `<3%` CPU 级别，留着没清理。
+
+## 观测本身在污染观测
+
+7.6GB 日志来自 4 个文件，08-02 的 4.1GB、08-03 的 400MB、08-04 的 1.7GB、08-05 的 1.3GB。抽样 100k 行统计 INFO target 分布，最大头是 `perf.render`，这是 `PERI_RENDER_TIMING` 渲染计时器。
+
+- 08-02（修复前）`perf.render` 50.6%，`msg_scroll_diag` 15.2%，两类合计 65.8%
+- 08-05（修复后）`perf.render` 42%，`msg_scroll_diag` 10.7%，两类合计 52.7%
+
+时间线要分清，08-05 日志是修复后的状态，帧数据描述的是修复后的渲染开销，且是含 instrumentation 写入成本的数字，不能倒推修复前。但结论反而更强，即使修了渲染路径，诊断日志仍是最大 INFO 源。为了诊断性能加的日志，自己成了最大的日志源。
+
+抽样里能看到渲染循环确实以帧为单位高频运转。`[frame-total] 282μs | gen=122272` 这种单行数据，帧世代号已经到 12 万，帧耗时 282μs 是 08-05 日志里的样例（抽样所见，单点数据）。另外，ERROR 级别稳定刷 `langfuse_client::batcher` flush 失败，本地 langfuse 服务没开，遥测链路本身也在制造噪音。
+
+## 增量替代全量
+
+issue（2026-08-02-multi-agent-concurrent-cpu-high，状态 Fixed）在对抗验证后锁定了修复方向，核心思路是把每 token 全量重建改成增量修补。
+
+- #2 用滚动哈希原语，增量维护的值与全量计算值一致，配合 sync_cache 增量修补，冻结段零重建，subagent 组用 O(1) hash 比对直接跳过，再删掉 child_turn 深拷贝。每 token 从 O(N²) 降到 O(变化量 + 段数扫描)。
+- #3 用尾部不稳定块回滚加 Cow 零拷贝，`mem::take` 消除深拷贝，stable_text 增量扩展，3 轮解析器探针验证正确性。
+- 验证是 704 个测试加 clippy 全过。
+
+<Aside type="caution">
+已修复的边界。修复效果没有用 Instruments 实测归因，issue 待办原文就是无实测数据。704 测试通过证明正确性，不证明 CPU 数字。降级的 #4-7 合计 `<3%` CPU 也还遗留未清理。性能基线一直在变动，不要假设当前行为和 08-02 报告一致。
+</Aside>
+
+## 多 agent 并发不是免费的
+
+对普通用户来说，这篇的结论可以压缩成一句，渲染成本随 token 流总量线性放大（实际约 2-3 倍），3 个长流式 agent 同时开就是约 300 帧/s 的渲染请求，长会话加多 agent 的组合是主要开销来源。以下建议是分析推断，我们没有实测过修复后的 CPU 数字。
+
+怎么对 Peri 说才能避开，直接看下面的例子。这是演示示例，不是真实会话。
+
+```text
+你: 帮我并行审查这 4 个文件。
+Peri: 已派出 4 个并发子代理，正在并行审查。
+
+你: 改成两批，每批 2 个，批间等结果再开始下一批。
+Peri: 批 1 已开始，2 个代理并行审查中。
+```
+
+分批、限制并行 agent 数、避免同时开多个长流式会话，本质都是降低单点 token 流总量。另一个可观察信号是，如果你开着日志，诊断 target（`perf.render`、`msg_scroll_diag` 这类 instrumentation 行）刷屏占比异常高，本身就说明观测链路在吃资源，值得关掉或限流。
+
+诚实收尾。我们没有测过修复后的 CPU 数字，本文给的是成因成立的证据链，不是修完降到 X% 的结论。真正想验证的读者，可以自己开 `PERI_RENDER_TIMING` 对比修复前后的帧耗时。
+
+## 下一步
+
+- [Multi Agent 架构](/peri-cool/posts/engineering/multi-agent/) — 并发子代理是怎么派发和执行的
+- [工作流设计](/peri-cool/posts/engineering/workflow-design/) — 长任务编排时怎么控制并行度
+- [快速上手](/peri-cool/docs/get-started/quickstart/) — Peri 的基础用法
