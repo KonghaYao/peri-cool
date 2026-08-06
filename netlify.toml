@@ -5,7 +5,7 @@
 # 用 bun 安装依赖：npm 有 optional dependencies bug（npm/cli#4828），
 # 会漏装 rolldown 的原生 binding，导致构建报 "Cannot find native binding"。
 [build]
-  command = "bun install --frozen-lockfile && bun run build"
+  command = "bun install && bun run build"
   publish = "dist"
 
 [build.environment]
