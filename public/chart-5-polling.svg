@@ -1,0 +1,120 @@
+<svg width="1100" height="600" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" baseProfile="full" viewBox="0 0 1100 600">
+<rect width="1100" height="600" x="0" y="0" fill="#ffffff"></rect>
+<text dominant-baseline="central" text-anchor="start" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" y="5.5" transform="translate(22 583)" fill="#6b7280">口径:同会话同参数 AgentResult/ExecuteExtraTool 连续 ≥3 次视为轮询(调查口径,月度;8 月仅 1-9 日,均 ≤3 次,疑似 workflow 测试)</text>
+<path d="M90 540.5L1070 540.5" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr3-cls-32"></path>
+<path d="M90 450.5L1070 450.5" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr3-cls-32"></path>
+<path d="M90 360.5L1070 360.5" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr3-cls-32"></path>
+<path d="M90 270.5L1070 270.5" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr3-cls-32"></path>
+<path d="M90 180.5L1070 180.5" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr3-cls-32"></path>
+<path d="M90 90.5L1070 90.5" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr3-cls-32"></path>
+<path d="M90 540.5L1070 540.5" fill="none" pointer-events="visible" stroke="#54555a" stroke-linecap="round" class="zr3-cls-32"></path>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" transform="translate(82 540)" fill="#54555a">0</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" transform="translate(82 450)" fill="#54555a">20</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" transform="translate(82 360)" fill="#54555a">40</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" transform="translate(82 270)" fill="#54555a">60</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" transform="translate(82 180)" fill="#54555a">80</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" transform="translate(82 90)" fill="#54555a">100</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" y="6" transform="translate(253.3333 548)" fill="#54555a">6 月</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" y="6" transform="translate(580 548)" fill="#54555a">7 月</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" y="6" transform="translate(906.6667 548)" fill="#54555a">8 月(1-9 日)</text>
+<path d="M223.3 540l60 0l0 -409.5l-60 0Z" fill="#d97757" ecmeta_series_index="0" ecmeta_data_index="0" ecmeta_ssr_type="chart" class="zr3-cls-33 zr3-cls-34"></path>
+<path d="M550 540l60 0l0 -337.5l-60 0Z" fill="#d97757" ecmeta_series_index="0" ecmeta_data_index="1" ecmeta_ssr_type="chart" class="zr3-cls-35 zr3-cls-34"></path>
+<path d="M876.7 540l60 0l0 -13.5l-60 0Z" fill="#d97757" ecmeta_series_index="0" ecmeta_data_index="2" ecmeta_ssr_type="chart" class="zr3-cls-36 zr3-cls-34"></path>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" y="-5.5" transform="translate(253.3333 125.5)" fill="#1f2937">91</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" y="-5.5" transform="translate(580 197.5)" fill="#1f2937">75</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" y="-5.5" transform="translate(906.6667 521.5)" fill="#1f2937">3</text>
+<g clip-path="url(#zr3-c0)">
+<path d="M253.3 342L580 396L906.7 526.5" fill="none" pointer-events="visible" stroke="#1f2937" stroke-width="2.5" stroke-linejoin="bevel" class="zr3-cls-39"></path>
+</g>
+<path d="M1 0A1 1 0 1 1 1 -0.1A1 1 0 0 1 1 0" transform="matrix(4,0,0,4,253.3333,342)" fill="#fff" stroke="#1f2937" stroke-width="0.5" ecmeta_series_index="1" ecmeta_data_index="0" ecmeta_ssr_type="chart" class="zr3-cls-40"></path>
+<path d="M1 0A1 1 0 1 1 1 -0.1A1 1 0 0 1 1 0" transform="matrix(4,0,0,4,580,396)" fill="#fff" stroke="#1f2937" stroke-width="0.5" ecmeta_series_index="1" ecmeta_data_index="1" ecmeta_ssr_type="chart" class="zr3-cls-40"></path>
+<path d="M1 0A1 1 0 1 1 1 -0.1A1 1 0 0 1 1 0" transform="matrix(4,0,0,4,906.6667,526.5)" fill="#fff" stroke="#1f2937" stroke-width="0.5" ecmeta_series_index="1" ecmeta_data_index="2" ecmeta_ssr_type="chart" class="zr3-cls-40"></path>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" y="-5.5" transform="translate(253.3333 332)" fill="#1f2937">44</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" y="-5.5" transform="translate(580 386)" fill="#1f2937">32</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" y="-5.5" transform="translate(906.6667 516.5)" fill="#1f2937">3</text>
+<path d="M-5 -5l218.9 0l0 24l-218.9 0Z" transform="translate(25 49)" fill="rgb(0,0,0)" fill-opacity="0" stroke="#b7b9be" stroke-width="0" class="zr3-cls-32"></path>
+<path d="M3.5 0L21.5 0A3.5 3.5 0 0 1 25 3.5L25 10.5A3.5 3.5 0 0 1 21.5 14L3.5 14A3.5 3.5 0 0 1 0 10.5L0 3.5A3.5 3.5 0 0 1 3.5 0Z" transform="translate(25 49)" fill="#d97757" ecmeta_series_index="0" ecmeta_data_index="0" ecmeta_ssr_type="legend" ecmeta_silent="true" class="zr3-cls-32"></path>
+<text dominant-baseline="central" text-anchor="start" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" x="30" y="7" transform="translate(25 49)" fill="#54555a">轮询事件数</text>
+<path d="M0 0l90 0l0 14l-90 0Z" transform="translate(25 49)" fill="none" pointer-events="visible" ecmeta_series_index="0" ecmeta_data_index="0" ecmeta_ssr_type="legend" class="zr3-cls-41"></path>
+<path d="M0 7L25 7" transform="translate(124 49)" fill="#000" stroke="#1f2937" stroke-width="2" stroke-linecap="butt" stroke-miterlimit="10" class="zr3-cls-32"></path>
+<path d="M18.1 7A5.6 5.6 0 1 1 18.1 6.4A5.6 5.6 0 0 1 18.1 7" transform="translate(124 49)" fill="#fff" stroke="#1f2937" stroke-width="2" stroke-linecap="butt" stroke-miterlimit="10" class="zr3-cls-32"></path>
+<text dominant-baseline="central" text-anchor="start" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" x="30" y="7" transform="translate(124 49)" fill="#54555a">最长连续链(次)</text>
+<path d="M-1 0.4l110.9 0l0 13.2l-110.9 0Z" transform="translate(124 49)" fill="none" pointer-events="visible" ecmeta_series_index="1" ecmeta_data_index="1" ecmeta_ssr_type="legend" class="zr3-cls-41"></path>
+<path d="M-5 -5l479 0l0 27l-479 0Z" transform="translate(25 17)" fill="rgb(0,0,0)" fill-opacity="0" stroke="#3c3c41" stroke-width="0" class="zr3-cls-32"></path>
+<text dominant-baseline="central" text-anchor="start" style="font-size:17px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;font-weight:bold;" xml:space="preserve" y="8.5" transform="translate(25 17)" fill="#1f2937">场景 5:Agent 轮询等待机制修复 —— 轮询事件数与最长连续链</text>
+<defs >
+<clipPath id="zr3-c0">
+<path d="M88 88.8l984 0l0 452.5l-984 0Z" fill="#000" class="zr3-cls-37 zr3-cls-38"></path>
+</clipPath>
+</defs>
+<style ><![CDATA[
+.zr3-cls-32:hover {
+pointer-events:none;
+}
+.zr3-cls-33 {
+animation:zr3-ani-0 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+.zr3-cls-34:hover {
+cursor:pointer;
+fill:rgba(238,130,95,1);
+}
+.zr3-cls-35 {
+animation:zr3-ani-1 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+.zr3-cls-36 {
+animation:zr3-ani-2 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+.zr3-cls-37 {
+animation:zr3-ani-3 1s linear both;
+}
+.zr3-cls-38:hover {
+cursor:pointer;
+fill:rgba(0,0,0,1);
+}
+.zr3-cls-39:hover {
+cursor:pointer;
+}
+.zr3-cls-40:hover {
+cursor:pointer;
+fill:rgba(255,255,255,1);
+}
+.zr3-cls-41:hover {
+cursor:pointer;
+fill:rgba(0,0,0,0);
+}
+@keyframes zr3-ani-0 {
+0% {
+d:path("M223.3 540l60 0l0 0l-60 0Z");
+}
+100% {
+d:path("M223.3 540l60 0l0 -409.5l-60 0Z");
+}
+}
+@keyframes zr3-ani-1 {
+0% {
+d:path("M550 540l60 0l0 0l-60 0Z");
+}
+100% {
+d:path("M550 540l60 0l0 -337.5l-60 0Z");
+}
+}
+@keyframes zr3-ani-2 {
+0% {
+d:path("M876.7 540l60 0l0 0l-60 0Z");
+}
+100% {
+d:path("M876.7 540l60 0l0 -13.5l-60 0Z");
+}
+}
+@keyframes zr3-ani-3 {
+0% {
+d:path("M88 88.8l0 0l0 452.5l0 0Z");
+}
+100% {
+d:path("M88 88.8l984 0l0 452.5l-984 0Z");
+}
+}
+]]>
+
+</style>
+</svg>

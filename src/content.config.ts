@@ -9,6 +9,8 @@ const posts = defineCollection({
 		z.object({
 			title: z.string(),
 			description: z.string(),
+			/* 编写日期(可选):文章页渲染在正文上方,如 2026-08-09 */
+			date: z.coerce.date().optional(),
 			/* Starlight hero 配置（可选）：文章页启用内置 hero（大标题 + 头图），
 			 * image.file 为相对该 mdx 文件的图片路径，如 ../../../assets/ant-and-mountain.png */
 			hero: z

@@ -1,0 +1,61 @@
+<svg width="1100" height="600" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" baseProfile="full" viewBox="0 0 1100 600">
+<rect width="1100" height="600" x="0" y="0" fill="#ffffff"></rect>
+<text dominant-baseline="central" text-anchor="start" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" y="5.5" transform="translate(22 583)" fill="#6b7280">口径:主窗口 93,997 次工具调用出参合计 268.3MB;Read+Grep+Bash 占 86.3%</text>
+<path d="M120.5 70L120.5 550" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr0-cls-0"></path>
+<path d="M260.5 70L260.5 550" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr0-cls-0"></path>
+<path d="M400.5 70L400.5 550" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr0-cls-0"></path>
+<path d="M540.5 70L540.5 550" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr0-cls-0"></path>
+<path d="M680.5 70L680.5 550" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr0-cls-0"></path>
+<path d="M820.5 70L820.5 550" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr0-cls-0"></path>
+<path d="M960.5 70L960.5 550" fill="none" pointer-events="visible" stroke="#dbdee4" class="zr0-cls-0"></path>
+<path d="M120.5 70L120.5 550" fill="none" pointer-events="visible" stroke="#54555a" stroke-linecap="round" class="zr0-cls-0"></path>
+<text dominant-baseline="central" text-anchor="start" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" transform="translate(975 550)" fill="#54555a">出参 MB</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:13px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" transform="translate(112 96.6667)" fill="#54555a">Read</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:13px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" transform="translate(112 150)" fill="#54555a">Grep</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:13px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" transform="translate(112 203.3333)" fill="#54555a">Bash</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:13px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" transform="translate(112 256.6667)" fill="#54555a">Glob</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:13px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" transform="translate(112 310)" fill="#54555a">Agent</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:13px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" transform="translate(112 363.3333)" fill="#54555a">AgentResult</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:13px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" transform="translate(112 416.6667)" fill="#54555a">SkillTool</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:13px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" transform="translate(112 470)" fill="#54555a">WebFetch</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:13px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" transform="translate(112 523.3333)" fill="#54555a">其余 30 个</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" y="6" transform="translate(120 558)" fill="#54555a">0</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" y="6" transform="translate(260 558)" fill="#54555a">20</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" y="6" transform="translate(400 558)" fill="#54555a">40</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" y="6" transform="translate(540 558)" fill="#54555a">60</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" y="6" transform="translate(680 558)" fill="#54555a">80</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" y="6" transform="translate(820 558)" fill="#54555a">100</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" y="6" transform="translate(960 558)" fill="#54555a">120</text>
+<path d="M120 85.7L881.1 85.7A4 4 0 0 1 885.1 89.7L885.1 103.7A4 4 0 0 1 881.1 107.7L120 107.7L120 85.7Z" fill="#d97757" ecmeta_series_index="0" ecmeta_data_index="0" ecmeta_ssr_type="chart" class="zr0-cls-1"></path>
+<path d="M120 139L725.7 139A4 4 0 0 1 729.7 143L729.7 157A4 4 0 0 1 725.7 161L120 161L120 139Z" fill="#d97757" ecmeta_series_index="0" ecmeta_data_index="1" ecmeta_ssr_type="chart" class="zr0-cls-1"></path>
+<path d="M120 192.3L361.7 192.3A4 4 0 0 1 365.7 196.3L365.7 210.3A4 4 0 0 1 361.7 214.3L120 214.3L120 192.3Z" fill="#d97757" ecmeta_series_index="0" ecmeta_data_index="2" ecmeta_ssr_type="chart" class="zr0-cls-1"></path>
+<path d="M120 245.7L217.5 245.7A4 4 0 0 1 221.5 249.7L221.5 263.7A4 4 0 0 1 217.5 267.7L120 267.7L120 245.7Z" fill="#d97757" ecmeta_series_index="0" ecmeta_data_index="3" ecmeta_ssr_type="chart" class="zr0-cls-1"></path>
+<path d="M120 299L204.9 299A4 4 0 0 1 208.9 303L208.9 317A4 4 0 0 1 204.9 321L120 321L120 299Z" fill="#d97757" ecmeta_series_index="0" ecmeta_data_index="4" ecmeta_ssr_type="chart" class="zr0-cls-1"></path>
+<path d="M120 352.3L131.4 352.3A4 4 0 0 1 135.4 356.3L135.4 370.3A4 4 0 0 1 131.4 374.3L120 374.3L120 352.3Z" fill="#d97757" ecmeta_series_index="0" ecmeta_data_index="5" ecmeta_ssr_type="chart" class="zr0-cls-1"></path>
+<path d="M120 405.7L126.5 405.7A4 4 0 0 1 130.5 409.7L130.5 423.7A4 4 0 0 1 126.5 427.7L120 427.7L120 405.7Z" fill="#d97757" ecmeta_series_index="0" ecmeta_data_index="6" ecmeta_ssr_type="chart" class="zr0-cls-1"></path>
+<path d="M120 459L125.8 459A4 4 0 0 1 129.8 463L129.8 477A4 4 0 0 1 125.8 481L120 481L120 459Z" fill="#d97757" ecmeta_series_index="0" ecmeta_data_index="7" ecmeta_ssr_type="chart" class="zr0-cls-1"></path>
+<path d="M120 512.3L147.5 512.3A4 4 0 0 1 151.5 516.3L151.5 530.3A4 4 0 0 1 147.5 534.3L120 534.3L120 512.3Z" fill="#d97757" ecmeta_series_index="0" ecmeta_data_index="8" ecmeta_ssr_type="chart" class="zr0-cls-1"></path>
+<text dominant-baseline="central" text-anchor="start" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" transform="translate(890.1 96.6667)" fill="#1f2937">109.3MB (40.7%)</text>
+<text dominant-baseline="central" text-anchor="start" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" transform="translate(734.7 150)" fill="#1f2937">87.1MB (32.5%)</text>
+<text dominant-baseline="central" text-anchor="start" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" transform="translate(370.7 203.3333)" fill="#1f2937">35.1MB (13.1%)</text>
+<text dominant-baseline="central" text-anchor="start" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" transform="translate(226.5 256.6667)" fill="#1f2937">14.5MB (5.4%)</text>
+<text dominant-baseline="central" text-anchor="start" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" transform="translate(213.9 310)" fill="#1f2937">12.7MB (4.7%)</text>
+<text dominant-baseline="central" text-anchor="start" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" transform="translate(140.4 363.3333)" fill="#1f2937">2.2MB (0.8%)</text>
+<text dominant-baseline="central" text-anchor="start" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" transform="translate(135.5 416.6667)" fill="#1f2937">1.5MB (0.6%)</text>
+<text dominant-baseline="central" text-anchor="start" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" transform="translate(134.8 470)" fill="#1f2937">1.4MB (0.5%)</text>
+<text dominant-baseline="central" text-anchor="start" style="font-size:11px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;" xml:space="preserve" transform="translate(156.5 523.3333)" fill="#1f2937">4.5MB (1.7%)</text>
+<path d="M-5 -5l209.9 0l0 27l-209.9 0Z" transform="translate(25 17)" fill="rgb(0,0,0)" fill-opacity="0" stroke="#3c3c41" stroke-width="0" class="zr0-cls-0"></path>
+<text dominant-baseline="central" text-anchor="start" style="font-size:17px;font-family:'PingFang SC', 'Heiti SC', 'Microsoft YaHei', Arial, sans-serif;font-weight:bold;" xml:space="preserve" y="8.5" transform="translate(25 17)" fill="#1f2937">工具出参占比(top8 + 其余)</text>
+<style ><![CDATA[
+.zr0-cls-0:hover {
+pointer-events:none;
+}
+.zr0-cls-1:hover {
+cursor:pointer;
+fill:rgba(238,130,95,1);
+}
+
+]]>
+
+</style>
+</svg>

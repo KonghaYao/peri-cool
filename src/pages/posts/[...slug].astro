@@ -84,5 +84,12 @@ if (section === 'engineering') {
 	sidebar={sidebar}
 	tableOfContents={{}}
 >
+	{
+		post.data.date && (
+			<p style="margin: 0 0 1.5rem; color: var(--sl-color-gray-3); font-size: 0.85rem;">
+				编写于 {post.data.date.toISOString().slice(0, 10)}
+			</p>
+		)
+	}
 	<Content />
 </StarlightPage>
