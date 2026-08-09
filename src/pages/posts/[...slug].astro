@@ -11,7 +11,7 @@ export async function getStaticPaths() {
 }
 
 const { post } = Astro.props;
-const { Content } = await render(post);
+const { Content, headings } = await render(post);
 
 const hero = post.data.hero;
 
@@ -83,6 +83,7 @@ if (section === 'engineering') {
 	}}
 	sidebar={sidebar}
 	tableOfContents={{}}
+	headings={headings}
 >
 	{
 		post.data.date && (
