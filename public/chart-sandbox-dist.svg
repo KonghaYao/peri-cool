@@ -1,0 +1,117 @@
+<svg width="1100" height="600" xmlns="http://www.w3.org/2000/svg"><rect width="1100" height="600" fill="#ffffff"/>
+<text x="60" y="50" font-size="22" font-family="PingFang SC, sans-serif" font-weight="bold" fill="#1f2937">50 个生产沙盒的内存分布(按内存升序)</text>
+<text x="60" y="76" font-size="13" font-family="PingFang SC, sans-serif" fill="#6b7280">每格一个容器;颜色对应分层;后 4 格为唯一超过 105 MiB 的容器</text>
+<rect x="60" y="130" width="96" height="60" rx="6" fill="#9ca3af"/>
+<text x="108.0" y="165.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">49.2</text>
+<rect x="160" y="130" width="96" height="60" rx="6" fill="#9ca3af"/>
+<text x="208.0" y="165.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">57.4</text>
+<rect x="260" y="130" width="96" height="60" rx="6" fill="#9ca3af"/>
+<text x="308.0" y="165.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">57.5</text>
+<rect x="360" y="130" width="96" height="60" rx="6" fill="#9ca3af"/>
+<text x="408.0" y="165.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">58.0</text>
+<rect x="460" y="130" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="508.0" y="165.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">67.1</text>
+<rect x="560" y="130" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="608.0" y="165.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">67.5</text>
+<rect x="660" y="130" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="708.0" y="165.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">67.5</text>
+<rect x="760" y="130" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="808.0" y="165.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">67.6</text>
+<rect x="860" y="130" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="908.0" y="165.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">67.8</text>
+<rect x="960" y="130" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="1008.0" y="165.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">67.8</text>
+<rect x="60" y="194" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="108.0" y="229.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">67.8</text>
+<rect x="160" y="194" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="208.0" y="229.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">67.8</text>
+<rect x="260" y="194" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="308.0" y="229.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">68.7</text>
+<rect x="360" y="194" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="408.0" y="229.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">68.8</text>
+<rect x="460" y="194" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="508.0" y="229.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">73.2</text>
+<rect x="560" y="194" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="608.0" y="229.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">73.5</text>
+<rect x="660" y="194" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="708.0" y="229.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">73.5</text>
+<rect x="760" y="194" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="808.0" y="229.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">73.7</text>
+<rect x="860" y="194" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="908.0" y="229.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">73.7</text>
+<rect x="960" y="194" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="1008.0" y="229.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">73.7</text>
+<rect x="60" y="258" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="108.0" y="293.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">73.8</text>
+<rect x="160" y="258" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="208.0" y="293.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">73.8</text>
+<rect x="260" y="258" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="308.0" y="293.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">73.8</text>
+<rect x="360" y="258" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="408.0" y="293.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">73.9</text>
+<rect x="460" y="258" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="508.0" y="293.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">74.0</text>
+<rect x="560" y="258" width="96" height="60" rx="6" fill="#4f7cac"/>
+<text x="608.0" y="293.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">74.2</text>
+<rect x="660" y="258" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="708.0" y="293.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">91.1</text>
+<rect x="760" y="258" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="808.0" y="293.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">93.6</text>
+<rect x="860" y="258" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="908.0" y="293.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">94.5</text>
+<rect x="960" y="258" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="1008.0" y="293.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">94.7</text>
+<rect x="60" y="322" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="108.0" y="357.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">96.0</text>
+<rect x="160" y="322" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="208.0" y="357.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">96.2</text>
+<rect x="260" y="322" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="308.0" y="357.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">96.5</text>
+<rect x="360" y="322" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="408.0" y="357.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">96.7</text>
+<rect x="460" y="322" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="508.0" y="357.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">97.0</text>
+<rect x="560" y="322" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="608.0" y="357.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">97.3</text>
+<rect x="660" y="322" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="708.0" y="357.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">100.9</text>
+<rect x="760" y="322" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="808.0" y="357.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">101.0</text>
+<rect x="860" y="322" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="908.0" y="357.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">101.2</text>
+<rect x="960" y="322" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="1008.0" y="357.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">102.7</text>
+<rect x="60" y="386" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="108.0" y="421.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">103.1</text>
+<rect x="160" y="386" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="208.0" y="421.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">103.8</text>
+<rect x="260" y="386" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="308.0" y="421.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">103.8</text>
+<rect x="360" y="386" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="408.0" y="421.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">104.1</text>
+<rect x="460" y="386" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="508.0" y="421.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">104.4</text>
+<rect x="560" y="386" width="96" height="60" rx="6" fill="#38b2ac"/>
+<text x="608.0" y="421.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">104.7</text>
+<rect x="660" y="386" width="96" height="60" rx="6" fill="#d97757"/>
+<text x="708.0" y="421.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">110.2</text>
+<rect x="760" y="386" width="96" height="60" rx="6" fill="#d97757"/>
+<text x="808.0" y="421.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">116.9</text>
+<rect x="860" y="386" width="96" height="60" rx="6" fill="#dc2626"/>
+<text x="908.0" y="421.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">280.2</text>
+<rect x="960" y="386" width="96" height="60" rx="6" fill="#dc2626"/>
+<text x="1008.0" y="421.0" text-anchor="middle" font-size="13" font-family="PingFang SC, sans-serif" fill="#ffffff">338.8</text>
+<text x="608.0" y="334" text-anchor="middle" font-size="11" font-family="PingFang SC, sans-serif" fill="#54555a">P50 中位数</text>
+<text x="608.0" y="462" text-anchor="middle" font-size="11" font-family="PingFang SC, sans-serif" fill="#54555a">P90</text>
+<text x="1008.0" y="462" text-anchor="middle" font-size="11" font-family="PingFang SC, sans-serif" fill="#54555a">活跃</text>
+<rect x="60" y="510" width="16" height="16" rx="3" fill="#9ca3af"/>
+<text x="82" y="523" font-size="12" font-family="PingFang SC, sans-serif" fill="#374151">刚创建 49~58 MiB</text>
+<rect x="339.0" y="510" width="16" height="16" rx="3" fill="#4f7cac"/>
+<text x="361.0" y="523" font-size="12" font-family="PingFang SC, sans-serif" fill="#374151">基线态 67~74 MiB</text>
+<rect x="618.0" y="510" width="16" height="16" rx="3" fill="#38b2ac"/>
+<text x="640.0" y="523" font-size="12" font-family="PingFang SC, sans-serif" fill="#374151">任务态 91~105 MiB</text>
+<rect x="912.0" y="510" width="16" height="16" rx="3" fill="#d97757"/>
+<text x="934.0" y="523" font-size="12" font-family="PingFang SC, sans-serif" fill="#374151">写盘 110~117 MiB</text>
+<rect x="1206.0" y="510" width="16" height="16" rx="3" fill="#dc2626"/>
+<text x="1228.0" y="523" font-size="12" font-family="PingFang SC, sans-serif" fill="#374151">活跃 280~339 MiB</text>
+<text x="60" y="570" font-size="11" font-family="PingFang SC, sans-serif" fill="#6b7280">口径:2026-08-12 单次 docker stats 快照;单位 MiB;MEM USAGE 含 page cache;46/50 低于 105 MiB(前 46 格)</text></svg>

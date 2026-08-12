@@ -1,0 +1,81 @@
+<svg width="1100" height="600" xmlns="http://www.w3.org/2000/svg"><rect width="1100" height="600" fill="#ffffff"/>
+<text x="60" y="50" font-size="22" font-family="PingFang SC, sans-serif" font-weight="bold" fill="#1f2937">Peri 与 opencode 沙盒内存分布对比</text>
+<text x="60" y="76" font-size="13" font-family="PingFang SC, sans-serif" fill="#6b7280">每个圆点一个沙盒;x 为容器内存(含操作系统);虚线为均值</text>
+<line x1="90.0" y1="120" x2="90.0" y2="500" stroke="#dbdee4" stroke-width="1"/>
+<text x="90.0" y="520" text-anchor="middle" font-size="12" font-family="PingFang SC, sans-serif" fill="#54555a">0</text>
+<line x1="327.5" y1="120" x2="327.5" y2="500" stroke="#dbdee4" stroke-width="1"/>
+<text x="327.5" y="520" text-anchor="middle" font-size="12" font-family="PingFang SC, sans-serif" fill="#54555a">200</text>
+<line x1="565.0" y1="120" x2="565.0" y2="500" stroke="#dbdee4" stroke-width="1"/>
+<text x="565.0" y="520" text-anchor="middle" font-size="12" font-family="PingFang SC, sans-serif" fill="#54555a">400</text>
+<line x1="802.5" y1="120" x2="802.5" y2="500" stroke="#dbdee4" stroke-width="1"/>
+<text x="802.5" y="520" text-anchor="middle" font-size="12" font-family="PingFang SC, sans-serif" fill="#54555a">600</text>
+<line x1="1040.0" y1="120" x2="1040.0" y2="500" stroke="#dbdee4" stroke-width="1"/>
+<text x="1040.0" y="520" text-anchor="middle" font-size="12" font-family="PingFang SC, sans-serif" fill="#54555a">800</text>
+<text x="1048" y="516" font-size="12" font-family="PingFang SC, sans-serif" fill="#54555a">MiB</text>
+<circle cx="148.4" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="158.2" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="158.3" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="158.9" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="169.7" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="170.1" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="170.2" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="170.3" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="170.5" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="170.5" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="170.6" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="170.6" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="171.5" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="171.7" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="176.9" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="177.3" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="177.3" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="177.5" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="177.5" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="177.5" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="177.6" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="177.6" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="177.6" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="177.8" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="177.8" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="178.1" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="198.2" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="201.1" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="202.3" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="202.5" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="204.0" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="204.2" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="204.6" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="204.9" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="205.2" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="205.5" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="209.8" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="209.9" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="210.2" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="212.0" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="212.4" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="213.3" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="213.3" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="213.6" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="214.0" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="214.3" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="220.9" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="228.8" cy="243" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="422.7" cy="217" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<circle cx="492.3" cy="230" r="5" fill="#4f7cac" fill-opacity="0.8"/>
+<text x="60" y="178" font-size="15" font-family="PingFang SC, sans-serif" font-weight="bold" fill="#1f2937">Peri · 50 沙盒</text>
+<line x1="199.594375" y1="190" x2="199.594375" y2="270" stroke="#4f7cac" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="199.594375" y="288" text-anchor="middle" font-size="12" font-family="PingFang SC, sans-serif" font-weight="bold" fill="#4f7cac">均值 92</text>
+<circle cx="113.75" cy="420" r="5.5" fill="none" stroke="#d97757" stroke-width="2"/>
+<text x="123.75" y="424" font-size="11" font-family="PingFang SC, sans-serif" fill="#d97757">僵尸进程(0 MiB)</text>
+<circle cx="529.4" cy="420" r="5.5" fill="#d97757" fill-opacity="0.9"/>
+<circle cx="539.9" cy="432" r="5.5" fill="#d97757" fill-opacity="0.9"/>
+<circle cx="595.8" cy="408" r="5.5" fill="#d97757" fill-opacity="0.9"/>
+<circle cx="601.9" cy="420" r="5.5" fill="#d97757" fill-opacity="0.9"/>
+<circle cx="701.2" cy="432" r="5.5" fill="#d97757" fill-opacity="0.9"/>
+<circle cx="1013.5" cy="408" r="5.5" fill="#d97757" fill-opacity="0.9"/>
+<text x="60" y="368" font-size="15" font-family="PingFang SC, sans-serif" font-weight="bold" fill="#1f2937">opencode · 7 沙盒</text>
+<line x1="663.6218749999999" y1="380" x2="663.6218749999999" y2="460" stroke="#d97757" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="663.6218749999999" y="478" text-anchor="middle" font-size="12" font-family="PingFang SC, sans-serif" font-weight="bold" fill="#d97757">均值 483(有效)</text>
+<text x="581.6758928571428" y="500" text-anchor="middle" font-size="11" font-family="PingFang SC, sans-serif" fill="#6b7280">含僵尸均值 414</text>
+<text x="1040" y="560" text-anchor="end" font-size="13" font-family="PingFang SC, sans-serif" fill="#374151">Peri 均值约为 opencode 的 1/5(有效均值)~ 1/4.5(含僵尸)</text>
+<text x="60" y="580" font-size="11" font-family="PingFang SC, sans-serif" fill="#6b7280">口径:均含操作系统;Peri:2026-08-12 docker stats 快照;opencode:同日 top -b -n 1 快照,7 个进程,其中 1 个僵尸(0 MiB);Peri 低区圆点纵向微抖仅用于避免重叠</text></svg>
