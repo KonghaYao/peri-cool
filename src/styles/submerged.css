@@ -45,8 +45,8 @@
   --sl-font: 'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC', 'Source Han Serif CN', 'STSong', 'SimSun', serif;
   --sl-font-mono: 'SF Mono', 'Menlo', 'Consolas', 'Liberation Mono', monospace;
 
-  /* 布局：正文列宽 40rem ≈ 640px，与 anthropic 阅读列一致 */
-  --sl-content-width: 40rem;
+  /* 布局：正文列宽 55rem ≈ 880px */
+  --sl-content-width: 55rem;
   --sl-sidebar-width: 16rem;
   --sl-nav-height: 3.5rem;
   --sl-text-h1: clamp(2rem, 4vw, 2.75rem);
