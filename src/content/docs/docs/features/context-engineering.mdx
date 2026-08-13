@@ -17,7 +17,7 @@ import { Aside } from '@astrojs/starlight/components';
 
 | 维度 | 短上下文（~10K tokens） | 长上下文（~100K tokens） |
 |------|------------------------|--------------------------|
-| API 延迟 | 1-3 秒 | 5-15 秒 |
+| API 延迟 | 取决于 Provider、模型与负载 | 通常需要处理更多输入，但必须实测 |
 | 输入费用 | 低 | token 数 × 单价 |
 | 注意力质量 | 精准，关键信息密度高 | 稀释，模型可能"遗忘"中间部分 |
 | 缓存命中 | 维护简单 | 缓存碎片化，命中率下降 |
@@ -30,7 +30,7 @@ Peri 的设计哲学就是帮你管理这一资源——系统提示词冻结缓
 
 ### 传统方式的问题
 
-传统 AI 编码助手每次请求都发送完整的系统提示词。一个典型的编码助手系统提示词可能占用 8K-15K tokens——每次 `/turn` 都原样发送，这些 8K-15K token 反复计费。
+模型请求需要携带系统提示词；如果 Provider 支持 prompt cache，稳定前缀可以复用其缓存语义。具体计费与有效期由 Provider 决定。
 
 ```mermaid
 sequenceDiagram
@@ -39,17 +39,17 @@ sequenceDiagram
     participant API as API
 
     U->>A: 第1轮对话
-    A->>API: System(15K) + Context + 本轮输入 → 计15K输入
+    A->>API: System + Context + 本轮输入
     U->>A: 第2轮对话
-    A->>API: System(15K) + 全部历史 + 本轮输入 → 又计15K
+    A->>API: System + 全部历史 + 本轮输入
     U->>A: 第3轮对话
-    A->>API: System(15K) + 全部历史 + 本轮输入 → 又计15K
-    Note over A,API: 10轮对话累计 150K 系统提示词 token 费用
+    A->>API: System + 全部历史 + 本轮输入
+    Note over A,API: 重复前缀是否优惠取决于 Provider 缓存
 ```
 
 ### Peri 的冻结前缀方案
 
-Peri 利用 Anthropic 的 Prompt Caching API，将系统提示词（包括 CLAUDE.md、skill 上下文、hook 指令等）作为**冻结前缀（frozen prefix）**缓存。这些 token 在会话生命周期内不变，95-99% 的对话 token 从缓存命中，不计费或按缓存价格计费。
+Peri 将系统提示词、项目指令与启动时装配的静态内容组织为**冻结前缀（frozen prefix）**，尽量保持序列化稳定，从而让支持 prompt cache 的 Provider 有机会复用缓存。冻结是架构契约，不是固定命中率或费用承诺。
 
 ```mermaid
 sequenceDiagram
@@ -58,27 +58,19 @@ sequenceDiagram
     participant API as API
 
     U->>P: 第1轮对话
-    P->>API: [FROZEN System 15K] + 动态Context + 本轮输入
-    Note over P,API: 缓存 MISS: 计15K（唯一一次）
+    P->>API: [FROZEN System] + 动态Context + 本轮输入
+    Note over P,API: 首次请求建立可复用前缀
     U->>P: 第2轮对话
-    P->>API: [缓存命中 15K] + 动态Context + 本轮输入
-    Note over P,API: 缓存 HIT: 15K 不计费或低费率
+    P->>API: [稳定前缀] + 动态Context + 本轮输入
+    Note over P,API: usage 返回值决定是否命中缓存
     U->>P: 第3-10轮对话
-    P->>API: [缓存命中 15K] + 动态Context + 本轮输入
-    Note over P,API: 每轮都在命中
+    P->>API: [稳定前缀] + 动态Context + 本轮输入
+    Note over P,API: 前缀变化、TTL 与模型切换都可能失效
 ```
 
-### 实际效果
+### 如何验证效果
 
-以一个 15K tokens 的冻结前缀为例：
-
-| | 传统方式（10轮） | Peri（10轮） |
-|---|---------------|------------|
-| 系统提示词 token 计费 | 150K | 15K |
-| 缓存命中率 | 0% | 95-99% |
-| 等效节省 | — | ~90% |
-
-冻结前缀中的内容不会被压缩（compaction）修剪——它们是"永久上下文"。因此，写入 CLAUDE.md 的内容是真正的"免费指令"（仅首次收取缓存写入费）。
+冻结前缀中的内容不由对话 compaction 修剪，但仍会占据请求上下文，并可能产生缓存写入、读取或普通输入费用。不要把 CLAUDE.md 当作“免费指令”。应从 Provider 返回的 usage 字段分别观察 cache write、cache read 和普通输入 token，并在同一模型、同一前缀下比较多轮请求。
 
 <Aside type="note">
   冻结前缀在什么时候失效？当模型切换、系统提示词变更或 <code>/clear</code> 重置会话时。日常对话中前缀高度稳定，这也是为什么保持 CLAUDE.md 精简很重要——每一行都留在前缀里。

@@ -49,7 +49,7 @@ flowchart LR
     P --> C1 & C2 & C3 & C4 & C5
 ```
 
-**Agent 只需实现 ACP Server 一次**，就能被所有 ACP 兼容编辑器接入。
+**Agent 实现 ACP Server 后**，可以被实现了相应 ACP 能力的客户端接入。实际可用范围取决于双方支持的协议版本与 capability，而不是客户端是否挂有“ACP”标签。
 
 ## 生态现状：40+ Agent × 80+ Client
 
@@ -138,7 +138,7 @@ Peri 不是又一个 Agent 前端——它是一个**兼容 ACP 协议的全栈 
 ├───────────────────────────┼──────────────────────────┤
 │                 Agent 核心层                          │
 │  ┌────────┐  ┌──────────┐  ┌──────────────┐        │
-│  │ ReAct  │  │ 20 个    │  │ LSP / MCP    │        │
+│  │ ReAct  │  │ 中间件链  │  │ LSP / MCP    │        │
 │  │ Loop   │  │ Middleware│  │ 集成         │        │
 │  └────────┘  └──────────┘  └──────────────┘        │
 └─────────────────────────────────────────────────────┘
@@ -157,17 +157,17 @@ Peri 不是又一个 Agent 前端——它是一个**兼容 ACP 协议的全栈 
 
 Peri 选择自己同时做 Agent 和 Client（TUI），但**不因此绕过 ACP 协议**。TUI 前端通过 MpscTransport 以 ACP 标准协议与服务层交互——这意味着：
 
-1. **内部解耦**：TUI 渲染逻辑（scroll、theme、panel）与 Agent 执行逻辑（ReAct loop、middleware chain）完全隔离
-2. **能力一致**：外部 IDE 能用的所有 ACP 能力（session 管理、流式输出、工具上报、权限审批），TUI 也用完全相同的协议路径获得
-3. **可替换性**：把 peri-tui 换成任何一个 ACP Client（Zed、VS Code 插件、Web UI），Agent 核心不需要任何改动
+1. **内部解耦**：TUI 渲染逻辑与 Agent 执行逻辑通过 ACP 边界交互；启动装配等位置仍可能共享类型或配置
+2. **路径一致**：TUI 与外部客户端都从 ACP 边界获取 session、流式更新、工具上报与权限请求；各客户端能力仍可能不同
+3. **可替换边界**：实现所需 ACP capability 的客户端可以复用 Agent 核心；客户端能力、transport 与扩展通知仍可能需要适配
 
 ## 你该知道的关键设计决策
 
 | 决策 | 做法 | 理由 |
 |------|------|------|
 | **自建实现，不依赖 SDK** | Peri 直接实现 JSON-RPC 2.0 协议，不使用官方 `acp-sdk` | 需要更细粒度的会话生命周期控制和对 Peri 特有功能（PeriCaps、HITL、Goal）的原生支持 |
-| **双 Transport trait** | `AcpTransport` trait + Mpsc/Stdio 两个实现 | 内部 TUI 走内存通道零延迟，外部 IDE 走标准 stdio 协议 |
-| **PeriCaps 扩展通道** | `peri-acp-types/src/peri_caps.rs`（10 个 bool flag） | ACP 的 `_meta` 扩展机制允许自定义通知；Peri 通过能力协商向 Client 声明额外的自定义事件（token_stats、skill_names、replay 等） |
+| **双 Transport trait** | `AcpTransport` trait + Mpsc/Stdio 两个实现 | 内部 TUI 走内存通道，外部客户端可走 stdio；两者延迟需分别测量 |
+| **PeriCaps 扩展通道** | `peri-acp-types/src/peri_caps.rs` | ACP 的 `_meta` 扩展机制允许自定义通知；Peri 通过能力协商声明当前构建支持的扩展 |
 | **Event 映射层** | `peri-acp/src/event/mapper.rs` 将内部 `ExecutorEvent` 映射为 ACP 标准事件 | ReAct 引擎的内部事件（工具执行、Compact 完成、Agent 错误）必须转译为 ACP 客户端可理解的消息格式 |
 | **Session 持久化** | 基于 SQLite 的 ThreadStore | 支持 session/load 和 session/resume，这是 ACP 协议要求的核心能力——用户关闭编辑器后能恢复之前的对话上下文 |
 
@@ -179,7 +179,7 @@ Peri 选择自己同时做 Agent 和 Client（TUI），但**不因此绕过 ACP 
 不是。Peri 是一个**Agent 平台**，通过 ACP 协议它可以作为 Zed/VS Code 的 Agent 后端使用，也可以作为独立的 TUI 终端使用。Claude Code 是一个 ACP Agent 实现，Peri 是另一个——它们通过同一个协议与编辑器通信。
 
 **Q: 为什么 Peri 不用任何 ACP SDK？**
-Peri 的实现需求超出了标准 SDK 的范围：20 个中间件的生命周期管理、PeriCaps 自定义通知通道、HITL 审批集成的实时性要求、Langfuse 追踪的 per-turn 粒度——这些都需要在协议栈的每一层做深度集成。
+Peri 需要装配自己的中间件生命周期、PeriCaps 通知、HITL 与观测路径，因此当前选择直接维护协议集成。具体数量与能力以当前 assembly 和 capability 定义为准。
 
 **Q: ACP 和 MCP 是什么关系？**
 它们是互补的。MCP（Model Context Protocol）连接 Agent 和工具/数据源；ACP 连接 Agent 和编辑器/用户界面。一个 Agent 可以同时使用 MCP 获取工具能力、使用 ACP 与用户交互。事实上，ACP 社区已经在推进 [MCP-over-ACP](https://agentclientprotocol.com/rfds/mcp-over-acp.md)，将 MCP 工具通过 ACP 通道传递给客户端。

@@ -1,6 +1,6 @@
 ---
-title: "Peri Code：一个 13MB 的 Rust 编码助手"
-description: Peri 是什么、能做什么，以及与 Claude Code、Cursor 的核心差异。
+title: "Peri Code：一个 Rust 终端编码助手"
+description: Peri 的产品定位、分层结构、模型适配与扩展边界。
 date: 2026-07-21
 
 hero:
@@ -11,32 +11,42 @@ hero:
 
 import { Aside } from '@astrojs/starlight/components';
 
-Peri 是一个用 Rust 写的终端 AI 编码助手。兼容 Claude Code 生态——skills、hooks、MCP、sub-agents 原样可用。但它更小更快，且不绑定任何特定模型。
+Peri 是一个用 Rust 编写、运行在终端中的 AI 编码助手。它提供交互式 TUI，同时把 Agent 循环、协议装配和扩展中间件分开维护。
 
-## 三个数字
+这篇文章最初用二进制大小、内存、缓存命中和代码生成比例介绍产品。那些数字没有附带可复现的公开基准，无法支持跨版本或竞品比较，因此不再作为产品承诺。判断 Peri 是否适合你的项目，更可靠的方法是看它的边界与验证方式。
 
-- **13MB**：Peri 是单个静态链接的 Rust 二进制。不需要 Node.js、不需要 Python、不需要任何运行时依赖。
-- **50MB**：运行时内存占用。Claude Code 在几十轮对话后内存会膨胀到 300-800MB，Peri 稳定在 50MB 左右。
-- **99%**：Peri 的代码由 AI 生成。不是 demo——是 20 万行生产级代码。
+## 产品主路径
 
-## 核心差异
+一次交互通常经过：
 
-Peri 和 Claude Code 做的是同一件事——AI 驱动的编码助手。但实现路径完全不同。
+```text
+peri-tui → peri-acp → peri-agent::run_react_loop
+```
 
-Rust 的内存模型让 Peri 可以精确控制缓存行为。Peri 的冻结系统提示词 + 边界标记机制让 95-99% 的对话 token 从缓存命中——几乎不给 API 重复付费。
+- TUI 接收输入、展示事件并提供状态面板。
+- ACP 层装配会话和中间件，并把内部事件映射到协议更新。
+- Agent 负责模型请求、工具调用、上下文压缩与退出判断。
+- MCP、plugins、skills、hooks、HITL 和 workflow 由中间件层接入。
 
-Node.js 做不到这一点——V8 的内存管理不受开发者控制，prompt cache 的命中率受 GC 行为影响。
+这种分层的价值不是自动带来某个性能数字，而是让协议、界面和执行循环拥有可测试的边界。
 
-<Aside type="tip">
-  对于重度用户（每天数百次对话），缓存命中带来的节省可以降低 90% 以上的 token 消耗。
+## 模型与配置
+
+Peri 支持 Anthropic 以及 OpenAI-compatible 的 provider 路径。兼容端点是否支持工具调用、图片、流式响应和特定推理参数，仍由服务端与模型决定。
+
+四个模型档位把“当前任务需要的能力层级”与具体模型名分开。切换档位可以通过 TUI Model 面板完成；不要假设所有 CLI 覆盖参数都已接线，命令行为以[参考页](/peri-cool/docs/features/cli-reference/)为准。
+
+## 扩展生态
+
+Peri 可以读取和装配 Claude 风格的 skills、agents、hooks 以及 MCP 配置，但“能够读取相同格式”不等于所有第三方扩展行为完全相同。事件支持、终端交互、工具名称和权限链都需要在当前版本中验证。
+
+<Aside type="caution">
+  无参数启动当前默认使用 Bypass。它会跳过 Peri 的工具审批，但不提供 OS 沙箱。第一次在真实仓库使用时建议运行 <code>peri -a</code>，并保持工作区可回滚。
 </Aside>
 
-## 模型自由
-
-Peri 不绑定模型。Claude Sonnet 能做架构设计，DeepSeek V3 能做日常编码，GLM 适合中文场景——三者在一个会话中随意切换，`/model` 命令即时生效。
-
-这是 Claude Code 做不到的——Claude Code 本质上是 Anthropic API 的客户端。
-
-## 相关文章
+## 从哪里开始
 
 - [概述](/peri-cool/docs/get-started/introduction/)
+- [安装、升级与卸载](/peri-cool/docs/get-started/installation/)
+- [Provider 配置](/peri-cool/docs/guides/providers/)
+- [架构与历史](/peri-cool/docs/developer/)

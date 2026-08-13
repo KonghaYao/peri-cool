@@ -1,49 +1,60 @@
-# Starlight Starter Kit: Basics
+# Peri Cool
 
-[![Built with Starlight](https://astro.badg.es/v2/built-with-starlight/tiny.svg)](https://starlight.astro.build)
+Peri 的官方文档与文章站点，基于 Astro 和 Starlight 构建。站点内容使用简体中文，以可核验的产品行为、工程记录和研究数据为事实基础。
 
-```
-pnpm create astro@latest -- --template starlight
-```
+## 内容结构
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
-
-## 🚀 Project Structure
-
-Inside of your Astro + Starlight project, you'll see the following folders and files:
-
-```
-.
-├── public/
-├── src/
-│   ├── assets/
-│   ├── content/
-│   │   └── docs/
-│   └── content.config.ts
-├── astro.config.mjs
-├── package.json
-└── tsconfig.json
+```text
+src/content/docs/docs/    用户文档与参考手册
+src/content/posts/        工程、产品、研究与动态文章
+src/pages/                首页、文章索引与文章路由
+src/components/           Starlight 自定义组件
+src/styles/               全局主题
+public/                   静态图表与公开资源
 ```
 
-Starlight looks for `.md` or `.mdx` files in the `src/content/docs/` directory. Each file is exposed as a route based on its file name.
+文档和文章分开管理：
 
-Images can be added to `src/assets/` and embedded in Markdown with a relative link.
+- 文档回答“如何完成一个任务”，并收录配置、命令和故障排除参考。
+- 文章记录设计背景、工程权衡、数据研究和已发生的项目变化。
 
-Static assets, like favicons, can be placed in the `public/` directory.
+## 本地开发
 
-## 🧞 Commands
+需要 Bun。
 
-All commands are run from the root of the project, from a terminal:
+```bash
+bun install
+bun run dev
+```
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
+默认开发服务地址由 Astro 在终端输出。
 
-## 👀 Want to learn more?
+## 检查
 
-Check out [Starlight’s docs](https://starlight.astro.build/), read [the Astro documentation](https://docs.astro.build), or jump into the [Astro Discord server](https://astro.build/chat).
+```bash
+bun run check:site
+git diff --check
+```
+
+`check:site` 会先构建站点，再检查站内链接、图片、锚点、`/peri-cool/` base、文章索引可达性、Pagefind、sitemap 和编辑链接。
+
+## 添加文档
+
+1. 在 `src/content/docs/docs/` 的合适主题下新建 `.mdx` 文件。
+2. 添加 `title` 和 `description` frontmatter。
+3. 在 `astro.config.mjs` 的 sidebar 中放入对应 slug。
+4. 内部链接使用带 base 的绝对路径，例如 `/peri-cool/docs/get-started/quickstart/`。
+
+## 添加文章
+
+1. 在 `src/content/posts/<category>/` 下新建 `.mdx` 文件。
+2. `category` 必须是 `engineering`、`product`、`research` 或 `news`。
+3. 添加 `title`、`description` 和 `date` frontmatter。
+4. 文章会按 `date DESC, id DESC` 自动出现在总览、分类索引和文章侧边栏，不需要维护 slug 清单。
+
+## 内容原则
+
+- 只写代码、契约测试、正式设计记录或可追溯数据能支持的事实。
+- 命令、默认值、生命周期和精确数字在发布前核验事实源。
+- 功能有局限时直接说明，不使用绝对兼容或无条件承诺。
+- 研究文章需写明样本、时间窗口、口径、局限和可复现性等级。

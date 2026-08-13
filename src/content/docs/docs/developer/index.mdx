@@ -1,0 +1,102 @@
+---
+title: 开发者入口
+description: 从产品主链、模块边界和契约测试进入 Peri 代码库。
+---
+
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
+
+这里面向准备阅读、修改或审查 Peri 源码的贡献者。用户操作说明仍以[文档总览](/peri-cool/docs/)为入口；本节关注代码放在哪里、跨层变更需要同时检查什么。
+
+## 先建立一张地图
+
+Peri 的终端交互主路径是：
+
+```text
+peri-tui → peri-acp → peri-agent::run_react_loop
+```
+
+这条简化路径表达调用入口，不代表所有 crate 只有线性依赖。模型协议、公共契约、资源访问、中间件和控制面分别由专门 crate 承担。当前 workspace 的完整依赖关系以根 `Cargo.toml`、各 crate manifest 和 `docs/standards/architecture-contracts.md` 为准。
+
+<CardGrid>
+  <Card title="执行核心">
+    `peri-agent` 管理会话、消息、RCRA 阶段和 Agent 执行权；`run_react_loop` 是循环入口。
+  </Card>
+  <Card title="协议边界">
+    `peri-acp` 接收 ACP 请求并把 Agent 事件协议化；TUI 不直接驱动 Agent 循环。
+  </Card>
+  <Card title="能力装配">
+    `peri-middlewares` 提供工具、Skills、MCP、审批、Hook、SubAgent 等能力；生产链顺序由 Agent 层蓝本约束。
+  </Card>
+  <Card title="终端界面">
+    `peri-tui` 消费 ACP 通知并维护交互状态、消息视图和面板。
+  </Card>
+</CardGrid>
+
+更完整的职责图和跨层不变量见[架构总览](/peri-cool/docs/developer/architecture/)。
+
+## 按任务找入口
+
+| 任务 | 先读 | 稳定代码入口 |
+| --- | --- | --- |
+| Agent loop、Compact、模型调用、工具 trait | `peri-agent/CLAUDE.md`、架构契约、Rust 规范 | `peri-agent/src/agent/`、`peri-agent/src/agent/compact_v2/`、`peri-agent/src/session/` |
+| Session、Prompt、事件映射、ACP transport | `peri-acp/CLAUDE.md`、架构契约 | `peri-acp/src/session/`、`peri-acp/src/prompt/`、`peri-acp/src/event/` |
+| MCP、Skills、Plugin、SubAgent、HITL、Hook | `peri-middlewares/CLAUDE.md`、架构契约 | `peri-middlewares/src/` |
+| TUI 输入、消息流、面板、通知 | `peri-tui/CLAUDE.md`、TUI 与 Rust 规范 | `peri-tui/src/kit/` |
+| E2E | `e2e/CLAUDE.md`、测试规范 | `e2e/` |
+
+模块指引不会由 loader 自动继承父目录规则。进入某个模块前，要显式阅读该模块的 `CLAUDE.md` 与适用的 `docs/standards/` 文档。
+
+## 事实优先级
+
+当文档和实现不一致时，按以下顺序判断：
+
+1. 代码与契约测试
+2. `docs/standards/`
+3. 模块 `CLAUDE.md`
+4. `docs/design/`
+5. active spec
+6. 历史记录
+
+历史 issue 能解释一个设计为什么出现，不能覆盖当前代码。设计文档可能同时包含目标状态和已实现基线，引用前要确认它的状态说明。
+
+## 跨层改动检查
+
+修改以下对象前，先读 `docs/standards/architecture-contracts.md`：
+
+- ACP 边界和序列化格式
+- frozen prompt 与项目指引加载
+- Agent 事件链和终止语义
+- 工具 direct/deferred 可见性
+- 中间件生产顺序
+- cancel、keepgoing 和会话生命周期
+- 配置、日志、错误和遥测中的 secret
+
+跨层事件变更通常至少涉及 Agent 发射、协议映射、ACP 转发和 TUI 消费。只修改枚举或单个 handler，不构成完整实现。
+
+## 常用验证
+
+```bash
+# 先跑受影响 crate 的目标测试
+cargo test -p peri-agent --lib <test_name>
+cargo test -p peri-acp --lib mapper
+cargo test -p peri-middlewares --lib <test_name>
+cargo test -p peri-tui --lib <test_name>
+
+# 文档注释和全局质量门
+cargo test --workspace --doc
+cargo clippy --workspace --all-targets -- -D warnings
+lefthook run pre-commit
+```
+
+目标测试应先于全 workspace 测试。测试命令证明的范围要与结论一致：mapper 测试能证明映射分支，不会自动证明 TUI 已正确消费。
+
+<Aside type="caution" title="不要从数字建立架构认知">
+  工具、事件、Hook 或内置 Agent 的数量会变化。本节使用职责、路径、符号和契约定位事实，不维护容易过期的库存数字。
+</Aside>
+
+## 下一步
+
+- [架构总览](/peri-cool/docs/developer/architecture/)：理解层边界、事件链和会话执行权
+- [3.0 分层重构](/peri-cool/docs/history/3-0-refactor/)：理解这些边界为何被重新划分
+- [可验证工程里程碑](/peri-cool/docs/history/milestones/)：按证据类型阅读项目演进
+- [贡献指南](/peri-cool/docs/features/best-practices/)：开始具体修改前核对工作方式

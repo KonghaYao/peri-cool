@@ -1,109 +1,101 @@
 ---
 title: 命令参考
-description: Peri 所有内置命令、斜杠命令和 CLI 参数的完整参考
+description: Peri 当前 CLI 与 TUI 本地命令参考，并标明已解析但尚未生效的参数
 hero:
   image:
     file: ../../../../assets/img_keys_and_star_s52.png
     alt: 钥匙与星
 ---
 
-import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Aside } from '@astrojs/starlight/components';
 
-本文档是 Peri 所有命令的速查手册——CLI 参数和斜杠命令两种形态。
+这份参考以当前代码调用路径为准。`peri --help` 能证明参数可被解析，但不能证明参数已经接入运行时；下文因此把参数分成“已接线”和“已解析但未生效”两类。
 
-## CLI 参数
+## 已接线的基础入口
 
-在终端中直接使用的命令行参数。
+| 命令 | 当前行为 |
+| --- | --- |
+| `peri` | 启动交互式 TUI。没有显式权限参数时，初始权限模式是 Bypass |
+| `peri -a` | 启动 TUI，并把初始权限模式设为 Default |
+| `peri --permission-mode <mode>` | 设置初始权限模式：`bypass`、`default`、`accept-edit` 或 `auto-mode` |
+| `peri -c` | 在 TUI 中加载当前目录最近的会话（如果存在） |
+| `peri -r <session_id>` | 在 TUI 中加载指定会话；请传入实际 UUID |
+| `peri --config-file <path>` | 重定向全局 settings 文件路径 |
+| `peri --db-path <path>` | 重定向 SQLite 会话数据库路径 |
+| `peri update` | 下载并执行仓库 `main` 分支上的安装脚本 |
 
-### 基础参数
+`--dangerously-skip-permissions` 也会选择 Bypass。权限模式只控制工具审批，不提供容器、文件系统或网络隔离。安全边界见[权限系统](/peri-cool/docs/features/permissions/)。
 
-| 命令 | 说明 | 示例 |
-|------|------|------|
-| `peri` | 启动交互式 TUI | `peri` |
-| `peri --version` | 查看版本号 | `peri --version` |
-| `peri --help` | 查看帮助信息 | `peri --help` |
+## 非交互模式
 
-### 单次对话
+```bash
+peri -p "解释 src/main.rs"
+echo "解释 src/main.rs" | peri -p
+```
 
-| 命令 | 说明 | 示例 |
-|------|------|------|
-| `peri -p "<prompt>"` | 非交互式单次对话 | `peri -p "用 Rust 写一个快速排序"` |
-| `peri -p "<prompt>" --max-turns 1` | 单次对话，只执行一轮 | `peri -p "解释 src/main.rs" --max-turns 1` |
-| `peri -p "<prompt>" --model <name>` | 单次对话使用指定模型 | `peri -p "审查代码" --model deepseek-v3` |
+`-p` 创建一次临时 ACP 会话，输出响应后退出。它当前默认使用 Bypass，并自动接受运行期间出现的权限请求，因此不要把它直接用于未隔离的 CI 环境。
 
-<Aside type="note">
-  <code>-p</code> 模式下 Peri 完成任务后自动退出，不会进入交互式 TUI。
+已接线选项：
+
+| 参数 | 当前行为 |
+| --- | --- |
+| `--output-format text` | 只输出最终文本；默认值 |
+| `--output-format json` | 最终输出一个 JSON result |
+| `--output-format stream-json` | 逐行输出文本和工具事件 JSON |
+| `--model <alias>` | 尝试按配置中的档位选择 provider 和模型；找不到该档位时沿用当前 provider |
+| `--settings <path-or-json>` | 从指定文件或 JSON 字符串加载本次运行的配置 |
+| `--bare` | 跳过 settings hooks、LSP 和插件等装配 |
+| `--db-path <path>` | 使用指定会话数据库；打开失败时退出 |
+
+<Aside type="caution">
+  <code>-p</code> 不是“只推理一轮”的同义词。当前 <code>--max-turns</code> 虽然出现在帮助中，但没有接入执行循环。
 </Aside>
 
-### 模型与会话
+## 已解析但尚未生效
 
-| 命令 | 说明 | 示例 |
-|------|------|------|
-| `peri --model <name>` | 启动时指定默认模型 | `peri --model claude-sonnet` |
-| `peri -c` / `peri --continue` | 恢复当前目录最近的会话 | `peri -c` |
-| `peri -r <session_id>` / `peri --resume <session_id>` | 恢复指定会话 | `peri --resume abc123` |
+以下参数目前会被命令行解析器接受，但调用路径没有应用其值。不要依赖它们做安全限制或资源控制。
 
-<Aside type="note">
-  历史会话可在 TUI 内用 <code>/threads</code> 面板浏览；<code>--resume</code> 只接受具体会话 ID，<code>--resume last</code> 无效。
-</Aside>
+| 参数 | 受影响入口 | 当前状态 |
+| --- | --- | --- |
+| `--max-turns` | `-p` | 未限制 Agent 轮数 |
+| `--effort` | TUI、`-p` | 未覆盖实际请求的 effort |
+| `--allowedTools` / `--allowed-tools` | TUI、`-p` | 未限制可用工具 |
+| `--disallowedTools` / `--disallowed-tools` | TUI、`-p` | 未禁用工具 |
+| `--no-session-persistence` | CLI | 解析后未传入运行路径 |
+| `--model` | TUI | 会解析并查找配置，但没有替换 TUI 实际使用的 provider；`-p` 路径已接线 |
+| `--session-id`、`--name` | TUI | 解析后未用于创建会话 |
+| `peri acp --model`、`peri acp --agent` | ACP stdio | 子命令接受参数，但启动时忽略 |
 
-### 配置管理
+这些参数仍可能随产品实现变化。判断当前版本时，以这里的说明和实际调用路径为准，而不是只看 `--help`。
 
-Peri 没有 `config` 子命令。配置文件位于 `~/.peri/settings.json`（JSON 格式，顶层结构为 `{"config": {...}}`），可在 TUI 中用 `/config` 面板（快捷键 `Ctrl+F`）查看和编辑。
+## 插件与其他子命令
 
-### 更新
+插件 CLI 提供 `list`、`install`、`uninstall`、`enable`、`disable`、`update`、`info`、`search`、`cleanup` 和 `marketplace` 管理入口。安装一次只接受一个插件标识：
 
-| 命令 | 说明 | 示例 |
-|------|------|------|
-| `peri update` | 从 GitHub 下载并安装最新版本 | `peri update` |
+```bash
+peri plugin install frontend-design@claude-plugins-official
+```
 
-## 斜杠命令
+另有 `peri sync ...`、`peri web ...` 与 `peri acp ...`。各子命令的参数以对应的 `--help` 为入口；其中 `peri web` 默认监听 `0.0.0.0`，启动前应确认网络暴露范围。
 
-在 Peri TUI 中，以 `/` 开头输入。以下为完整列表。
+## TUI 本地命令
 
-### 控制
+这些命令由 TUI 直接处理，不交给 Agent：
 
-本地控制命令不经过 Agent，立即生效：
+| 命令 | 行为 |
+| --- | --- |
+| `/setup` | 打开或关闭首次配置向导 |
+| `/provider` | 循环切换 Provider |
+| `/mode` | 循环切换权限模式 |
+| `/clear`、`/cls`、`/reset` | 清空当前会话 |
+| `/rewind [message_id] [--revert-files]`、`/undo` | 打开回退界面或回退到指定消息；是否回退文件需显式选择 |
+| `/debug-export-text [screen]` | 导出全部会话文本，或只导出当前屏幕 |
+| `/exit`、`/quit` | 退出 TUI |
 
-| 命令 | 说明 | 示例 |
-|------|------|------|
-| `/setup` | 打开或关闭 Setup 向导 | `/setup` |
-| `/provider` | 循环切换 Provider | `/provider` |
-| `/mode` | 循环切换权限模式（快捷键 `Shift+Tab`） | `/mode` |
-| `/debug-export-text [screen]` | 导出当前会话文本，`screen` 只导出当前屏幕 | `/debug-export-text screen` |
-| `/exit`、`/quit` | 退出 TUI | `/exit` |
-| `/bg <任务描述>` | 立即命令：fork 当前会话启动后台子 Agent 执行独立任务 | `/bg 修复 lint 错误` |
+`/compact` 等未被本地 parser 识别的斜杠文本会发送给 Agent，由当前会话的 skill、命令或工具能力解释；它不是本地硬编码命令。
 
-### 会话
+## 面板命令
 
-| 命令 | 说明 | 示例 |
-|------|------|------|
-| `/clear`、`/cls`、`/reset` | 清空当前会话的所有对话历史（三者等价） | `/clear` |
-| `/rewind`（别名 `/undo`） | 回滚对话到指定消息，可带 `--revert-files`；无参时进入 Rewind 弹窗（双击 `Esc` 同） | `/rewind <target_message_id>` |
-| `/compact` | 立即命令：用 LLM 生成结构化摘要并保留关键文件内容，释放 token | `/compact` |
+当前面板入口包括 `/model`、`/login`、`/agent`、`/hooks`、`/config`、`/threads`、`/mcp`、`/plugin`、`/cron`、`/status`、`/memory`、`/tasks`、`/betas`、`/workflows` 和 `/theme`。`/history`、`/resume`、`/his` 是 `/threads` 的别名。
 
-### 面板
-
-| 命令 | 说明 | 示例 |
-|------|------|------|
-| `/model` | 打开 Model 面板（参数被忽略） | `/model` |
-| `/theme` | 打开 Theme 面板（参数被忽略） | `/theme` |
-| `/config` | 打开 Config 面板，编辑 `~/.peri/settings.json`（快捷键 `Ctrl+F`） | `/config` |
-| `/agent` | 打开 Agent 面板，管理子代理定义 | `/agent` |
-| `/hooks` | 打开 Hooks 面板，查看 hook 事件 | `/hooks` |
-| `/threads`（别名 `/history`、`/resume`、`/his`） | 打开 Threads 面板，浏览历史会话 | `/threads` |
-| `/mcp` | 打开 MCP 面板，管理 MCP 服务器池 | `/mcp` |
-| `/plugin` | 打开 Plugin 面板，管理已安装插件 | `/plugin` |
-| `/cron` | 打开 Cron 面板，管理定时任务 | `/cron` |
-| `/status` | 打开 Status 面板，查看服务快照 | `/status` |
-| `/memory` | 打开 Memory 面板，查看持久化记忆 | `/memory` |
-| `/tasks` | 打开 Tasks 面板，查看后台任务 | `/tasks` |
-| `/betas` | 打开 Betas 面板，切换功能开关 | `/betas` |
-| `/workflows` | 打开 Workflows 面板，查看工作流运行 | `/workflows` |
-| `/login` | 打开 Login 面板，配置 Provider 凭据 | `/login` |
-
-<Aside type="tip">
-  日常换模型不用敲命令：**鼠标点击状态栏中间模型段**（`档位 · 模型 · effort`）弹出快速切换弹窗，或按 `Ctrl+M` 打开 Model 面板编辑四个档位的完整配置。见 [模型档位](/peri-cool/docs/features/model-profiles/)。
-</Aside>
-
-权限模式通过 `/mode` 循环切换（快捷键 `Shift+Tab`），详细说明见 [权限管理](/peri-cool/docs/features/permissions/)。
+面板命令后的额外参数不会传给面板。快捷键与面板操作见 TUI 导航页；功能边界以各专题文档为准。

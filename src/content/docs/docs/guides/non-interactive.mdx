@@ -1,0 +1,58 @@
+---
+title: 非交互模式
+description: 使用 peri -p 执行一次性任务，并理解输出格式、自动审批和当前未接线参数。
+---
+
+`-p` / `--print` 启动无 TUI 的一次性客户端：创建临时 ACP session，提交一个 prompt，收集输出，然后关闭 session。
+
+## 基本用法
+
+```bash
+peri -p "解释当前仓库的测试入口"
+```
+
+也可以从标准输入读取：
+
+```bash
+printf '%s\n' '审查当前 diff，只输出问题清单' | peri -p
+```
+
+## 输出格式
+
+```bash
+peri -p "总结当前目录" --output-format text
+peri -p "总结当前目录" --output-format json
+peri -p "总结当前目录" --output-format stream-json
+```
+
+`text` 在结束时输出合并文本；`json` 输出结果对象；`stream-json` 逐条输出流事件。消费 JSON 时应按实际 schema 解析，不要把终端日志混入标准输出。
+
+## 在脚本中使用
+
+```bash
+set -euo pipefail
+result="$(peri -p '列出当前变更的高风险项' --output-format text)"
+printf '%s\n' "$result"
+```
+
+非交互模式默认使用 Bypass，并自动回应工具权限请求。只在容器、临时工作区或权限已经由外层环境约束的场景执行可写任务。若只需要分析，在 prompt 中明确“只读，不修改文件”，并继续使用外部文件系统权限限制。
+
+## 当前限制
+
+以下参数出现在 CLI parser 和 `--help` 中，但 print 执行路径当前解析后没有应用：
+
+- `--effort`
+- `--max-turns`
+- `--allowed-tools`
+- `--disallowed-tools`
+
+不要依赖它们限制成本、轮数或工具权限。`--permission-mode` 也不是 OS 沙箱；即使选择审批模式，print 客户端仍会自动回应权限请求。
+
+另外：
+
+- print 不驱动 Cron tick。
+- `--model` 在 print 路径有独立解析逻辑；交互 TUI 的同名参数行为不同。
+- `--bare` 会减少部分装配，但不能替代容器或系统权限边界。
+- 一次调用只有一个 prompt；需要多轮上下文时使用 TUI 会话。
+
+相关文档：[命令参考](/peri-cool/docs/features/cli-reference/) · [凭据与权限边界](/peri-cool/docs/security/secrets-and-permissions/) · [会话管理](/peri-cool/docs/guides/sessions/) · [故障排除](/peri-cool/docs/troubleshooting/)

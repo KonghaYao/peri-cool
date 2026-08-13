@@ -11,7 +11,7 @@ import { Aside } from '@astrojs/starlight/components';
 
 ## 什么是 Hooks
 
-Hooks（钩子）是事件驱动的自动化机制，与 Claude Code 生态完全兼容。它在 Agent 生命周期的关键节点——比如开始一轮推理前、工具调用后、子代理（Subagent）启动时——自动执行一段脚本、发起 HTTP 请求或注入一条指令。
+Hooks（钩子）是事件驱动的自动化机制。Peri 可以读取 Claude 风格的 hook 配置，并在 Agent 生命周期的关键节点——比如开始一轮推理前、工具调用后、子代理（Subagent）启动时——执行脚本、发起 HTTP 请求或注入指令。具体事件、输入字段与退出语义仍需按当前版本验证。
 
 和 CI/CD pipeline 的 hook 类似，但触发点是 Agent 的行为事件而非 git 事件。你可以用 hooks 来格式化代码、发送通知、校验工具参数，或强制注入项目规范——这些都是确定的自动化行为，不依赖 LLM 自行决策。
 
@@ -21,7 +21,7 @@ Hooks（钩子）是事件驱动的自动化机制，与 Claude Code 生态完�
 
 ## 可用事件
 
-Peri 实现了 Claude Code 的完整 hook 事件集。以下是对齐中间件链（middleware chain）的核心事件：
+以下是当前文档覆盖的核心事件。插件或外部配置在迁移前应以运行时 Hooks 面板和最小测试确认，不要从这张表推导“所有上游事件均已实现”。
 
 | 事件 | 触发时机 | 典型用途 |
 |------|---------|---------|
@@ -81,7 +81,7 @@ sequenceDiagram
 
 ## 配置方式
 
-Hooks 通过 `.claude/settings.json`（项目级）或 `~/.claude/settings.json`（全局）中的 `hooks` 字段配置，完全兼容 Claude Code 格式。
+Hooks 可通过 `.claude/settings.json`（项目级）或 `~/.claude/settings.json`（全局）中的 `hooks` 字段配置。Peri 支持相同的“事件 → matcher 组 → hook 列表”基本结构，但扩展类型和边界行为可能不同。
 
 ### 基本结构
 
@@ -330,7 +330,7 @@ Prompt 类型 hook 返回的决策可以阻断工具调用（返回 `"block"` �
 
 ## 与 Claude Code 的兼容性
 
-Peri 的 hooks 系统完全兼容 Claude Code hooks 生态。你的 Claude Code hooks 配置（settings.json 格式）可以直接在 Peri 中使用，无需修改。Peri 还额外支持：
+已有 Claude Code hook 配置可以作为迁移起点。请逐个验证事件输入、matcher、超时、退出码和敏感数据处理；Peri 还提供自己的扩展能力：
 
 - **Agent 类型 hook**：完整的子代理执行，不只限于 Claude Code 的 stop hook
 - **Prompt 注入**：Prompt 类型 hook 的决策结果可以注入到 Agent 的下一步推理中

@@ -1,0 +1,79 @@
+---
+title: 故障排除
+description: 按启动、Provider、配置、会话、MCP、Cron 和 Workflow 症状定位 Peri 问题。
+---
+
+先在一个新的最小会话中复现问题，记录运行目录、启动命令、错误文本和最近改过的配置。不要在报告中粘贴 API key、完整 settings 或私人 prompt。
+
+## `peri` 找不到
+
+```bash
+command -v peri
+peri --version
+```
+
+- macOS/Linux 默认安装目录是 `~/.peri`；确认它在 `PATH` 中。
+- Windows 重新打开终端，再检查用户级 `PATH` 是否包含 `%USERPROFILE%\.peri`。
+- Linux 出现动态链接错误时检查 glibc；release 使用 GNU target。
+
+详见[安装、升级与卸载](/peri-cool/docs/get-started/installation/)。
+
+## 启动后没有可用模型
+
+1. 打开 `/login` 检查 Provider 凭据。
+2. 打开 `/model` 检查当前 Profile 是否引用存在的 Provider ID。
+3. 检查全局与工作区 settings；工作区可能整体替换 Provider 列表或某个 Profile。
+4. 自定义 OpenAI endpoint 检查 `/v1` 路径。
+
+```bash
+test -f ~/.peri/settings.json && chmod 600 ~/.peri/settings.json
+```
+
+不要把配置内容直接贴到公开 issue。参见[配置 Provider](/peri-cool/docs/guides/providers/)和 [Settings 参考](/peri-cool/docs/reference/settings/)。
+
+## CLI 参数看起来没有生效
+
+`--help` 只证明 parser 接受参数。print 路径当前不会应用 `--effort`、`--max-turns`、allowed/disallowed tools；交互 TUI 的 `--model` 也没有写回运行服务。使用对应 TUI 面板，或查看[非交互模式](/peri-cool/docs/guides/non-interactive/)中的已知限制。
+
+## 找不到旧会话
+
+- `--continue` 只查当前工作目录的最近会话。
+- 自定义 `--db-path` 会切换会话数据库。
+- `/threads`、`/history` 和 `/resume` 打开同一个 Thread Browser。
+- active goal 和 Cron 任务是内存状态，不随会话记录恢复。
+
+详见[会话管理](/peri-cool/docs/guides/sessions/)。
+
+## MCP 配置修改后没有变化
+
+当前没有已验证的用户级热重载入口。保存配置后重启 Peri，再打开 `/mcp` 查看状态。面板用于状态与 OAuth 操作，不替代配置文件。参见 [MCP](/peri-cool/docs/features/mcp/)。
+
+## Cron 没有触发
+
+- Cron 使用 UTC 五段表达式。
+- 只有 TUI 宿主驱动 tick；`peri -p` 不驱动。
+- 任务保存在进程内存中，重启后丢失，没有 catch-up。
+- 列表只显示 ID 前缀，而删除需要完整 ID，这是当前可用性缺口。
+
+参见[定时任务](/peri-cool/docs/features/cron/)。
+
+## Workflow 无法启动
+
+安装器只检查 `npx` 或 `bunx` 是否存在。确认至少一个 runner 可执行：
+
+```bash
+command -v npx || command -v bunx
+```
+
+核心 TUI 可以在没有 runner 时启动，但 Workflow/Ultracode 不能因此自动获得执行环境。
+
+## 报告问题
+
+提交最小复现时包括：
+
+- `peri --version` 输出。
+- 操作系统与架构。
+- 去除凭据后的启动命令和错误文本。
+- 是否能在空目录、默认 settings 和新会话中复现。
+
+安全相关问题不要公开附带凭据、真实会话数据库或私有代码路径。

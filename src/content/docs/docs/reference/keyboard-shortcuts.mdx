@@ -1,0 +1,30 @@
+---
+title: 键盘操作
+description: 当前已接线的输入、权限、取消与回退按键，以及面板快捷键的已知限制。
+---
+
+这页只列生产事件路径中已经处理的按键。面板注册表虽然为许多面板保存了 `Ctrl+字母` 元数据，但当前生产 focus router 没有调用那条映射；不要把注册表元数据当作可用快捷键。
+
+## 已接线按键
+
+| 按键 | 当前行为 |
+| --- | --- |
+| `Enter` | 提交当前输入 |
+| `Shift+Enter` / `Alt+Enter` | 插入换行 |
+| `Ctrl+U` | 清空输入 |
+| `Ctrl+V` | 读取剪贴板；图片会保存到 `~/.peri/images/` |
+| `Shift+Tab` | 按 Default → AcceptEdit → AutoMode → Bypass 循环权限模式 |
+| `Ctrl+C` | 运行中请求取消；空闲时进入再次按键退出链 |
+| 双击 `Esc` | 打开 rewind 流程；有弹窗时 `Esc` 通常先关闭弹窗 |
+
+`Ctrl+T` 当前用于模型循环，不是 Threads 面板。部分 `Ctrl` 组合还会被输入编辑逻辑使用。
+
+## 打开面板
+
+请使用 `/model`、`/login`、`/threads`、`/status`、`/mcp`、`/hooks`、`/cron`、`/tasks`、`/workflows`、`/agent`、`/config`、`/plugin`、`/memory`、`/betas` 和 `/theme`。这些 slash 入口比未接线的快捷键元数据更可靠。
+
+面板的读写能力不同。例如 `/mcp` 主要展示连接状态并处理 OAuth，不是 `.mcp.json` 的通用编辑器。见 [TUI 导航](/peri-cool/docs/guides/tui-navigation/)。
+
+## 冲突排查
+
+终端复用、操作系统映射或输入法也可能截获按键。先用 slash 入口确认功能，再在另一终端复现，并记录操作系统、终端名和实际按键序列。

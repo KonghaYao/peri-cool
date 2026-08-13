@@ -1,195 +1,99 @@
 ---
-title: 快速上手
-description: 10 分钟内从零开始使用 Peri 完成日常编码任务
+title: 在 TUI 中快速上手
+description: 启动 Peri TUI，完成首次设置、选择模型并提交第一个可验证任务。
 hero:
   image:
     file: ../../../../assets/img_open_door_path_s49.png
     alt: 门与路
 ---
 
-import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Aside } from '@astrojs/starlight/components';
 
-这篇教程带你从安装到日常使用，大约 10 分钟。
+本页只走 Peri 的主产品路径。你不需要先编辑 JSON 或导出环境变量。
 
-## 1. 安装
+## 1. 在测试仓库启动
 
-Peri 是单个静态链接的二进制文件，不需要 Node.js、Python 或任何运行时依赖。
-
-### 系统要求
-
-| 平台 | 架构 |
-|------|------|
-| macOS | x86_64 / Apple Silicon |
-| Linux | x86_64 / aarch64 / riscv64 |
-| Windows | x86_64 |
-
-打开终端，运行以下命令：
-
-<Tabs syncKey="install">
-  <TabItem label="macOS / Linux">
+安装完成后，进入一个有版本控制、可以回滚的测试仓库：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/konghayao/peri/main/scripts/install.sh | bash
+cd /path/to/a/test-repository
+peri -a
 ```
 
-  </TabItem>
-  <TabItem label="Windows">
+`-a` 以 Default 权限模式启动，敏感工具会请求确认。无参数 `peri` 当前默认使用 Bypass，会自动批准工具调用。
 
-```powershell
-irm https://raw.githubusercontent.com/konghayao/peri/main/scripts/install.ps1 | iex
-```
+## 2. 按屏幕完成首次设置
 
-  </TabItem>
-</Tabs>
+当配置列表为空且无法取得 Provider，或现有条目缺少必要的名称或凭据时，Peri 会打开设置向导。已有配置时可能直接进入主界面。
 
-安装完成后，验证一下：
+向导依次让你：
 
-```bash
-peri --version
-# 输出类似: peri 0.x.x
-```
+1. 选择界面语言。
+2. 选择手动连接模型服务，或从 Claude Code 配置迁移。
+3. 选择 Provider，填写服务地址、API key 和四个模型档位。
+4. 确认并保存。
 
-## 2. 首次启动
+向导里的连通性检查只能提供有限的网络探测，不能证明 API key、模型调用或 TLS 可用。完成界面也不是配置有效的证明。
 
-直接运行 `peri`，会进入交互式配置向导：
-
-```bash
-peri
-```
-
-向导会引导你完成两件事：
-
-1. **选择模型** — 从预设的模型列表中选择，或输入自定义的 OpenAI 兼容 API 端点
-2. **设置 API Key** — 输入对应提供商的 API Key，保存到本地配置文件
-
-<Aside type="note">
-  配置以 JSON 格式存储在 <code>~/.peri/settings.json</code>。API Key 是**明文**写入该文件的——Peri 没有加密存储实现（只有设备间 sync 传输是加密的）。建议确保该文件仅当前用户可读（如 <code>chmod 600 ~/.peri/settings.json</code>）。
+<Aside type="caution" title="完成向导后重启">
+  当前向导把配置写入磁盘，但不会更新正在运行的 ACP 会话。完成后退出 Peri，再次运行 <code>peri -a</code>。不要依赖 <code>/setup</code> 重置向导，它可能重新显示之前的状态。
 </Aside>
 
-<Aside type="tip">
-  以后想改配置，在 TUI 里按 <code>Ctrl+F</code> 打开 <code>/config</code> 面板编辑，或直接改 <code>~/.peri/settings.json</code>。
-</Aside>
+## 3. 在 TUI 中检查模型
 
-配置完成后，你会看到 Peri 的 TUI 界面——流式 Markdown 渲染、状态栏、输入区都在一个终端窗口里。
-
-## 3. 第一次对话
-
-先从简单任务开始。在 Peri 的对话区直接输入：
+重启后，在输入区依次打开两个面板：
 
 ```text
-用 Python 写一个函数，把驼峰命名转成蛇形命名。带上测试用例。
+/login
+/model
 ```
 
-Peri 会写出函数和测试，然后直接运行。整个过程大概是这样：
+`/login` 用于查看、新建或编辑 Provider。`/model` 左侧列出 fable、opus、sonnet、haiku 四档；上下移动会立即切换档位。进入右侧后，左右键修改 Provider、模型或 effort 等字段，修改会立即保存并推送当前会话。
+
+面板显示的是本地配置，不是从远端服务拉取的模型目录。最终验证方式仍是发送一个最小请求。
+
+## 4. 提交第一个只读任务
+
+先让 Peri 只读探索，不修改文件：
 
 ```text
-你: 用 Python 写一个函数，把驼峰命名转成蛇形命名。带上测试用例。
-
-Peri: [思考中...]
-
-       写好了 `camel_to_snake` 函数，同时写了 4 个测试用例。运行测试：
-
-       ===== test session starts =====
-       4 passed in 0.03s
-
-       代码已写入 `snake_case.py`。
+解释这个项目的测试入口。不要修改文件；
+列出你实际读取的配置文件，并给出建议运行的最小测试命令。
 ```
 
-<Aside type="note">
-  对话历史和上下文都保存在本地。默认情况下关闭终端后**不会**自动恢复会话——下次启动用 <code>peri -c</code> 恢复当前目录最近的会话，或用 <code>peri -r &lt;session_id&gt;</code> 恢复指定会话。
-</Aside>
+按 Enter 提交。运行时可以在消息区看到读取和搜索过程；如果触发审批，根据工具目标决定是否允许。
 
-## 4. 日常使用
+## 5. 再尝试一个小修改
 
-Peri 适合各种日常编码任务。以下是最常见的三种场景。
-
-### 改 bug
-
-把错误信息或堆栈 trace 贴给 Peri，告诉它代码在哪：
+确认只读过程符合预期后，再给出边界明确的修改任务：
 
 ```text
-src/api/auth.ts 第 42 行报 TypeError: Cannot read properties of undefined，
-帮我查一下原因并修复。
+给现有的 camel_to_snake 函数补空字符串和连续大写字母测试。
+只修改测试文件，并运行最小测试集。
 ```
 
-Peri 会读代码、分析原因、编辑文件、跑测试——一轮完成。
+结束后检查：
 
-### 重构
+- 实际修改了哪些文件。
+- 测试命令、范围和退出结果。
+- 哪些检查没有运行。
+- 工作区 diff 是否符合任务边界。
 
-描述你想要的结果：
+## 6. 记住几个 TUI 入口
 
-```text
-把 src/utils/ 下所有日期处理函数从 moment.js 迁移到 dayjs，保持所有测试通过。
-```
+| 想做的事 | 在输入区键入 |
+| --- | --- |
+| 管理 Provider | `/login` |
+| 选择模型与档位 | `/model` |
+| 浏览历史会话 | `/threads` |
+| 查看服务状态 | `/status` |
+| 查看 MCP 状态 | `/mcp` |
 
-Peri 会逐个文件修改，每次改完验证测试。
+面板内通常使用方向键移动、Enter 进入或确认、Esc 返回。不要依赖尚未接线的 Ctrl 面板快捷键。
 
-### 写测试
+## 下一步
 
-指向要测的模块：
-
-```text
-给 src/services/order.ts 写单元测试，覆盖正常流程和 3 种异常情况。
-```
-
-<Aside type="tip">
-  不确定 Peri 能做什么就直接问。它不是只能写代码——你也可以问它解释代码、分析架构、审查 PR，和跟同事讨论差不多。
-</Aside>
-
-## 5. 进阶功能速览
-
-日常用熟了之后，这几个功能能显著提升效率。
-
-### 切换模型
-
-一次会话中可以随时切换，不用重启。Peri 预置四个档位（便宜/均衡/强推理等），点击状态栏的模型段即可快速切换档位：
-
-```text
-Ctrl+M    # 打开 Model 面板，编辑四档配置并切换
-```
-
-### 设置长任务
-
-一个任务要跑很多轮，中间你可能去做别的事：
-
-```bash
-/goal create "把 src/auth/ 下 5 个文件从回调风格改成 async/await"
-```
-
-Peri 在后续每一轮自动提醒自己"这事还没做完"。做完后：
-
-```bash
-/goal complete
-```
-
-详细用法见 [管理长任务](/peri-cool/docs/features/long-running-tasks/)。
-
-### 并行工作流
-
-把复杂任务拆成多个子代理并行执行。直接告诉 Peri：
-
-```text
-用 ultracode 并行审查我刚改的代码
-```
-
-Peri 会把审查、编码、探索分给不同子代理同时跑。详细用法见 [并行执行多任务](/peri-cool/docs/features/parallel-work/)。
-
-<Aside type="tip">
-  说"用 ultracode"就能触发并行模式——不需要记任何特殊命令。
-</Aside>
-
-## 6. 下一步
-
-你已经可以用 Peri 完成大部分日常编码。想深入了解某个功能，从这里开始：
-
-- **[管理长任务](/peri-cool/docs/features/long-running-tasks/)** — 多轮自动化任务推进
-- **[并行执行多任务](/peri-cool/docs/features/parallel-work/)** — 任务拆分与并行执行
-- **[模型档位](/peri-cool/docs/features/model-profiles/)** — 四档独立配置，一键切换模型与推理强度
-- **[图片输入](/peri-cool/docs/features/image-input/)** — 截图直接粘贴给 Peri
-- **[定时任务](/peri-cool/docs/features/cron/)** — 让 Peri 每天定时干活
-- **[Hooks](/peri-cool/docs/features/hooks/)** — 事件驱动的自动化钩子
-- **[主题](/peri-cool/docs/features/theme/)** — 自定义终端配色
-- **[MCP 服务器](/peri-cool/docs/features/mcp/)** — 扩展外部工具接入
-- **[CLI 命令参考](/peri-cool/docs/features/cli-reference/)** — 所有命令速查
-
-遇到问题？先按 `Ctrl+S` 打开 `/status` 面板查看运行时状态，或在新的最小会话里复现问题。详见 [定位并修复 Bug](/peri-cool/docs/features/fix-bugs/)。
+- [TUI 导航](/peri-cool/docs/guides/tui-navigation/)
+- [连接模型服务](/peri-cool/docs/guides/providers/)
+- [会话管理](/peri-cool/docs/guides/sessions/)
+- [权限系统](/peri-cool/docs/features/permissions/)

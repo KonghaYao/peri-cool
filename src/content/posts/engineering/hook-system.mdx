@@ -1,6 +1,6 @@
 ---
 title: Hook 系统
-description: Peri 的 Hook 系统——Agent Loop → Hook Middleware → Claude Code Hook 三层管道，28 个生命周期事件的拦截、评估与决策管线。
+description: Peri 的 Hook 系统——从 Agent 生命周期到配置执行、评估与决策的三层管线。
 date: 2026-07-28
 hero:
   image:
@@ -46,11 +46,11 @@ flowchart TD
 | 层 | 职责 | 可扩展性 |
 |---|------|:---:|
 | **Layer 0：Agent Loop** | RCRA 循环在固定位置调用 Middleware trait 方法，决定"**什么时候触发**" | 改动需修改 Rust 代码 |
-| **Layer 1：Hook Middleware** | 将 Agent Loop 的 6 个生命周期方法映射到 15 个 Claude Code 事件，决定"**触发什么事件**" | 新增事件需修改 Rust 代码 |
+| **Layer 1：Hook Middleware** | 将 Agent 生命周期方法映射为用户可见事件，决定“触发什么事件” | 新增事件需修改 Rust 代码 |
 | **Layer 2：Claude Code Hook 分发** | 加载用户配置的 hook 规则，执行 command/prompt/http/agent，返回 Allow/Block/ModifyInput，决定"**怎么响应事件**" | **纯配置驱动，无需改代码** |
 
 <Aside type="note">
-Hook 系统完全兼容 **Claude Code Hook 规范**——事件命名、配置格式、退出码语义和输出结构均与 Claude Code 对齐。从 Claude Code 迁移的 hook 配置文件可直接使用。
+Hook 系统以 **Claude 风格的 Hook 配置**为兼容目标：事件名和配置结构存在重叠，但迁移时仍要逐项验证事件覆盖、输入字段、退出码与输出处理。不能仅凭配置可解析就断言行为完全相同。
 </Aside>
 
 ## Layer 0：Agent Loop 如何驱动 Hook
@@ -72,9 +72,9 @@ flowchart LR
 
 `MiddlewareChain` 按注册顺序遍历链上所有中间件（HookMiddleware 是其中之一），依次调用对应方法。Hook 的返回结果（Allow/Block/ModifyInput/PreventContinuation）会反向传递，影响 Agent Loop 的后续行为。
 
-## Layer 1：Hook Middleware — 6 个 trait 方法 → 15 个事件
+## Layer 1：Hook Middleware — 生命周期到事件
 
-`HookMiddleware`（`peri-middlewares/src/hooks/middleware.rs`）是 Layer 1 的唯一实现，通过 `#[async_trait] impl Middleware` 提供 6 个生命周期方法。每个方法内部调用 `HookDispatcher::fire_event()`，将内部生命周期映射为用户可见的 Claude Code 事件。
+`HookMiddleware`（`peri-middlewares/src/hooks/middleware.rs`）实现 Middleware 生命周期方法，并调用 `HookDispatcher::fire_event()` 映射为用户可见事件。事件库存会随实现变化，应从当前 event enum、dispatcher 和测试生成，而不是依赖文章中的固定总数。
 
 ### 逐方法映射表
 
@@ -89,7 +89,7 @@ flowchart LR
 
 ### Standalone 事件：不走 Middleware trait 的触发路径
 
-除了上述 15 个通过 Middleware trait 触发的事件外，还有一组 **Standalone 事件**——它们在 Agent Loop 之外由特定模块直接调用 `fire_standalone_lifecycle_hooks()` 触发：
+除了通过 Middleware trait 触发的事件外，还有一组 **Standalone 事件**——它们在 Agent Loop 之外由特定模块直接调用 `fire_standalone_lifecycle_hooks()` 触发：
 
 | 事件 | 触发模块 | 触发时机 |
 |------|---------|----------|
@@ -183,7 +183,7 @@ sequenceDiagram
 
 ## 完整事件体系
 
-Peri 实现了 **15 个核心事件**（已生产验证，通过 Middleware trait 触发）和 13 个扩展事件（基础设施就绪，含 5 个 Standalone 已接入事件 + 8 个待接入触发点），共计 28 个事件。
+事件分为经 Middleware 触发与特定模块触发的 standalone 路径。部分 enum 变体可能只有基础设施而没有生产触发点；判断可用性要同时检查 producer、dispatcher 与契约测试。
 
 ### 核心事件表（Middleware trait 触发）
 
@@ -366,15 +366,12 @@ Peri Hook 系统从设计之初就以 Claude Code 兼容为目标。
 
 | 维度 | 兼容状态 |
 |------|---------|
-| **事件命名** | 完全对齐（PascalCase） |
-| **配置格式** | 完全兼容（`hooks.EventName[].hooks[]` 结构） |
-| **Hook 类型** | command / prompt / http 完全兼容，额外支持 agent 类型 |
-| **退出码语义** | 0=解析 stdout JSON，1=Allow，2=Block——完全一致 |
-| **输出 JSON 格式** | `continue` / `decision` / `systemMessage` / `hookSpecificOutput` 完全对齐 |
-| **超时策略** | fail-open——完全一致 |
-| **SSRF 防护** | 私有网络阻止——完全一致 |
-| **async hook** | fire-and-forget——完全一致 |
-| **matcher / if 过滤** | 工具名匹配 + 细粒度条件——完全对齐 |
+| **事件命名** | 使用 PascalCase；逐事件核对 |
+| **配置格式** | 支持 `hooks.EventName[].hooks[]` 基本结构 |
+| **Hook 类型** | 提供 command / prompt / http，并扩展 agent；具体行为按当前实现验证 |
+| **退出码语义** | 当前解析 0/1/2；迁移前验证边界 |
+| **输出 JSON 格式** | 支持若干同名字段，不能推导全量兼容 |
+| **超时、SSRF、async、matcher** | Peri 有自己的实现与安全边界，需分别测试 |
 
 ## 关键设计决策
 

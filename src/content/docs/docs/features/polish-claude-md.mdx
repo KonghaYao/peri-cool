@@ -11,7 +11,7 @@ import { Aside } from '@astrojs/starlight/components';
 
 ## CLAUDE.md 是什么
 
-CLAUDE.md 是 Peri 的项目级记忆文件，放在项目根目录。它不是 README（给人类看），也不是 API 文档（给编译器看）——它是给 Peri 的**操作手册**。每次对话开始前，Peri 读取 CLAUDE.md 并冻结进前缀缓存（命中率 95-99%），所以它直接影响 Peri 的每一次操作。
+CLAUDE.md 是 Peri 可读取的项目级指令文件，通常放在项目根目录。它不是 README（给人类看），也不是 API 文档（给编译器看）——更接近给 Agent 的**操作手册**。会话启动时选中的主指令会进入冻结前缀；Provider 是否命中缓存以及费用如何计算，需要从实际 usage 数据验证。
 
 ## CLAUDE.md 能写什么
 

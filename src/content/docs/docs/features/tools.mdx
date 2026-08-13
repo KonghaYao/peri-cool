@@ -1,6 +1,6 @@
 ---
 title: 工具系统
-description: Peri 的 14 个核心工具——文件操作、搜索、Shell 执行、Web 抓取、子代理与技能系统。
+description: 理解 Peri 的 direct 与 deferred 工具、条件装配和执行边界
 hero:
   image:
     file: ../../../../assets/img_toolbox_open_s53.png
@@ -9,69 +9,75 @@ hero:
 
 import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
 
-Peri 内置 14 个核心工具，覆盖编码助手需要的大部分操作。所有工具通过 ReAct 循环的 Act 阶段分发。
+Peri 的工具清单不是固定库存。会话入口、配置、已启用插件、MCP 连接状态和中间件装配都会影响当前可用工具，因此这页介绍稳定机制，而不维护一个容易过期的总数。
 
-## 核心工具一览
+## 常见能力类别
 
 <CardGrid>
-  <Card title="Read / Write / Edit" icon="file">
-    <strong>文件操作</strong>。Read 读文件，Write 写文件，Edit 做精确的字符串替换。Edit 基于 old_string/new_string 匹配，不依赖行号——因为行号在模型输出时经常不准。
+  <Card title="文件与搜索" icon="file">
+    当前核心实现包含 Read、Write、Edit、Glob、Grep 和目录操作。具体 schema、输出截断和权限行为以当前会话暴露的工具定义为准。
   </Card>
-  <Card title="Glob / Grep" icon="search">
-    <strong>文件搜索</strong>。Glob 按文件名模式匹配，Grep 按文件内容正则搜索。两个工具覆盖日常代码探索。
+  <Card title="Shell" icon="terminal">
+    Bash 用于运行构建、测试和其他命令，也可在宿主提供任务管理器时启动后台进程。Shell 命令继承启动 Peri 的用户权限。
   </Card>
-  <Card title="Bash" icon="terminal">
-    <strong>Shell 执行</strong>。支持超时控制、后台运行。Peri 可以通过 Bash 运行测试、构建项目、操作 git。
+  <Card title="交互与任务" icon="check">
+    会话可以按条件装配提问、Todo、Goal、Cron、工作流与子代理等能力；并非每个入口都会提供同一集合。
   </Card>
-  <Card title="folder_operations" icon="layers">
-    <strong>目录操作</strong>。列出目录内容、创建目录、检查路径是否存在，支持深度扫描目录树。
+  <Card title="网络与扩展" icon="globe">
+    Web、MCP、插件和其他扩展工具取决于配置及连接状态。远程内容应按不可信输入处理。
   </Card>
-  <Card title="WebFetch / WebSearch" icon="globe">
-    <strong>网络工具</strong>。WebFetch 抓取网页内容为文本，WebSearch 用搜索引擎查找信息。支持指定结果数量。
+  <Card title="Skills" icon="star">
+    Skills 中间件可提供 skill 搜索与全文加载能力。可见 skill 来自用户、项目、配置目录、插件和内置来源。
   </Card>
-  <Card title="Agent" icon="rocket">
-    <strong>子代理委派</strong>。把独立子任务派发给专用 agent（如 explorer、coder）执行，支持后台运行。
-  </Card>
-  <Card title="AskUserQuestion / TodoWrite" icon="check">
-    <strong>交互与任务跟踪</strong>。AskUserQuestion 向用户提出结构化问题，TodoWrite 维护多步任务清单。
-  </Card>
-  <Card title="SkillTool / DiscoverSkillsTool" icon="star">
-    <strong>技能系统</strong>。SkillTool 加载并执行技能，DiscoverSkillsTool 按名称或描述搜索可用技能。
+  <Card title="子代理" icon="rocket">
+    Agent 工具把有边界的子任务交给独立 agent。可选 agent、后台能力和并发边界由当前装配决定。
   </Card>
 </CardGrid>
 
-## 工具别名
+## Direct 与 deferred
 
-每个工具通过 `BaseTool::aliases()` 声明别名，在工具分发时自动解析。比如 `Bash` 也可以写成 `Shell`，`Read` 也可以写成 `reading`——因为模型可能用不同名词输出。
+每个工具通过 `BaseTool::is_direct()` 声明可见性：
 
-| 工具 | 别名 |
-|------|------|
-| Bash | Shell |
-| Read | reading |
-| Agent | task |
-| Grep | （无） |
+- **Direct**：schema 直接进入本轮模型的工具列表，模型可以按名称调用。
+- **Deferred**：保留在工具注册表中，不直接占用常驻工具列表；Agent 先发现，再通过包装工具执行。
+
+deferred 工具的标准路径是：
+
+```text
+SearchExtraTools → 返回匹配工具及 schema → ExecuteExtraTool → 实际目标工具
+```
+
+MCP、Cron、Goal 或插件贡献的能力可能走 deferred 路径。包装层会把调用解析到实际目标工具，再按目标工具名称进行权限判断，不能借包装器绕过审批。
 
 <Aside type="note">
-  工具别名是大小写无关的。模型输出 `shell`、`SHELL`、`Shell` 都会正确路由到 Bash 工具。
+  用户通常不需要手写 `SearchExtraTools`。直接描述任务和目标系统，Agent 会在核心工具不足时搜索扩展能力。
 </Aside>
 
-## 工具超时
+## 条件装配
 
-每个工具通过 `BaseTool::timeout()` 声明外层超时，工具分发时据此包裹调用：
+工具可见性至少受以下条件影响：
 
-| 工具 | 超时 |
-|------|------|
-| 大多数工具（Grep、Write、WebFetch、WebSearch、Bash、AskUserQuestion、Agent 等） | 无外层超时（返回 `None`，由工具内部自管） |
-| Skill | 30 秒 |
-| 未覆写 `timeout()` 的工具（Read、Edit、Glob、folder_operations 等） | 继承 BaseTool 默认的 120 秒 |
+- TUI、print、ACP stdio 等入口采用的宿主配置；
+- `--bare` 是否跳过插件、hooks、LSP 等初始化；
+- MCP server 是否配置并连接成功；
+- 插件是否安装且启用；
+- 项目是否提供 skills、agents 或相关配置；
+- 运行路径是否提供后台任务、审批 broker 等依赖。
 
-Bash 的执行时长由 `timeout` 参数控制：默认 15 秒（15000ms），上限 600 秒（600000ms）。需要长时间运行的命令应调高该参数，或使用 `run_in_background` 后台执行。
+因此，文档示例中的工具名不等于你的会话一定拥有该工具。需要确认时，让 Agent 搜索对应能力，或查看 MCP、Plugin、Tasks 等状态面板。
 
-## Meta 工具
+## 名称、别名与参数
 
-除了 14 个核心工具，Peri 还提供 2 个 Meta 工具：
+工具可以声明别名，调用解析大小写也会被规范化；例如当前 Bash 声明 `Shell`，Read 声明 `reading`。别名属于实现细节，自动生成工具调用时会由解析器处理。用户提示词应描述意图，不必记忆别名。
 
-- **SearchExtraTools**：搜索延迟加载的工具（MCP 工具、Cron 任务等）
-- **ExecuteExtraTool**：执行通过 SearchExtraTools 找到的工具
+参数以当前会话提供的 JSON schema 为准。不要从旧文章复制超时、结果上限或参数默认值：这些值可能由工具内部、外层 dispatcher 或宿主分别控制。
 
-这套机制让 Peri 的工具集可以动态扩展，而不需要在启动时加载所有工具。
+## 权限和安全
+
+- 工具审批依据解析后的实际目标工具，而不是包装器显示名称。
+- Bypass 会跳过审批，但不会创建 OS 沙箱。
+- 文件和 Shell 工具使用 Peri 进程拥有的权限。
+- MCP、Web 和插件结果可能携带恶意指令，不应自动信任外部内容。
+- 后台工具返回“已启动”不等于任务已经成功完成；需要继续检查任务状态和最终结果。
+
+详见[权限系统](/peri-cool/docs/features/permissions/)、[MCP](/peri-cool/docs/features/mcp/)和[Skills](/peri-cool/docs/features/skills/)。

@@ -1,0 +1,75 @@
+---
+title: 安装、升级与卸载
+description: 在 macOS、Linux 或 Windows 安装 Peri，并理解运行依赖、升级路径和制品校验边界。
+---
+
+Peri 的安装脚本从 GitHub Releases 选择与操作系统和 CPU 架构匹配的制品，解压到用户目录，再把安装目录加入 `PATH`。
+
+## macOS 与 Linux
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/konghayao/peri/main/scripts/install.sh | bash
+```
+
+默认安装位置是 `~/.peri/`。脚本在版本目录中保存二进制，并创建 `~/.peri/peri` 符号链接。若当前 shell 仍找不到命令，打开新终端，或执行脚本最后打印的 `PATH` 命令。
+
+验证：
+
+```bash
+peri --version
+```
+
+Linux release 使用 GNU target，需要 glibc。安装脚本还会检查 `npx` 或 `bunx`；核心 TUI 不依赖它们，但 Workflow/Ultracode 执行需要 Node.js 或 Bun 提供相应 runner。
+
+## Windows PowerShell
+
+```powershell
+irm https://raw.githubusercontent.com/konghayao/peri/main/scripts/install.ps1 | iex
+```
+
+默认安装位置是 `%USERPROFILE%\.peri`。脚本会把当前版本的 `peri.exe` 复制到安装目录根部，并修改用户级 `PATH`。安装后打开新终端：
+
+```powershell
+peri --version
+```
+
+## 指定版本或目录
+
+macOS/Linux 示例：
+
+```bash
+PERI_INSTALL_VERSION=agent-v2.0.0 PERI_INSTALL_DIR="$HOME/tools/peri" \
+  bash scripts/install.sh
+```
+
+Windows 使用同名环境变量。版本值必须对应 GitHub Release tag；不存在或缺少当前平台制品时，脚本会退出。
+
+## 升级
+
+已安装版本可以运行：
+
+```bash
+peri update
+```
+
+也可以重新执行安装脚本。脚本安装新版本后会询问是否删除旧版本目录；不要在需要回退时删除旧版本。
+
+## 卸载
+
+安装器没有独立卸载命令。先确认没有正在运行的 Peri 进程，再删除安装目录，并移除 shell 配置或 Windows 用户 `PATH` 中由安装器加入的目录。
+
+macOS/Linux 默认目录：
+
+```bash
+rm -r "$HOME/.peri"
+```
+
+这会同时删除 settings、安装版本和该目录下的其他 Peri 数据。需要保留配置时，先备份 `~/.peri/settings.json` 与会话数据库。
+
+## 安全与限制
+
+- `curl | bash` 和 `irm | iex` 会直接执行远程 `main` 分支脚本。发布工作流生成 checksum，但当前安装脚本没有校验下载制品的 checksum。
+- 自动安装依赖 GitHub API、GitHub Releases、TLS 和本机 `PATH` 配置。
+- 安装脚本成功只证明制品已下载并放到预期路径；脚本不会运行 `peri --version` 验证启动。Provider 凭据也需单独配置。
+
+下一步：[在 TUI 中快速上手](/peri-cool/docs/get-started/quickstart/) · [凭据与权限边界](/peri-cool/docs/security/secrets-and-permissions/) · [故障排除](/peri-cool/docs/troubleshooting/)

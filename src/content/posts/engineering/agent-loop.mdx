@@ -242,13 +242,13 @@ flowchart TD
 
 Peri 采用 **三层工具分发架构**，核心思路是"常用工具始终可见，生僻工具按需加载"——减少发给 LLM 的工具列表体积，保护 prompt cache。
 
-| 层级 | 数量 | 代表工具 | 可见性 |
-|------|------|------|--------|
-| **Core** | 12 个 | Read, Write, Edit, Glob, Grep, Bash, WebFetch, Agent 等 | 始终发送给 LLM |
-| **Meta** | 2 个 | SearchExtraTools, ExecuteExtraTool | 始终发送给 LLM |
-| **Deferred** | 动态 | Cron, MCP, LspTool, WorkflowTool, Plugin 工具 | LLM 不可见，通过 SearchExtraTools 按需发现 |
+| 层级 | 代表工具 | 可见性 |
+|------|------|--------|
+| **Core** | Read, Write, Edit, Glob, Grep, Bash, WebFetch, Agent 等 | direct 工具发送给 LLM；实际集合以当前注册表为准 |
+| **Meta** | SearchExtraTools, ExecuteExtraTool | 为 deferred 工具提供发现与执行入口 |
+| **Deferred** | Cron, MCP, LSP, Workflow、Plugin 条件工具 | 不常驻模型工具表，通过搜索按需发现 |
 
-- **Core 工具**覆盖 90%+ 场景——文件读写、代码搜索、Shell 执行、Web 访问
+- **Core 工具**覆盖文件读写、代码搜索、Shell 执行、Web 访问等常见路径；实际调用分布随任务变化
 - **Meta 工具**是延迟加载代理——LLM 先调用 `SearchExtraTools` 搜索，再用 `ExecuteExtraTool` 代理执行
 - **Deferred 工具**按需注册——MCP 连接、Cron 注册、Workflow 启动时动态挂载
 
@@ -256,7 +256,7 @@ Peri 采用 **三层工具分发架构**，核心思路是"常用工具始终可
 
 v2 `StageContext` 与 v1 `MiddlewareChain` 通过 `AgentContext` 桥接：每个 hook 调用时从 StageContext 构造临时 `AgentContext`，middleware 双写 transcript + cache，调用后 drain recall 到 `ctx.recall_buffer`。
 
-`HookMiddleware` 是中间件链的关键节点——在 `before_tool` / `after_tool` / `before_agent` / `after_agent` 处触发 28 个生命周期事件，实现工具调用审查、输出验证和安全策略注入。详见 [Hook 系统](/peri-cool/posts/engineering/hook-system/)。
+`HookMiddleware` 是中间件链的关键节点——在工具与 Agent 生命周期触发已接线的 hook 事件，实现工具调用审查、输出处理和策略注入。详见 [Hook 系统](/peri-cool/posts/engineering/hook-system/)。
 
 ```mermaid
 classDiagram
@@ -278,7 +278,7 @@ classDiagram
     }
 
     class MiddlewareChain {
-        10 个 hook 的调度链
+        hook 调度链
     }
     class MiddlewareState {
         &lt;&lt;trait&gt;&gt;
@@ -335,7 +335,7 @@ classDiagram
 | **Inline** | 200 | 共享 parent 的 StageContext，直接内联 |
 | **Background** | 200 | 完全独立上下文，通过 MessageQueue 通信 |
 
-子代理的 Agent Loop 与主 agent 完全一致（四阶段 + 中间件链），区别在于上下文隔离级别和迭代上限。
+子代理复用四阶段 Agent Loop，但中间件、工具和上下文会按子代理边界裁剪，不能视为与主 Agent 完全相同。
 
 ## 更多资源
 

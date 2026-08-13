@@ -1,0 +1,102 @@
+---
+title: Settings 参考
+description: Peri 配置文件的位置、合并规则、Provider/Profile 字段与凭据边界。
+---
+
+日常连接 Provider 和选择模型，请优先使用 TUI 中的 `/login` 与 `/model`。本页用于自动化、配置审计，以及界面无法使用时的手动恢复。
+
+Settings 的 JSON 顶层是 `config`。默认全局路径为 `~/.peri/settings.json`，当前工作目录下的 `.peri/settings.json` 是工作区覆盖。
+
+## TUI 写入边界
+
+首次向导、Login 面板和 Model 面板写入全局配置路径，或 `--config-file` 指定的路径，不会直接写当前项目的 `.peri/settings.json`。面板使用的是全局与工作区合并后的运行时快照；在有工作区覆盖的目录中操作前先备份配置，不要假设写入具备作用域隔离。
+
+## 加载顺序
+
+Peri 先加载全局配置，再合并工作区配置：
+
+```text
+~/.peri/settings.json
+        ↓ 工作区非空或显式字段覆盖
+<cwd>/.peri/settings.json
+```
+
+`--config-file <path>` 会把指定文件作为全局配置路径。相对路径按启动时工作目录解析。
+
+## 合并规则
+
+| 字段 | 工作区覆盖方式 |
+| --- | --- |
+| `providers` | 非空列表整体替换 |
+| `active_alias` | 非空字符串替换 |
+| `profiles.<档位>` | 非默认档位整体替换，不做字段级合并 |
+| `skills_dir`、`env`、`compact`、`language` 等可选字段 | 工作区显式出现时替换 |
+| 未知字段 | 读入 `extra`；不能把未知字段当作已支持功能 |
+
+## 主要字段
+
+```json
+{
+  "config": {
+    "active_alias": "sonnet",
+    "providers": [],
+    "profiles": {
+      "fable": {},
+      "opus": {},
+      "sonnet": {},
+      "haiku": {}
+    },
+    "skills_dir": null,
+    "env": null,
+    "compact": null,
+    "language": null,
+    "persona": null,
+    "tone": null,
+    "claude_md_excludes": null,
+    "proactiveness": null,
+    "show_cache_warning": null,
+    "betas": {}
+  }
+}
+```
+
+### Provider
+
+| 字段 | 含义 |
+| --- | --- |
+| `id` | Provider 标识；Profile 通过它引用 Provider |
+| `type` | 当前构造路径识别 `openai` 和 `anthropic` |
+| `apiKey` | 明文 API key |
+| `baseUrl` | 自定义 endpoint；空值使用对应类型的默认 endpoint |
+| `name` | 可选显示名称 |
+| `models` | 各档位的模型名回退表 |
+
+### Profile
+
+固定档位为 `fable`、`opus`、`sonnet`、`haiku`：
+
+| 字段 | 含义 |
+| --- | --- |
+| `provider` | 引用 `providers[].id` |
+| `model` | 可选模型名；为空时使用 Provider 的档位映射 |
+| `effort` | 请求推理强度 |
+| `max_tokens` | 最大输出 token 数 |
+| `context_1m` | 是否请求长上下文模式 |
+
+模型服务是否接受这些请求参数取决于具体 Provider 和模型。
+
+## 环境变量
+
+`config.env` 中的字符串会在进程启动早期注入，但不会覆盖已经存在的进程环境变量。API key 也可以通过受支持的 Provider 环境变量提供。这适合无交互自动化或故障恢复，不是 TUI 首次设置的推荐路径。
+
+## 写入与权限
+
+配置保存使用临时文件加 rename，避免写到一半留下不完整 JSON。保存逻辑没有显式 `chmod`；新文件权限依赖操作系统和进程 umask。建议在类 Unix 系统检查：
+
+```bash
+chmod 600 ~/.peri/settings.json
+```
+
+不要把含 `apiKey` 或 `env` 密钥的工作区 settings 提交到 Git。
+
+相关文档：[在 TUI 中连接模型服务](/peri-cool/docs/guides/providers/) · [凭据与权限边界](/peri-cool/docs/security/secrets-and-permissions/) · [模型档位](/peri-cool/docs/features/model-profiles/)

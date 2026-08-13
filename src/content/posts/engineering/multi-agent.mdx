@@ -70,14 +70,13 @@ SubAgent 定义按优先级覆盖：
 
 ## 内置 Agent 类型
 
-Peri 编译期嵌入了 7 个内置 Agent，覆盖最常见的子任务场景：
+Peri 当前编译期嵌入了 6 个内置 Agent，覆盖常见子任务场景：
 
 | Agent | 模型 | 能力 | 适用场景 |
 |-------|------|------|----------|
 | **explorer** | haiku | 只读搜索 | 代码库探索、文件搜索、模式匹配 |
 | **coder** | sonnet | 完整文件系统 | 代码实现、重构、文件编辑 |
 | **plan** | inherit | 只读设计 | 架构设计、实现方案规划 |
-| **code-reviewer** | sonnet | 只读审查 | 代码质量、安全、可维护性审查 |
 | **verification** | sonnet | 构建/测试/检查 | 实现完成后验证正确性 |
 | **web-researcher** | haiku | WebFetch/WebSearch | 网络资料调研、文档搜索 |
 | **general-purpose** | inherit | 通用通配 | 未匹配到专用 Agent 时的 fallback |
@@ -115,7 +114,7 @@ flowchart LR
 
 **中间件精简**：SubAgent 有意跳过部分中间件——GitAttribution（不需要 git 归属追踪）、AtMention（子任务上下文不需要 `@path` 解析）、Cron（独立生命周期不参与调度）、HITL（沿用父 Agent 的审批模式）。
 
-**FrozenContext 复用**：SubAgent 复用主 Agent 在 `session/new` 时捕获的 CLAUDE.md 和 skill 摘要快照。从不重新读盘——保证父子 Agent 看到的项目知识完全一致。
+**FrozenContext 复用**：SubAgent 复用主 Agent 在 `session/new` 时捕获的项目指令和 skill 摘要快照，不重新读盘。它约束冻结输入一致；子代理自身的工具和运行期消息仍可能不同。
 
 ### Fork 模式（fork: true）
 

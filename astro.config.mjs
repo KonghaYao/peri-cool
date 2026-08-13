@@ -27,7 +27,7 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: 'Peri',
-			description: '更小、更快、任何模型——Rust 编写的编码助手',
+			description: 'Rust 编写的终端 AI 编码助手',
 			customCss: ['./src/styles/submerged.css'],
 			components: {
 				Header: './src/components/Header.astro',
@@ -36,13 +36,26 @@ export default defineConfig({
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/konghayao/peri' },
 			],
 			sidebar: [
+				{ slug: 'docs' },
 				{
 					label: '开始使用',
 					collapsed: false,
 					items: [
 						{ slug: 'docs/get-started/introduction' },
+						{ slug: 'docs/get-started/installation' },
 						{ slug: 'docs/get-started/quickstart' },
 						{ slug: 'docs/get-started/termux-install' },
+					],
+				},
+				{
+					label: '使用指南',
+					collapsed: false,
+					items: [
+						{ slug: 'docs/guides/providers' },
+						{ slug: 'docs/guides/sessions' },
+						{ slug: 'docs/guides/tui-navigation' },
+						{ slug: 'docs/guides/non-interactive' },
+						{ slug: 'docs/guides/plugins' },
 					],
 				},
 				{
@@ -77,7 +90,6 @@ export default defineConfig({
 						{ slug: 'docs/features/agent-selection-guide' },
 						{ slug: 'docs/features/model-strategy' },
 						{ slug: 'docs/features/theme' },
-						{ slug: 'docs/features/cli-reference' },
 					],
 				},
 				{
@@ -106,9 +118,42 @@ export default defineConfig({
 						{ slug: 'docs/features/openspec' },
 					],
 				},
-				],
+				{
+					label: '参考',
+					collapsed: false,
+					items: [
+						{ slug: 'docs/reference/settings' },
+						{ slug: 'docs/features/cli-reference' },
+						{ slug: 'docs/reference/keyboard-shortcuts' },
+					],
+				},
+				{
+					label: '故障排除与安全',
+					collapsed: false,
+					items: [
+						{ slug: 'docs/troubleshooting' },
+						{ slug: 'docs/security/secrets-and-permissions' },
+					],
+				},
+				{
+					label: '开发者',
+					collapsed: false,
+					items: [
+						{ slug: 'docs/developer' },
+						{ slug: 'docs/developer/architecture' },
+					],
+				},
+				{
+					label: '项目历史',
+					collapsed: false,
+					items: [
+						{ slug: 'docs/history/milestones' },
+						{ slug: 'docs/history/3-0-refactor' },
+					],
+				},
+			],
 			editLink: {
-				baseUrl: 'https://github.com/konghayao/peri/edit/main/docs/',
+				baseUrl: 'https://github.com/KonghaYao/peri-cool/edit/main/',
 			},
 			head: [
 				{

@@ -1,0 +1,86 @@
+---
+title: 在 TUI 中连接模型服务
+description: 使用首次向导、Login 面板和 Model 面板连接 Provider 并选择模型。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+日常连接模型服务都可以在 Peri TUI 里完成。首次设置使用屏幕向导，之后用 `/login` 管理 Provider，用 `/model` 选择档位与模型。
+
+## 首次设置向导
+
+当配置列表为空且环境中也无法取得 Provider，或配置列表中存在缺少名称或凭据的条目时，Peri 会在启动时显示向导。
+
+向导流程是：
+
+1. 选择中文或 English。
+2. 选择 Custom API，或从 Claude Code 配置迁移。
+3. 在 Provider 列表中进入编辑，填写类型、名称、服务地址、API key 和四档模型。
+4. 确认保存。
+
+手动连接支持 Anthropic 与 OpenAI-compatible 两种适配路径。对于兼容服务，服务地址和模型名由服务提供方决定；工具调用、图片、流式响应和推理参数是否可用，也要以一次真实请求验证。
+
+<Aside type="caution" title="网络探测不是模型验证">
+  向导里的 Test connectivity 只提供有限的 DNS、TCP 和 HTTP 探测，不会验证 API key，也不会完成一次模型请求。不要把探测结果当作凭据、模型或 TLS 已验证。
+</Aside>
+
+### 保存后要重启
+
+向导完成时，配置会写入全局配置路径，但当前运行中的 ACP 会话不会同步更新。退出 Peri，再重新启动，然后发送一个最小请求验证配置。
+
+当前 `/setup` 只会重新显示已有的向导状态，不是可靠的重置入口。如果需要修改已经保存的 Provider，请使用 `/login`。
+
+## 用 `/login` 管理 Provider
+
+在输入区键入：
+
+```text
+/login
+```
+
+浏览模式下：
+
+| 操作 | 按键 |
+| --- | --- |
+| 移动选择 | `↑` / `↓` |
+| 编辑当前条目 | `Enter` |
+| 新建 Provider | `Ctrl+N` |
+| 删除当前条目 | `Ctrl+D`，再确认 |
+| 关闭面板 | `Esc` |
+
+编辑模式下可以修改 Provider 类型、名称、地址、API key 和四档模型映射。使用方向键切换字段，到确认按钮按 Enter 保存，也可以按 `Ctrl+S` 保存。Esc 放弃本次编辑。
+
+保存会写入配置并推送当前会话。它只能证明写入动作完成，不能保证远端地址、密钥和模型组合一定有效。删除 Provider 前先检查 `/model` 中是否还有档位引用它。
+
+## 用 `/model` 选择档位和模型
+
+在输入区键入：
+
+```text
+/model
+```
+
+左栏是 fable、opus、sonnet、haiku 四个档位：
+
+- `↑` / `↓` 或点击档位，会立即切换当前档位。
+- `Tab` 或 `→` 进入右栏。
+- 右栏用 `↑` / `↓` 选择 Provider、Model、Effort、Max tokens 或长上下文字段。
+- `←` / `→` 修改字段，修改会立即保存并推送，没有单独的 Save 步骤。
+
+Model 候选来自本地 Provider 映射和当前配置，不是服务端模型发现。即使面板允许选择某项，具体端点也可能不支持对应参数。
+
+## 配置写到哪里
+
+向导、Login 面板和 Model 面板写入全局配置路径，或 `--config-file` 指定的路径。它们不会直接编辑当前项目的 `.peri/settings.json`。在带有工作区覆盖的目录中使用面板前，建议先备份配置，因为面板看到的是合并后的运行时快照，不能假设写入具备作用域隔离。
+
+## 自动化与手动恢复
+
+没有交互式终端，或 TUI 配置无法打开时，可以通过 Settings 和受支持的环境变量恢复启动。这是高级后备路径，不是首次使用流程。
+
+字段结构、合并规则和凭据边界见 [Settings 参考](/peri-cool/docs/reference/settings/)；连接失败时查[故障排除](/peri-cool/docs/troubleshooting/)。
+
+## 下一步
+
+- [在 TUI 中快速上手](/peri-cool/docs/get-started/quickstart/)
+- [模型档位](/peri-cool/docs/features/model-profiles/)
+- [凭据与权限边界](/peri-cool/docs/security/secrets-and-permissions/)

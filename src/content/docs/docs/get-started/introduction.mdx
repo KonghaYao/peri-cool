@@ -1,226 +1,71 @@
 ---
-title: 概述
-description: Peri 是什么、如何安装、为什么选择它——从概念到运行只需 5 分钟。
+title: Peri 概述
+description: 认识 Peri 的终端界面、任务过程、主要能力与使用边界。
 hero:
   image:
     file: ../../../../assets/img_open_door_path_s49.png
     alt: 门与路
 ---
 
-import { Aside, Card, CardGrid, Tabs, TabItem, FileTree } from '@astrojs/starlight/components';
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
 
-Peri 是一个用 Rust 编写的终端 AI 编码助手。它兼容 Claude Code 生态——skills、hooks、MCP、sub-agents 直接可用——但更小更快，且不绑定任何特定模型。
+Peri 是一个运行在终端里的 AI 编码助手。启动后，你面对的是一套完整 TUI，而不是需要自己拼装的命令管道。任务、工具调用、审批、会话和模型状态都在同一个界面里呈现。
 
-## Peri 能做什么
+## 打开后会看到什么
+
+Peri TUI 有三个始终可见的区域：
+
+- **消息区** 展示你的任务、Peri 的回复、工具执行和系统提示。
+- **输入区** 接收自然语言任务，也用于打开 `/login`、`/model`、`/threads` 等面板。
+- **状态栏** 显示权限模式、当前目录、模型档位和后台任务摘要。
+
+首次没有完整 Provider 配置时，界面会先出现设置向导。向导完成后重启 Peri，再从消息区开始工作。
+
+## 适合做什么
 
 <CardGrid>
-  <Card title="日常编码" icon="code">
-    写代码、改 bug、重构模块、审查代码——和任何 AI 编码助手一样，但你可以随时切换模型。
+  <Card title="理解代码" icon="information">
+    让 Peri 阅读仓库、解释调用关系、定位实现入口，并列出结论所依据的文件。
   </Card>
-  <Card title="长任务自动化" icon="clock">
-    `/goal` 命令声明一个目标，Peri 在后续每一轮自动推进，即使跑几个小时也不会丢上下文。
+  <Card title="修改与验证" icon="code">
+    让 Peri 修改文件、运行测试，并在消息区持续展示工具过程和验证结果。
   </Card>
-  <Card title="并行工作流" icon="rocket">
-    `/ultracode` 把复杂任务拆成多个子代理并行执行——审查、编码、搜索同时进行。
+  <Card title="推进长任务" icon="rocket">
+    在同一会话中继续工作，必要时使用子代理、后台任务或工作流拆分独立部分。
   </Card>
-  <Card title="终端 TUI" icon="terminal">
-    全功能终端界面：流式 Markdown 渲染、多面板分屏、后台任务监控、Token 用量实时显示。
+  <Card title="连接外部工具" icon="puzzle">
+    通过 MCP、plugins、skills 与 hooks 扩展 Peri 能调用的能力。
   </Card>
 </CardGrid>
 
-## 和你已有工具的对比
+## 一次可靠任务是什么样
 
-| 如果你在用…… | Peri 的区别 |
-|-------------|-----------|
-| **Claude Code** | 兼容 .claude/ 配置，但用 Rust 写，约 13MB 二进制，支持任何 LLM |
-| **Cursor / Copilot** | 终端原生，不需要 IDE，可以跑在服务器上 |
-| **aider** | 更完整的 ReAct 循环 + 中间件管道 + 多个并行子代理（后台并发上限 3） |
-| **没有工具** | Peri 的安装向导在 2 分钟内完成配置，不需要手动编辑任何文件 |
+不要只给一句模糊目标。更可靠的输入同时包含范围、限制和完成条件：
 
-<Aside type="tip">
-  Peri 自身有 99% 的代码由 AI 生成——它是一个 AI 写的 AI 编码助手。这意味着每次 bug 修复都会自动沉淀为知识库规则，质量持续累积。
-</Aside>
-
-## 安装
-
-### 系统要求
-
-Peri 提供 **macOS** (x86_64 / Apple Silicon)、**Linux** (x86_64 / aarch64 / riscv64) 和 **Windows** (x86_64) 的预编译二进制文件。
-
-<Aside type="tip" title="无需 Node.js">
-  Peri 用 Rust 编写，是单个静态链接的二进制文件。不需要安装 Node.js、Python 或任何运行时依赖。
-</Aside>
-
-打开终端，运行以下命令：
-
-```bash
-# macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/konghayao/peri/main/scripts/install.sh | bash
+```text
+检查登录失败时的错误处理。先复现问题，只修改 auth 模块；
+补回归测试并运行最小测试集。不要改公开 API。
 ```
 
-Windows 用户使用 PowerShell：
+执行中，Peri 会在消息区显示读取、搜索、编辑与测试。任务结束时，应能回答三件事：改了什么、怎样验证、还有什么没有验证。
 
-```powershell
-irm https://raw.githubusercontent.com/konghayao/peri/main/scripts/install.ps1 | iex
-```
+## 模型与 Provider 也在界面里管理
 
-首次启动会进入交互式配置向导，引导你完成模型选择和 API Key 设置——**无需手动编辑任何配置文件**。
+- 首次设置由屏幕向导引导。
+- 输入 `/login` 管理 Provider、地址、密钥和模型映射。
+- 输入 `/model` 选择模型档位并调整当前配置。
 
-```bash
-peri
-```
+这些操作的完整步骤见[连接模型服务](/peri-cool/docs/guides/providers/)。手动编辑 Settings 只用于自动化、审计或界面不可用时的恢复。
 
-更新到最新版：
-
-```bash
-peri update
-```
-
-## 配置模型
-
-Peri 支持**任何 OpenAI 兼容的 API**。以下为示例模型（实际可用性取决于你的 API 提供商与配额）：
-
-| 模型 | 提供商 | 推荐用途 |
-|------|--------|----------|
-| **Claude 4 Sonnet** | Anthropic | 复杂编码、架构设计 |
-| **DeepSeek V3 / R1** | DeepSeek | 高性能、低成本的日常编码 |
-| **GLM-5.x** | 智谱 | 中文场景最优 |
-| **Qwen 3 Max** | 阿里 | 通用编码任务 |
-| **GPT-4o / 4.1** | OpenAI | 全面推理 |
-
-<Aside type="note">
-  你可以在一次会话中**随时切换模型**，无需重启 Peri。按 <code>Ctrl+M</code> 打开 Model 面板切换档位即可。
+<Aside type="caution" title="审批不是系统沙箱">
+  Peri 的权限模式决定工具调用是否需要确认，不等于容器、虚拟机或操作系统隔离。当前无参数启动默认进入 Bypass；第一次在真实仓库使用时，建议运行 <code>peri -a</code>，并保持工作区可以回滚。
 </Aside>
 
-## Claude Code 兼容性
+## 从这里开始
 
-如果你已经有 Claude Code 的配置（`.claude/settings.json`、skills、hooks、MCP 服务器等），**零迁移即可使用**。
+1. [安装 Peri](/peri-cool/docs/get-started/installation/)
+2. [在 TUI 中完成第一次任务](/peri-cool/docs/get-started/quickstart/)
+3. [学习 TUI 导航](/peri-cool/docs/guides/tui-navigation/)
+4. [判断 Peri 适合哪些仓库任务](/peri-cool/posts/product/where-peri-fits/)
 
-Peri 完全兼容：
-
-- **Skills** — `.claude/skills/` 目录下的所有 skill 直接可用
-- **Hooks** — 会话生命周期钩子无需修改
-- **MCP** — Model Context Protocol 插件即插即用
-- **Sub-agents** — `.claude/agents/` 下的代理定义无缝工作
-
-<Aside type="caution" title="注意">
-  如果你同时安装了 Claude Code 和 Peri，它们各自拥有独立的会话存储，不会互相干扰。
-</Aside>
-
-## 验证安装
-
-启动 Peri 后，你可以验证一切是否正常：
-
-```bash
-# 查看 Peri 版本
-peri --version
-
-# 查看当前配置（配置文件在 ~/.peri/settings.json）
-ls -la ~/.peri/settings.json
-
-# 测试一次简单对话
-peri -p "用 Python 写一个快速排序" --max-turns 1
-```
-
-## 为什么选择 Peri
-
-### 不是"又一个" AI 工具
-
-Peri 不是 Claude Code 的替代品，而是一个**兼容生态的 Rust 重实现**。它做的是同一件事——AI 驱动的编码助手——但做得更轻、更快、更开放。
-
-### 核心对比
-
-| 维度 | Peri | Claude Code | Cursor / Copilot |
-|------|------|-------------|------------------|
-| **语言** | Rust | TypeScript / Node.js | TypeScript / Node.js |
-| **二进制大小** | ~13 MB | ~80 MB (含 Node 运行时) | N/A (IDE 插件) |
-| **运行时内存** | ~50 MB | ~300-800 MB | ~500-1500 MB |
-| **启动时间** | ~0.5s | 2-5s | IDE 启动时间 |
-| **缓存命中率** | 冻结系统提示词 + 边界标记，缓存友好 | ~60-80% | 取决于实现 |
-| **LLM 支持** | 任意模型，会话中切换 | 主要 Claude，有限 OpenAI | 主要 Claude / GPT |
-| **配置兼容** | 完全兼容 CC config | 原生 | 不兼容 |
-| **开源协议** | Apache 2.0 | 专有 | 专有 |
-
-### 为什么 Rust
-
-<Tabs syncKey="why-rust">
-  <TabItem label="内存">
-
-  Node.js 的 V8 引擎在运行时占用大量内存，且不受开发者控制。Peri 不需要托管运行时——**一个约 13MB 的静态链接二进制文件**，启动即用，不会膨胀。
-
-  </TabItem>
-  <TabItem label="缓存">
-
-  缓存是 AI 编码工具中**最被低估的性能杠杆**。Peri 的冻结系统提示词 + 边界标记机制让大部分重复上下文直接从缓存命中——你几乎不为重复的上下文付费。
-
-  ```text
-  传统方式: 每次对话重新发送全部上下文 → 100% 新 token
-  Peri 方式:  冻结前缀 + 增量更新         → 1-5% 新 token
-  ```
-
-  </TabItem>
-  <TabItem label="并发">
-
-  Rust 的 async 运行时（Tokio）天然支持高并发。Peri 可以同时运行**多个后台子代理**（编码、探索、代码审查、Web 研究），而 Node.js 的单线程事件循环难以优雅地处理这种负载。
-
-  </TabItem>
-</Tabs>
-
-### 缓存机制详解
-
-<Aside type="tip" title="这是 Peri 最核心的竞争优势">
-  如果你只用一条理由说服团队使用 Peri，选这条——它直接影响 API 费用。
-</Aside>
-
-Peri 使用**确定性冻结前缀**（deterministic frozen prefix）策略：
-
-1. 系统提示词在编译时被序列化为固定字节序列
-2. 边界标记（boundary marker）定义了可缓存 / 不可缓存的切分点
-3. 每个请求复用已缓存的提示词前缀，只发送增量的用户/助手消息
-
-这意味着：
-- 第 1 次对话：发送完整系统提示词 → 建立缓存
-- 第 2+ 次对话：**只发送增量的对话内容**，前缀从缓存命中
-
-对于重度用户（每天数百次对话），缓存命中带来的节省可以降低 **90% 以上的 token 消耗**。
-
-### 模型自由
-
-<Aside type="caution" title="Claude Code 的限制">
-  Claude Code 设计上是为 Anthropic API 优化的。虽然有社区方案接入其他模型，但体验和性能都不理想。
-</Aside>
-
-Peri 的 LLM 适配层是**模型无关的**。所有模型通过统一的 trait 接口接入：
-
-```rust
-// Peri 的 LLM 适配层（简化示意）
-#[async_trait]
-pub trait LlmProvider {
-    async fn chat(&self, req: ChatRequest) -> Result<ChatResponse>;
-    async fn stream(&self, req: ChatRequest) -> Result<Stream>;
-    fn supports_tools(&self) -> bool;
-    fn context_window(&self) -> usize;
-}
-```
-
-DeepSeek、GLM、Qwen、Anthropic、OpenAI——都实现了同一个 trait。切换模型只是换一个实现，不涉及任何业务逻辑改动。
-
-<Aside type="note">
-  Peri 支持**会话中切换模型**。比如你可以用便宜档位做日常编码，遇到难题时按 <code>Ctrl+M</code> 打开 Model 面板切到更强的推理档位，几分钟后再切回来——无缝、无重启。
-</Aside>
-
-### AI 驱动的自我进化
-
-Peri 自身就是 Peri 写的。代码库的 **99% 由 AI（DeepSeek 和 GLM-5.2）生成**。
-
-开发流程是一个 AI 自我驱动的闭环：
-
-| 当你…… | 闭环启动 |
-|--------|---------|
-| 发现 bug 或技术债务 | 创建 issue → 系统诊断 → 撰写计划 → 子代理开发 → 归档 issue → 更新知识库 |
-| 想要新功能 | 需求访谈 → 撰写计划 → 子代理开发 |
-| 代码库变乱 | 清理分析 → 架构优化 → 撰写计划 → 子代理开发 |
-
-<Aside type="tip">
-  每一个修复中发现的非显而易见约束都会被自动写回 `CLAUDE.md`，形成**TRAP**——一个硬性规则，在后续所有迭代中强制遵守。这些 TRAP 不是人类撰写的，而是 AI 在 bug 现场提取的。这就是**质量在无人类审查的情况下持续累积**的方式。
-</Aside>
+如果你关心内部层次与协议边界，再读[开发者指南](/peri-cool/docs/developer/)；它不属于首次使用的必读内容。

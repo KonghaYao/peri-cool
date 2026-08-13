@@ -1,6 +1,6 @@
 ---
 title: MCP
-description: 通过 Model Context Protocol 接入外部工具和服务——文件系统、数据库、API 全部打通。
+description: 配置 MCP server、理解三层合并规则，并排查连接与 OAuth 状态
 hero:
   image:
     file: ../../../../assets/img_toolbox_open_s53.png
@@ -9,13 +9,9 @@ hero:
 
 import { Aside } from '@astrojs/starlight/components';
 
-## 什么是 MCP
+MCP（Model Context Protocol）让 Peri 连接外部工具和资源。工具是否可用取决于当前配置、插件启用状态以及 server 是否连接成功，并非所有会话都有相同的 MCP 工具集。
 
-MCP（Model Context Protocol）是连接 AI Agent 和外部工具的标准开放协议。通过 MCP，Peri 可以调用任何实现了 MCP 协议的服务——从文件系统浏览器到数据库查询、从第三方 API 到自建工具。
-
-与直接写 Bash 脚本相比，MCP 提供结构化的工具描述（tool description）、参数校验（parameter validation）和结果类型（result schema）。Peri 知道每个工具能做什么、需要什么输入、返回什么，调用成功率远高于裸 Shell。
-
-## 快速开始
+## 项目级配置
 
 在项目根目录创建 `.mcp.json`：
 
@@ -30,36 +26,29 @@ MCP（Model Context Protocol）是连接 AI Agent 和外部工具的标准开放
 }
 ```
 
-保存后 Peri 自动检测并加载。新增的 MCP 工具会出现在可用工具列表中，你可以在对话中直接使用它们。不需要重启 Peri——配置文件变更会被自动监听和重新加载。
+Peri 在启动会话宿主时读取 MCP 配置。当前没有经过验证的配置文件监听或用户可用的热重载入口；修改 `.mcp.json` 或全局 settings 后，请重启 Peri，再到 `/mcp` 面板检查状态。
 
-## 配置层级
+## 三类配置来源
 
-MCP 配置有三层，按优先级合并。同名 server 上层会覆盖下层定义。
+| 来源 | 位置 | 合并行为 |
+| --- | --- | --- |
+| 全局 | `~/.peri/settings.json` 中的 `config.mcpServers` 或顶层 `mcpServers` | 先加载 |
+| 已启用插件 | 插件 manifest | server 名会加插件命名空间 |
+| 项目 | `<cwd>/.mcp.json` | 最后加载；与全局同名时覆盖整项 |
 
-| 层级 | 配置文件 | 作用域 |
-|------|---------|--------|
-| 全局 | `~/.peri/settings.json` | 所有项目 |
-| 插件 | 插件 manifest | 启用插件的项目 |
-| 项目 | `.mcp.json` | 当前项目 |
-
-项目级配置优先级最高。假设全局和项目都定义了一个名为 `github` 的 server，项目级的定义会完全覆盖全局的定义——不会合并字段。
-
-<Aside type="note">
-  插件的 MCP server 只在插件被启用时加载。如果你卸载了某个插件，它的 MCP server 也会随之移除，不需要手动清理配置。
-</Aside>
+合并顺序是 global → plugin → project。插件 server 使用命名空间，不能仅凭原始短名称推断它会被项目配置覆盖；与手动配置内容相同的插件项还会按配置内容去重。项目与全局同名时，项目定义覆盖全局定义，不做字段级合并。
 
 ## 传输方式
 
-Peri 支持两种 MCP 传输方式（transport），覆盖本地和远程场景。
+| 配置 | 传输 |
+| --- | --- |
+| 含 `command` | stdio；`args` 与 `env` 可选 |
+| 不含 `command`、含 `url` | streamable HTTP；`headers` 与 `oauth` 可选 |
+| 两者都没有 | 配置无效 |
 
-| 方式 | 适用场景 | 示例 |
-|------|---------|------|
-| stdio | 本地命令行工具 | `npx` 启动的 MCP server |
-| streamable HTTP | 流式 HTTP | 需要双向流的云服务 |
+同时提供 `command` 和 `url` 时，当前实现优先选择 stdio。
 
-传输方式由配置自动判定：配置了 `command` 字段即使用 stdio，配置了 `url` 字段即使用 streamable HTTP（两者都没有则报配置错误）。stdio 是最常用的方式——大多数 MCP server 都是通过 `npx`、`python` 或本地二进制启动。streamable HTTP 适合需要连接远程服务或云托管 MCP server 的场景。
-
-### stdio 配置示例
+### stdio
 
 ```json
 {
@@ -68,14 +57,14 @@ Peri 支持两种 MCP 传输方式（transport），覆盖本地和远程场景�
       "command": "npx",
       "args": ["-y", "@my-org/my-mcp-server"],
       "env": {
-        "API_KEY": "your-key"
+        "API_KEY": "${MY_TOOL_API_KEY}"
       }
     }
   }
 }
 ```
 
-### HTTP 配置示例
+### HTTP 与 OAuth
 
 ```json
 {
@@ -83,52 +72,45 @@ Peri 支持两种 MCP 传输方式（transport），覆盖本地和远程场景�
     "remote-service": {
       "url": "https://api.example.com/mcp",
       "headers": {
-        "Authorization": "Bearer your-token"
+        "Authorization": "Bearer ${REMOTE_MCP_TOKEN}"
+      },
+      "oauth": {
+        "enabled": true
       }
     }
   }
 }
 ```
 
-注意：配置里没有 `transport` 字段——传输方式由 `command` 或 `url` 字段自动判定。
+配置字符串支持 `${VAR}` 环境变量展开。变量未设置时会被替换为空字符串并记录警告，因此连接失败时先检查启动 Peri 的进程环境。
 
-## 使用 MCP 工具
+## Agent 如何使用 MCP 工具
 
-MCP 工具作为 Deferred Tool 加载，不属于 Core 层的 14 个基础工具。使用时有两种方式。
+MCP 工具属于 deferred tools：它们不会全部直接放进模型的常驻工具列表。Agent 通常先用 `SearchExtraTools` 按名称或关键词发现工具，再通过 `ExecuteExtraTool` 执行。用户只需描述任务，不需要手写这两步。
 
-### 自动调用
+只有连接成功并完成工具发现的 server 才会贡献可执行工具。server 启动失败、认证未完成或连接断开时，对应工具可能不会出现在搜索结果中。
 
-在对话中直接描述需求，Peri 会自动调用 SearchExtraTools 查找匹配的 MCP 工具，然后通过 ExecuteExtraTool 执行。这对你来说是透明的——你只需要告诉 Peri 想做什么。
+## `/mcp` 面板
 
-```
-你: 帮我查一下 GitHub 上 perihelion 的最近 10 个 PR
-Peri: [自动搜索 mcp__github__* 工具，调用对应的 API]
-```
+面板展示初始化阶段、连接数、server 状态、传输方式和工具数量。常规列表是只读状态视图：添加、删除或修改 server 仍需编辑 `.mcp.json` 或 `settings.json`，然后重启 Peri。
 
-### 手动搜索
-
-你也可以显式搜索，看看当前有哪些 MCP 工具可用：
-
-```
-SearchExtraTools("github")
-```
-
-找到后通过 ExecuteExtraTool 调用。这种方式适合需要精确控制工具选择的场景。
-
-<Aside type="caution">
-  MCP server 需要处于连接状态才会出现在搜索结果中。如果 server 启动失败或断连，对应的工具不会出现在可用工具列表里。可以用 `/mcp` 面板检查各 server 的连接状态。
-</Aside>
-
-## MCP 面板
-
-用 `/mcp` 命令打开 MCP 面板，实时查看 MCP server 的状态：顶部显示初始化阶段和已连接/总数汇总，列表显示每个 server 的名称、状态、传输方式和工具数量。面板为只读视图，MCP 配置仍需通过 `.mcp.json` 或 `settings.json` 管理。
+对于标记为需要认证的 HTTP server，面板提供 OAuth 详情与授权入口。这个入口只处理 OAuth 流程，不是通用的配置编辑或手动重连按钮。
 
 <Aside type="note">
-  MCP server 意外退出后不会自动重连，也没有手动重连入口。`/mcp` 面板只用于查看状态；连接失败时请检查 server 配置后重新启动 Peri。
+  代码中存在供初始化或 OAuth 流程使用的 reconnect 能力，但当前面板没有面向任意 server 的通用“重新连接”操作。排障时以重启进程重新装配为准。
 </Aside>
 
-## 安全提示
+## 排障
 
-- MCP server 以当前用户的权限运行。只连接你信任的 server，尤其是通过 HTTP 连接的远程服务器。
-- 如果 server 需要访问外部数据源（如从网页抓取内容），注意 prompt injection 风险。恶意网页内容可能通过工具返回结果注入到 Peri 的对话上下文中。
-- 敏感凭证（API key、token）建议通过环境变量注入，不要明文写在 `.mcp.json` 里提交到 git。
+1. 确认 JSON 能解析，server 至少配置 `command` 或 `url`。
+2. stdio server 先在同一终端单独运行其命令，检查可执行文件、参数和环境变量。
+3. HTTP server 检查 URL、代理、证书、header 和 OAuth 状态。
+4. 重启 Peri，在 `/mcp` 查看初始化状态和失败原因。
+5. 用自然语言要求 Agent 查找对应能力；不要假设一个未连接的工具仍可执行。
+
+## 安全边界
+
+- stdio server 以当前用户权限运行；它能访问什么，取决于该进程和操作系统权限。
+- HTTP 返回内容可能包含 prompt injection。把远程工具输出当作不可信输入。
+- 凭据优先通过环境变量传入，不要把 token 提交进 `.mcp.json`。
+- MCP 工具仍受 Peri 权限模式影响，但权限审批不是操作系统沙箱。

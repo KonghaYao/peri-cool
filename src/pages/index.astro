@@ -1,31 +1,24 @@
 ---
 import { getCollection } from 'astro:content';
+import { postCategories, postPath, sortPosts } from '../lib/content';
 import '../styles/submerged.css';
 
 const base = import.meta.env.BASE_URL;
 
-const sectionLabels: Record<string, string> = {
-	engineering: '工程',
-	product: '产品',
-	research: '研究',
-	news: '动态',
-};
-
-const posts = (await getCollection('posts'))
-	.sort((a, b) => b.id.localeCompare(a.id))
-	.slice(0, 4);
+const posts = sortPosts(await getCollection('posts')).slice(0, 4);
+const sectionLabels = Object.fromEntries(postCategories.map((category) => [category.id, category.label]));
 
 const metrics = [
-	{ num: '13 MB', label: '二进制' },
-	{ num: '~50 MB', label: '常驻内存' },
-	{ num: '98%', label: '缓存命中' },
-	{ num: '14', label: '核心之器' },
-	{ num: '6', label: '内置佐者' },
-	{ num: '28', label: 'Hook 事件' },
+	{ num: 'Rust', label: '核心实现' },
+	{ num: 'TUI', label: '终端交互' },
+	{ num: 'ACP', label: '客户端边界' },
+	{ num: 'MCP', label: '外部工具' },
+	{ num: 'Skills', label: '任务能力' },
+	{ num: 'Hooks', label: '生命周期扩展' },
 ];
 
 const engineFeatures = [
-	{ icon: '🌀', title: 'RCRA Agent Loop', desc: '四阶段执行循环：Receive → Compact → Reason → Act，每轮压缩上下文，500 次循环上限。' },
+	{ icon: '🌀', title: 'RCRA Agent Loop', desc: 'Receive → Compact → Reason → Act 四阶段负责收消息、管理上下文、推理并执行工具。' },
 	{ icon: '🧠', title: 'Compact 上下文压缩', desc: '冻结系统提示词 + 边界标记机制，把窗口还给新信息，压缩后继续推理不断链。' },
 	{ icon: '🎛️', title: 'Ultracode 编排引擎', desc: 'JavaScript ESM 脚本驱动的多代理编排：并行扇出、流水线、阶段、条件分支、验证关口、模型分层、收敛循环。' },
 	{ icon: '📊', title: 'Workflow 面板', desc: '/workflows 实时监控执行：三级树展示、journal 日志、断点续跑，观察和调试工作流。' },
@@ -34,28 +27,28 @@ const engineFeatures = [
 ];
 
 const modelFeatures = [
-	{ icon: '🌐', title: '任何模型', desc: 'DeepSeek、GLM、Qwen、Anthropic、OpenAI——不绑定任何一家，国产模型也能驱动 20 万行代码库。' },
+	{ icon: '🌐', title: '多 Provider', desc: '支持 Anthropic 与 OpenAI-compatible 接口；实际可用模型和能力由你配置的服务决定。' },
 	{ icon: '🎚️', title: '四档模型档位', desc: 'fable / opus / sonnet / haiku 四档 Profile 独立配置 provider、模型与费用策略，各司其职。' },
 	{ icon: '🔄', title: '会话中热切换', desc: '聊天中途随时切换模型，无需重启。贵的给推理，便宜的给搜索。' },
-	{ icon: '💾', title: '缓存命中 98%', desc: '冻结系统提示词 + 边界标记，14 个提示词段落稳定复用，最大限度减少浪费的 token。' },
+	{ icon: '💾', title: '稳定缓存前缀', desc: '会话创建时冻结项目指引、Skills 摘要和系统提示词，减少无意义的前缀漂移。' },
 	{ icon: '📚', title: '上下文工程', desc: '缓存策略、自动压缩与渐进式信息加载——理解 Peri 如何管理窗口，用对模型、控制上下文。' },
 	{ icon: '🖼️', title: '图片输入', desc: '截图直接粘贴给 Peri（Ctrl+V），让模型看到界面报错、设计稿、图表数据。' },
 ];
 
 const agentFeatures = [
-	{ icon: '🛠️', title: '14 个核心工具', desc: 'Read/Write/Edit、Glob/Grep、Bash、WebFetch/WebSearch、Agent 委派、TodoWrite……每个工具带别名自动解析。' },
+	{ icon: '🛠️', title: '任务工具', desc: '文件、搜索、终端、网络、子代理和任务跟踪按会话配置装配；扩展工具按需发现。' },
 	{ icon: '🧩', title: 'Skills', desc: '可复用的专项能力模块，Peri 自动加载适合当前任务的 skill——探索、审查、重构、修 Bug 都是一句话。' },
-	{ icon: '🤖', title: '6 种内置子代理', desc: 'explorer / coder / verification / web-researcher / plan / general-purpose，各有权限边界与模型策略。' },
+	{ icon: '🤖', title: '专用子代理', desc: '探索、规划、实现、验证和研究任务可以进入独立上下文，并带各自的权限与模型策略。' },
 	{ icon: '🔗', title: 'MCP', desc: '通过 Model Context Protocol 接入外部工具和服务——文件系统、数据库、API 全部打通。' },
-	{ icon: '⏱️', title: 'Hook 系统', desc: 'Agent Loop → Hook Middleware → Claude Code Hook 三层管道，28 个生命周期事件驱动自动化。' },
-	{ icon: '🛡️', title: '权限系统', desc: '从完全自动到逐条审批，四种权限模式保护你的代码和系统安全。' },
+	{ icon: '⏱️', title: 'Hook 系统', desc: '在会话和工具生命周期执行脚本、评估或外部调用；具体事件以当前 Hook 文档为准。' },
+	{ icon: '🛡️', title: '权限系统', desc: '四种审批模式控制工具执行前是否询问；真正的隔离仍由操作系统、容器和凭据策略提供。' },
 ];
 
 const ecoFeatures = [
-	{ icon: '🤝', title: 'Claude Code 生态兼容', desc: 'Skills、Hooks、MCP、插件原样可用——你现有的配置直接迁移，零改写。' },
+	{ icon: '🤝', title: 'Claude Code 生态接入', desc: '可读取 Claude Code 风格的 Skills、Hooks、MCP 与插件配置；兼容范围和限制按各功能页说明。' },
 	{ icon: '📦', title: 'AGM 包管理器', desc: 'agm install 任何 skill 或 agent。一把锁文件，所有工具互通。' },
-	{ icon: '⏰', title: '定时任务', desc: '自然语言注册重复任务：每天早上 9 点的日报、每周一的依赖更新。到点自动执行。' },
-	{ icon: '🎯', title: '/goal 长任务', desc: '声明目标后持续自动推进——命令用法、验收标准、长会话节奏全覆盖，中途走开也没关系。' },
+	{ icon: '⏰', title: '定时任务', desc: '在 TUI 进程运行期间按 UTC 调度重复任务；当前任务保存在内存中，重启后不会恢复。' },
+	{ icon: '🎯', title: 'Goal 长任务', desc: '在当前进程内记录一个可验证目标，帮助多轮工作保持方向；恢复会话后需要重新声明目标。' },
 	{ icon: '⚡', title: 'Superpowers 工作流', desc: 'Peri + Superpowers 插件：结构化规划、工程化执行、自动化验证的完整工作流。' },
 	{ icon: '📐', title: 'OpenSpec 规格驱动', desc: 'Spec-driven development——先定规格书再写代码，强制 RFC 2119 标准与验收条件。' },
 ];
@@ -73,14 +66,14 @@ const toolCards = [
 
 const scenes = [
 	{ title: '代码审查', desc: '干净上下文 + 证据要求 + 独立复核——审查纪律打包成 skill，一句话触发。' },
-	{ title: '大规模迁移', desc: 'Ultracode 并行扇出几十个 agent，探索、规划、实现、验证、汇总全自动。' },
+	{ title: '大规模迁移', desc: 'Ultracode 将探索、规划、实现、验证和汇总组织为显式工作流，并可并行处理独立切片。' },
 	{ title: '代码库审计', desc: '多代理分片扫描整个仓库，模式识别与风险清单一次到位。' },
 	{ title: '多维分析', desc: '同一问题从性能、安全、架构多角度并行分析，交叉验证结论。' },
 ];
 
 const featureGroups = [
 	{ id: 'engine', heading: '核心引擎', sub: '从单 Agent 循环到多代理编排', items: engineFeatures },
-	{ id: 'model', heading: '模型与上下文', sub: '任何模型，用对每一分钱', items: modelFeatures },
+	{ id: 'model', heading: '模型与上下文', sub: '配置 Provider，管理有限的上下文预算', items: modelFeatures },
 	{ id: 'agent', heading: 'Agent 能力', sub: '工具、技能、子代理、自动化', items: agentFeatures },
 	{ id: 'eco', heading: '生态与自动化', sub: '兼容既有生态，开箱即用', items: ecoFeatures },
 ];
@@ -432,8 +425,9 @@ const featureGroups = [
 				.tool-grid { grid-template-columns: 1fr; }
 				.scene-row { grid-template-columns: 1fr; gap: 0.25rem; }
 				.post-row { grid-template-columns: 1fr; gap: 0.25rem; }
-				.nav-links { gap: 1rem; }
-				.nav-links li:nth-child(n+3) { display: none; }
+				.nav { align-items: flex-start; }
+				.nav-links { gap: 0.5rem 1rem; flex-wrap: wrap; justify-content: flex-end; }
+				.nav-links li:last-child { display: none; }
 			}
 		</style>
 
@@ -441,11 +435,8 @@ const featureGroups = [
 		<nav class="nav" aria-label="主导航">
 			<a href={base} class="nav-logo">Peri Code</a>
 			<ul class="nav-links">
-				<li><a href={`${base}docs/get-started/introduction/`}>文档</a></li>
-				<li><a href={`${base}posts/engineering/agent-loop/`}>工程</a></li>
-				<li><a href={`${base}posts/product/demo-introducing-peri/`}>产品</a></li>
-				<li><a href={`${base}posts/research/tool-behavior-fix-evidence/`}>研究</a></li>
-				<li><a href={`${base}posts/news/demo-v2-release/`}>动态</a></li>
+				<li><a href={`${base}docs/`}>文档</a></li>
+				{postCategories.map((category) => <li><a href={`${base}posts/${category.id}/`}>{category.label}</a></li>)}
 				<li><a href="https://github.com/konghayao/peri" target="_blank" rel="noopener">GitHub</a></li>
 			</ul>
 		</nav>
@@ -459,11 +450,11 @@ const featureGroups = [
 					<span class="hero-tagline">轻舟不扰，远山可渡</span>
 				</h1>
 				<p class="hero-subtitle">
-					轻舟一叶，不扰清波，渡君至远山。以 Rust 铸就，十三兆之躯，
-					兼容尔之所习——不为炫技，唯愿助君成事。
+					轻舟一叶，不扰清波，渡君至远山。以 Rust 铸就，运行于终端，
+					接入既有工具与配置——不为炫技，唯愿助君成事。
 				</p>
 				<div class="hero-actions">
-					<a href={`${base}docs/get-started/introduction/`} class="btn btn-primary">登舟</a>
+					<a href={`${base}docs/`} class="btn btn-primary">登舟</a>
 					<a href="https://github.com/konghayao/peri" class="btn btn-outline" target="_blank" rel="noopener">GitHub</a>
 				</div>
 			</div>
@@ -546,7 +537,7 @@ const featureGroups = [
 			{
 				posts.map((post) => {
 					const section = post.id.split('/')[0];
-					const link = `${base}posts/${post.id.replace(/\.mdx$/, '')}/`;
+					const link = `${base}${postPath(post)}`;
 					return (
 						<a class="post-row" href={link}>
 							<div class="post-cat">{sectionLabels[section] || section}</div>
@@ -569,7 +560,7 @@ const featureGroups = [
 			<code class="cta-code">
 				curl -fsSL https://raw.githubusercontent.com/konghayao/peri/main/scripts/install.sh | bash
 			</code>
-			<a href={`${base}docs/get-started/introduction/`} class="btn btn-primary">观其全章</a>
+			<a href={`${base}docs/`} class="btn btn-primary">观其全章</a>
 		</section>
 
 		<!-- ============ Footer ============ -->

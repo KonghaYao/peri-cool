@@ -1,0 +1,59 @@
+---
+title: 管理会话
+description: 新建、浏览、继续、恢复、压缩和回退 Peri 会话，并区分对话记录与运行时任务状态。
+---
+
+会话保存对话记录与工具事件。需要保留上下文时继续旧会话；任务方向已经变化或上下文受到错误信息污染时，新建会话更合适。
+
+## 浏览和恢复
+
+在 TUI 中输入 `/threads`，打开当前会话数据库中的 Thread Browser。`/history`、`/resume` 和 `/his` 也会打开同一面板。当前请使用这些斜杠入口，不要依赖 Ctrl 面板快捷键。
+
+启动时继续当前目录最近的会话：
+
+```bash
+peri --continue
+```
+
+按完整 session ID 恢复：
+
+```bash
+peri --resume <session-id>
+```
+
+`--continue` 以当前工作目录为筛选条件。若目录或数据库路径不同，看到的“最近会话”也会不同。
+
+## 新建会话
+
+在 TUI 输入：
+
+```text
+/clear
+```
+
+这会请求创建新会话，并清理当前 UI 的暂存状态。需要保留旧对话时，先确认 Thread Browser 中能够找到它。
+
+## 控制上下文长度
+
+```text
+/compact
+```
+
+Compact 会把较早对话整理成摘要，给后续工作释放上下文空间。摘要不是原始消息的逐字副本；重要约束应写入项目说明或任务记录，不要只依赖长对话记忆。
+
+若要回到较早状态，可使用 rewind 入口查看候选点。回退会影响会话与可能的文件恢复操作，执行前先阅读预览。
+
+## 会话记录不等于运行时状态
+
+- `/goal` 的 active goal 保存在当前进程内存中。恢复对话不承诺恢复 active goal。
+- Goal complete 的辅助验证最多读取最近一段非 System 消息；它不是对整段项目历史的重新验收。
+- Cron 任务也保存在进程内存中，重启后不会随会话恢复。
+- 非交互 `-p` 使用临时 ACP session，完成一次 prompt 后关闭；它不是 TUI 长会话的替代入口。
+
+## 排查
+
+- 找不到旧会话：确认工作目录、`--db-path` 和 Thread Browser 使用的是同一数据库。
+- 恢复后界面内容异常：先打开新会话复现；不要在旧上下文上反复追加相互冲突的纠正。
+- 长任务需要跨进程继续：把验收状态写入仓库内文档或 issue，不要只依赖 active goal。
+
+相关文档：[TUI 导航](/peri-cool/docs/guides/tui-navigation/) · [上下文工程](/peri-cool/docs/features/context-engineering/) · [管理长任务](/peri-cool/docs/features/long-running-tasks/) · [故障排除](/peri-cool/docs/troubleshooting/)

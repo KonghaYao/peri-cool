@@ -1,0 +1,91 @@
+---
+title: 可验证工程里程碑
+description: 按 tag、commit 与决策记录区分证据类型，记录 Peri 已可核验的演进节点。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+这不是逐 commit changelog，而是一组能由仓库证据复核的工程里程碑。它回答“何时出现了什么版本标记或架构变化”，不把提交日期自动解释为用户安装到该功能的日期。
+
+## 日期怎么读
+
+| 证据 | 本页采用的表述 | 不能自动推出 |
+| --- | --- | --- |
+| annotated tag 的 tagger date | “仓库打 tag 日期” | GitHub Release、包或二进制的公众发布日期 |
+| lightweight tag 指向的 commit date | “目标 commit 日期” | tag 自身创建日期 |
+| commit date | “代码提交/合入日期” | 所有安装渠道已更新 |
+| spec 日期 | “决策记录/归档日期” | 功能上线日期 |
+| 博客 frontmatter `date` | “文章编写日期” | 对应版本发布日期 |
+
+日期按证据中记录的时区解释；本页只展示日历日期。若需要判断某个安装渠道的发布时间，还要检查该渠道的 release 或 registry 记录。
+
+## 版本标记
+
+版本标记并非全部使用同一种 Git tag。Annotated tag 可以读取独立的 tagger date；lightweight tag 只能稳定读取它指向的 commit，不能从本地引用恢复 tag 自身创建时间。
+
+| 证据日期 | Tag | 证据类型 | 说明 |
+| --- | --- | --- |
+| 2026-06-03 | `agent-v1.0.0` | lightweight tag 的目标 commit 日期 | 本地 tag 不含独立创建日期 |
+| 2026-07-14 | `agent-v2.0.0` | annotated tagger date | 仓库在当日创建 2.0.0 tag |
+| 2026-08-02 | `agent-v3.0.0` | annotated tagger date | 仓库在当日创建 3.0.0 tag |
+| 2026-08-12 | `agent-v3.6.5` | annotated tagger date | 本页冻结于 2026-08-12 22:00（+08:00）的版本标记 |
+
+<Aside type="caution" title="Tag 不是完整发布记录">
+  Annotated tag 的日期只证明仓库在对应日期创建了 tag；lightweight tag 行只证明目标 commit 的日期。本页没有据此断言 GitHub Release、安装脚本制品或其他分发渠道在同一天可用。
+</Aside>
+
+## 2026 年 6 月：v2 单路径重构开始落地
+
+2026-06-27，commit `15269e31` 合入“peri-agent v2 单路径架构重构”。这次变更建立了 v2 的 Agent、ACP、消息、工具、Prompt、Middleware 和 Workflow 设计与实现基础。
+
+它是工程合入节点，不是 `agent-v2.0.0` 的公众发布日期。后续 7 月仍持续清理 v1/v2 双轨、修正 ACP 事件边界和补齐 Compact 持久化。
+
+证据入口：
+
+```bash
+git show --stat 15269e31
+git show -s --format=fuller 15269e31
+```
+
+## 2026 年 7 月：协议复用与事件路径收敛
+
+- 2026-07-07：决策记录 `docs/design/decisions/2026-07-07-acp-reuse-first.md` 确立“标准 ACP 能表达的事件优先复用标准协议”。这是决策记录日期。
+- 2026-07-08：commit `f0d41fa6` 合入冗余自定义事件清理，流式消息和工具状态更多复用 `session/update`。
+- 2026-07-16：commit `af8bd2e2` 合入 Agent 与 SubAgent 架构升级。
+- 2026-07-18：Compact 持久化和事件系统继续收敛；commit `69bfd9f6` 修复 compact flags 跨 prompt 丢失，相关 v1 事件中间态也在该阶段逐步退役。
+- 2026-07-29：commit `0271f9a5` 合入字段级 Micro Compact，避免把整个 tool input 统一替换成无结构占位。
+
+这些节点说明 v2 是一段持续收敛过程，不能由一篇文章的编写日期代表完整版本史。
+
+## 2026 年 8 月：协议、执行与资源重新归位
+
+- 2026-08-01：commit `f0f9f430` 把模型协议抽取到独立 `peri-model` crate。
+- 2026-08-05：3.0 分层重构伞形 PRD 建立，记录 ACP 承载过多业务职责、事件双轨和多 session 生命周期等问题。
+- 2026-08-06：Resources、Controller、Agent session 聚合根、ACP 薄壳和单一事件链等迁移集中合入。
+- 2026-08-07：merge commit `1fcacf75` 汇总 3.0 分层重构主线。
+- 2026-08-09：commit `c6402d9a` 为 SubAgent 增加按 thread 恢复现场的入口。
+- 2026-08-11：3.0 伞形 PRD 与 L1–L5/M 子项在历史索引中归档；同日 commit `6a99d379` 让 Agent 工具支持动态选择模型档位。
+
+3.0 分层重构发生在 `agent-v3.0.0` tag 之后，因此本页称它为“3.0 分层重构”，不称为“v3.0 首发”。详见[3.0 分层重构](/peri-cool/docs/history/3-0-refactor/)。
+
+## 如何复核
+
+```bash
+# 查看 tag 类型；annotated tag 还可查看 tagger date 与目标 commit
+git cat-file -t agent-v2.0.0
+git show -s --format=fuller agent-v2.0.0
+
+# 查看一个工程里程碑的合入内容
+git show --stat 1fcacf75
+
+# 查看归档问题索引
+rg -n '3.0 L|event-chain-canonical' spec/global/problems.md spec/global/domains/agent.md
+```
+
+历史材料解释“为什么改变”，当前行为仍以代码、契约测试和 `docs/standards/` 为准。
+
+## 相关内容
+
+- [3.0 分层重构](/peri-cool/docs/history/3-0-refactor/)
+- [架构总览](/peri-cool/docs/developer/architecture/)
+- [ACP 协议在生态中的定位](/peri-cool/posts/engineering/acp-positioning/)

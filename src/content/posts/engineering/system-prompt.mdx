@@ -1,6 +1,6 @@
 ---
 title: 系统提示词
-description: Peri Agent 的上下文构成——14 个提示词段落 + CLAUDE.md 如何赋予 Agent 身份、规范、能力和即时感知。
+description: Peri Agent 的冻结上下文、项目指令与运行期消息如何划分边界。
 date: 2026-07-21
 hero:
   image:
@@ -10,11 +10,11 @@ hero:
 
 import { Aside } from '@astrojs/starlight/components';
 
-系统提示词是 Agent 的**认知底座**——它告诉 Agent "你是谁、能做什么、遵守什么规则、当前面对什么"。Peri 的系统提示词由两部分拼接而成：**14 个 Markdown 段落文件**（`peri-acp/prompts/sections/*.md`）提供稳定的规则和能力定义，**CLAUDE.md** 提供项目特定的记忆，外加每轮变化的动态数据。
+系统提示词是 Agent 的**认知底座**——它告诉 Agent“你是谁、能做什么、遵守什么规则、当前面对什么”。当前源码在 `peri-acp/prompts/sections/` 中维护 **13 个 Markdown 段落文件**，并在 session/new 时与项目指令、skills 摘要和环境快照一起形成冻结上下文。运行期用户消息、工具结果和异步通知属于另一条消息路径。
 
-## 稳定层：14 个段落文件
+## 稳定层：13 个段落文件
 
-14 个 `.md` 文件在 Agent 启动时一次性加载并冻结，整个会话中保持不变。按功能分为五组：
+这些 `.md` 文件在 Agent 启动时一次性装配并冻结，整个会话中保持不变。按功能可分为五组：
 
 ### 身份与行为边界
 
@@ -50,11 +50,10 @@ import { Aside } from '@astrojs/starlight/components';
 |------|---------|
 | `10_hitl.md` | **人机审批模式**：9 类需审批的工具（Bash、Write、Edit、Agent、WebFetch 等）。用户四种响应——Approve（原样执行）/ Reject（改方案别重试）/ Edit（用修改后的参数执行）/ Respond（纯反馈，按消息调整计划） |
 | `11_subagent.md` | **子 Agent 调度**：Agent 类型列表（coder、explorer、plan、code-reviewer 等），每类带 `[model_tier]` 和 `[access]` 标注。**选择指南**——默认选专用 Agent，"general-purpose 是兜底不是默认"。**标准管线**——Research → Plan → Code → Review。**后台任务**——异步通知、禁止轮询、禁止 sleep 等待 |
-| `12_cron.md` | **定时任务**：cron_register/list/remove 三个工具。安全约束——不主动注册、"git push --force 放 cron 是自残"、避免高频 `* * * * *` |
 | `13_skills.md` | **Skills 技能系统**：四级搜索优先级（用户→全局→项目→插件）。触发方式是 `/skill-name`，但 Agent 应主动推荐未被使用的匹配 Skill。Skills 内容是按需加载的，只有摘要放在稳定层 |
 | `16_workflow.md` | **Workflow 工作流编排**：多 Agent 并行/流水线，异步执行，结果保存到 `.claude/workflow-runs/`。禁止 sleep 轮询——系统会主动唤醒 |
 
-这五份文件是 Agent 的"超能力手册"——HITL 让人参与决策、SubAgent 让任务并行、Cron 让任务定时、Skills 让能力按需加载、Workflow 让多 Agent 流水线协作。
+这些文件描述 HITL、SubAgent、Skills 与 Workflow 等能力。Cron 当前由 skill 与工具层提供，不再有独立的 `12_cron.md` 段落。
 
 ### 消息协议
 
@@ -66,10 +65,10 @@ import { Aside } from '@astrojs/starlight/components';
 这两份文件定义了 Agent 如何区分"系统通知"和"用户消息"，以及如何在不同渠道间正确路由回复。
 
 <Aside type="note">
-  完整文档还包含 CLAUDE.md 导航块（加载到稳定层前方），定义 Peri 的架构速览、模块索引、入口矩阵、编码规范、陷阱速查等内容。它不在 14 个段落文件里，而是项目根目录的 `CLAUDE.md`。
+  完整上下文还可能包含从候选路径选中的项目指令。它不在这 13 个段落文件中，而且只会读取候选列表中的首个有效主文件；不会自动递归继承父目录规则。
 </Aside>
 
-## 动态层：每轮刷新的上下文
+## 运行期消息：随事件追加
 
 稳定层之上，每轮对话追加的内容包括：
 
@@ -83,7 +82,7 @@ import { Aside } from '@astrojs/starlight/components';
 
 ## 为什么必须冻结
 
-14 个段落文件在 Agent 启动时全部加载到内存，后续整个会话不再重新读盘。原因是**认知一致性**：
+13 个段落文件在 Agent 启动时装配，后续整个会话不再重新读盘。原因是**认知一致性**：
 
 - 如果每轮重新获取日期，Agent 可能在同一任务中给出不同的时间判断
 - 如果 Skills 列表在会话中变化，Agent 的可用能力集突然漂移

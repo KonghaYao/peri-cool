@@ -6,6 +6,8 @@
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
+    "test": "bun test",
+    "check:site": "bun run build && bun scripts/check-site.mjs",
     "preview": "astro preview",
     "astro": "astro",
     "compress:images": "bun scripts/compress-images.mjs"

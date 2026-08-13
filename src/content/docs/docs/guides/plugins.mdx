@@ -1,0 +1,63 @@
+---
+title: 插件管理
+description: 注册 marketplace，并安装、启用、更新、检查和卸载 Peri 插件。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Plugin 是一组可分发的 skills、hooks、agents 或 MCP 配置。命令行接受的插件 ID 格式是 `name@marketplace`；安装命令一次只接收一个插件。
+
+## 注册 Marketplace
+
+```bash
+peri plugin marketplace add user/repository
+peri plugin marketplace list
+peri plugin marketplace update <marketplace-name>
+peri plugin marketplace remove <marketplace-name>
+```
+
+来源可以是 GitHub 简写、URL 或本地路径。第三方 marketplace 中的内容不是 Peri 核心仓库的一部分，安装前应检查来源和脚本。
+
+## 查找与安装
+
+```bash
+peri plugin search <关键词>
+peri plugin info <name@marketplace>
+peri plugin install <name@marketplace> --scope user
+```
+
+可用 scope：
+
+| Scope | 用途 |
+| --- | --- |
+| `user` | 当前用户的多个项目共享 |
+| `project` | 随项目配置使用 |
+| `local` | 只在本机当前项目使用 |
+
+要安装多个插件，逐条运行 `peri plugin install`。把多个名称放在同一条命令后会被 CLI 拒绝。
+
+## 生命周期
+
+```bash
+peri plugin list
+peri plugin list --json
+peri plugin disable <name@marketplace> --scope user
+peri plugin enable <name@marketplace> --scope user
+peri plugin update <name@marketplace>
+peri plugin uninstall <name@marketplace>
+peri plugin cleanup
+```
+
+<Aside type="caution" title="Update 与 Uninstall 的 scope 限制">
+  当前 <code>update --scope</code> 和 <code>uninstall --scope</code> 参数会被解析但没有应用；实现只处理找到的第一个同 ID 安装项。插件同时存在于多个 scope 时，不要依赖这两个命令选择或一次删除全部作用域，请先用 <code>list --json</code> 核对配置并备份。
+</Aside>
+
+`cleanup` 用于清理 7 天未使用的孤儿插件文件；它不等同于卸载仍在配置中引用的插件。
+
+## 生效与安全
+
+插件可能同时改变 Agent 指令、hook 行为和 MCP 工具面。安装或更新后重新启动 Peri，再分别检查 `/plugin`、`/hooks` 与 `/mcp`。不要把“插件已安装”当作所有组成部分都已成功连接。
+
+插件内容以 Peri 进程的用户权限运行或影响 Agent 决策。安装前审查来源；不要把 API key 写进插件仓库；高风险插件先在临时项目和 Default 权限模式下验证。
+
+相关文档：[Skills](/peri-cool/docs/features/skills/) · [Hooks](/peri-cool/docs/features/hooks/) · [MCP](/peri-cool/docs/features/mcp/) · [安全边界](/peri-cool/docs/security/secrets-and-permissions/)

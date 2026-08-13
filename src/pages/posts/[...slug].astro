@@ -1,9 +1,17 @@
 ---
 import { getCollection, render } from 'astro:content';
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import {
+	getPostCategory,
+	getPostCategoryId,
+	postPath,
+	postsByTopic,
+	postsInCategory,
+	sortPosts,
+} from '../../lib/content';
 
 export async function getStaticPaths() {
-	const posts = await getCollection('posts');
+	const posts = sortPosts(await getCollection('posts'));
 	return posts.map((post) => ({
 		params: { slug: post.id.replace(/\.mdx$/, '') },
 		props: { post },
@@ -15,63 +23,27 @@ const { Content, headings } = await render(post);
 
 const hero = post.data.hero;
 
-const section = post.id.split('/')[0]; // engineering | product | research | news
-
-const sectionLabels: Record<string, string> = {
-	engineering: '工程',
-	product: '产品',
-	research: '研究',
-	news: '动态',
-};
-
-const allSectionPosts = (await getCollection('posts'))
-	.filter((p) => p.id.startsWith(section + '/'));
+const section = getPostCategoryId(post);
+const sectionMetadata = getPostCategory(section);
+const allSectionPosts = postsInCategory(await getCollection('posts'), section);
+const topicGroups = postsByTopic(allSectionPosts, section);
 
 const base = import.meta.env.BASE_URL;
 
-/** 工程分类下的文章按系列分组显示在侧边栏 */
-const engineeringGroups: { label: string; slugs: string[] }[] = [
-	{
-		label: '核心架构',
-		slugs: ['agent-loop', 'system-prompt', 'hook-system', 'multi-agent', 'acp-positioning'],
-	},
-	{
-		label: '子代理',
-		slugs: ['subagent-design'],
-	},
-	{
-		label: '工作流',
-		slugs: ['workflow-design'],
-	},
-];
-
 const toSidebarItem = (p: (typeof allSectionPosts)[number]) => ({
 	label: p.data.title,
-	link: `/posts/${p.id.replace(/\.mdx$/, '')}/`,
+	link: `/${postPath(p)}`,
 });
 
-let sidebar;
-if (section === 'engineering') {
-	const postsBySlug = new Map(
-		allSectionPosts.map((p) => [p.id.split('/')[1].replace(/\.mdx$/, ''), p]),
-	);
-	sidebar = engineeringGroups
-		.map((group) => ({
-			label: group.label,
-			items: group.slugs
-				.map((slug) => postsBySlug.get(slug))
-				.filter((p): p is (typeof allSectionPosts)[number] => p !== undefined)
-				.map(toSidebarItem),
-		}))
-		.filter((group) => group.items.length > 0);
-} else {
-	sidebar = [
-		{
-			label: sectionLabels[section] || section,
-			items: allSectionPosts.map(toSidebarItem),
-		},
-	];
-}
+const sidebar = [
+	{
+		label: sectionMetadata.label,
+		items: topicGroups.map(({ topic, posts }) => ({
+			label: topic.label,
+			items: posts.map(toSidebarItem),
+		})),
+	},
+];
 ---
 
 <StarlightPage

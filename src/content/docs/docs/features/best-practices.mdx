@@ -218,12 +218,12 @@ peri --model claude-haiku-4-5-20251001 --permission-mode accept-edit -p "为 aut
 # 高风险操作：用 sonnet 保证质量，手动审批
 peri --model claude-sonnet-4-20250514 --permission-mode default -p "重构数据库迁移逻辑"
 
-# CI 环境：完全自动化
-peri --model claude-sonnet-4-20250514 --permission-mode bypass -p "运行完整测试套件并修复失败用例" --max-turns 30
+# 自动化环境：仍先使用会请求审批的模式验证任务边界
+peri --permission-mode default -p "运行测试套件；先报告预计修改范围，遇到破坏性操作时停止"
 ```
 
 <Aside type="caution">
-  <code>bypass</code> 会跳过所有权限提示。只在受控环境（CI/CD、容器）中使用，并配合 <code>--max-turns</code> 限制执行轮次。
+  当前 <code>--max-turns</code>、<code>--allowedTools</code> 和 <code>--disallowedTools</code> 虽然会被命令行解析，但 print 执行路径没有应用这些值。不要用它们作为 CI 安全边界。需要自动化时，应由外部容器、只读凭据、目录权限和任务超时共同限制影响面。
 </Aside>
 
 ## 权限分层
@@ -237,19 +237,11 @@ peri --model claude-sonnet-4-20250514 --permission-mode bypass -p "运行完整�
 | 日常编码 | `accept-edit` | Edit、Write、Grep、Glob | Bash(写入)、git push |
 | 代码审查 | `default` | Grep、Glob、Read | 全部写入工具 |
 | 危险重构 | `default` | 全部手动审批 | Bash 中 `rm -rf`、`git push --force` |
-| CI 自动化 | `bypass` + `--max-turns` | 全部 | —（由 CI 环境限制） |
+| CI 自动化 | 根据风险选择；不要默认 Bypass | 最小权限 | 由 CI 身份、容器、超时和网络策略限制 |
 
 ### 配置示例
 
-配置文件没有 `permissions` 字段——工具白名单通过 CLI 参数控制：
-
-```bash
-# 允许/禁止具体工具（支持 Bash(command:*) 模式匹配）
-peri --allowedTools "Bash(git:*)" "Edit" --disallowedTools "Bash(rm -rf:*)" "Bash(curl:*)"
-
-# 与权限模式组合
-peri --permission-mode accept-edit --allowedTools "Edit" "Write" "Grep" "Glob"
-```
+当前版本不要依赖 `--allowedTools` 或 `--disallowedTools` 建立工具白名单；这些参数尚未接入 print 执行路径。若任务必须限制命令集合，请在 Peri 之外使用受限账号、容器策略或专用 runner。
 
 日常开发时用 `--permission-mode accept-edit` 跳过 Write/Edit 的审批弹窗，用 `default` 模式处理 Bash 和外网请求。
 

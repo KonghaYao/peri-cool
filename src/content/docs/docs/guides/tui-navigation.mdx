@@ -1,0 +1,66 @@
+---
+title: TUI 导航
+description: 认识 Peri 的消息区、输入区、状态栏和常用面板。
+---
+
+Peri 的主界面由消息区、输入区和状态栏组成。需要调整设置或查看状态时，在输入区键入斜杠命令打开面板。
+
+## 三个主要区域
+
+- **消息区** 展示对话、工具调用、审批请求和系统提示。
+- **输入区** 提交自然语言任务，也接受 `/login`、`/model` 等界面入口。
+- **状态栏** 展示权限模式、当前目录、模型档位、模型、effort 和后台任务摘要。
+
+## 常用面板
+
+| 任务 | 输入 |
+| --- | --- |
+| Provider 管理 | `/login` |
+| 模型与档位 | `/model` |
+| 会话列表 | `/threads` |
+| 运行状态 | `/status` |
+| MCP / Hooks / Cron | `/mcp`、`/hooks`、`/cron` |
+| 后台任务 / Workflow | `/tasks`、`/workflows` |
+| Agent / Plugin / Theme | `/agent`、`/plugin`、`/theme` |
+
+当前请使用这些斜杠入口。Ctrl 面板快捷键不作为受支持入口。
+
+## 面板内操作
+
+常见列表面板使用：
+
+- `↑` / `↓` 移动选择。
+- `Tab` / `Shift+Tab` 循环焦点或选项。
+- `Enter` 确认或进入详情。
+- `Esc` 取消或关闭。
+
+具体面板可能增加左右方向键、鼠标点击或二次确认，以面板底部提示为准。
+
+### Provider 与模型
+
+- `/login` 中 Enter 进入编辑，不代表激活当前 Provider。保存后配置会写入并推送当前会话。
+- `/model` 左栏移动会立即切换档位；进入右栏后，左右键修改字段并立即保存。
+- Model 面板显示的是本地候选，不是远端模型目录。
+
+首次向导只在启动条件满足时出现。它保存到磁盘后不会热更新当前会话，完成后应退出并重启。完整步骤见[连接模型服务](/peri-cool/docs/guides/providers/)。
+
+## 输入与会话
+
+- Enter 提交当前输入。
+- Shift+Enter 或 Alt+Enter 换行。
+- `Ctrl+U` 清空输入。
+- 任务运行时继续提交的内容会先排队，等当前任务结束或取消后再处理。
+- `/clear` 创建新会话，`/threads` 浏览历史会话。
+- 双击 Esc 进入 rewind 流程。
+- `Ctrl+C` 在运行中取消任务，空闲时进入两段式退出。确认弹窗使用 Esc 关闭。
+
+## 权限模式
+
+状态栏显示当前权限模式。`Shift+Tab` 可以轮换模式。审批模式只决定 Peri 是否询问，不提供操作系统隔离。
+
+## 下一步
+
+- [会话管理](/peri-cool/docs/guides/sessions/)
+- [权限系统](/peri-cool/docs/features/permissions/)
+- [快捷键参考](/peri-cool/docs/reference/keyboard-shortcuts/)
+- [故障排除](/peri-cool/docs/troubleshooting/)
