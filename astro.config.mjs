@@ -101,6 +101,7 @@ export default defineConfig({
 						{ slug: 'docs/features/mcp' },
 						{ slug: 'docs/features/hooks' },
 						{ slug: 'docs/features/permissions' },
+						{ slug: 'docs/features/meta-harness' },
 						{ slug: 'docs/features/image-input' },
 						{ slug: 'docs/features/context-engineering' },
 						{ slug: 'docs/features/best-practices' },

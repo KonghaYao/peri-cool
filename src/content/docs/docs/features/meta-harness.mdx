@@ -1,0 +1,77 @@
+---
+title: 系统提示词自定义（meta_harness）
+description: 用 settings.json 覆盖系统提示词段落或关闭 middleware——注意安全段落的覆盖风险。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Peri 的系统提示词由多个**段落**组成：身份与安全、工具使用纪律、HITL 审批机制、skills 协议……每个段落有固定 ID。`meta_harness` 配置让你按段落 ID 覆盖内置内容，或按 middleware 名装配期关闭某个能力。
+
+一个 kv 字段承载两项能力，bool 值决定动作：
+
+- `true` key = **段落 ID** → 覆盖系统提示词段落（需 `.peri/meta/<ID>.md` 存在）；
+- `false` key = **middleware 名** → 装配期关闭该 middleware（无需 md 文件）。
+
+## 配置示例
+
+`~/.peri/settings.json`（或工作区 `.peri/settings.json`）：
+
+```json
+{
+  "config": {
+    "meta_harness": {
+      "01_intro": true,
+      "05_using_tools": true,
+      "WebMiddleware": false
+    }
+  }
+}
+```
+
+- `"01_intro": true` 表示用 `.peri/meta/01_intro.md` 的内容替换内置的 01 段落；
+- `"05_using_tools": true` 同理，替换工具使用纪律段落；
+- `"WebMiddleware": false` 关闭 Web 工具（无需 md 文件）。
+
+## 段落 ID 清单
+
+段落 ID = `peri-acp/prompts/sections/` 文件名去 `.md`，另有渲染生成段。当前全集：
+
+`01_intro`、`02_system`、`03_doing_tasks`、`04_actions`、`05_using_tools`、`06_tone_style`、`07_runtime`、`10_hitl`、`11_subagent`、`13_skills`、`15_channel`、`persona`、`language`
+
+`persona` 与 `language` 是渲染生成段，可经 `.peri/meta/persona.md` / `.peri/meta/language.md` 覆盖。
+
+## middleware 名清单
+
+`false` key 使用的 middleware 名 = 装配面 middleware 的 `name()`，例如：
+
+`DefaultSystemPromptMiddleware`、`LangMiddleware`、`AgentsMdMiddleware`、`SkillsMiddleware`、`HumanInTheLoopMiddleware`、`SubAgentMiddleware`、`WebMiddleware`、`FilesystemMiddleware`、`TerminalMiddleware`、`McpMiddleware`、`WorkflowMiddleware`、`ToolSearch` 等。
+
+<Aside type="note">
+  关闭 `HumanInTheLoopMiddleware` / `SubAgentMiddleware` / `SkillsMiddleware` 会同时移除其持有的段落（10_hitl / 11_subagent / 13_skills）与对应工具——段落与工具一起消失，不会出现"工具没了但提示词还在描述它"的盲区。
+</Aside>
+
+## 覆盖文件形态
+
+`.peri/meta/<ID>.md` 的全文 = 替换体，整段替换内置段落：
+
+```markdown
+# Tool usage policy (custom)
+
+Use tools in batches when possible. Always follow the file-write discipline:
+Read before Edit, prefer targeted edits over full-file rewrites.
+```
+
+变更**下次会话生效**——会话内系统提示词冻结，不在中途重读覆盖文件。删除配置里的 key（及 md 文件）即恢复内置段落。
+
+## 安全段落覆盖风险提示
+
+<Aside type="caution" title="覆盖含防御性安全内容的段落会移除对应防护信息">
+  以下段落包含运行时安全语义，完全替换后这些信息将不再出现在系统提示词中：
+</Aside>
+
+- **01_intro**（角色定义 + 防御性安全）：内置版本含「仅处理防御性安全任务」约束与 URL 引用纪律。覆盖后该约束消失——模型不再被提示拒绝攻击性/绕过权限的请求，URL 纪律由模型自觉维持。
+- **10_hitl**（HITL 审批 + sensitive 工具列表）：sensitive 列表由 `HumanInTheLoopMiddleware` 按代码事实（`default_requires_approval`）动态生成，但覆盖 `10_hitl` 段仍会整体移除该列表——模型失去工具敏感度认知。实际审批行为仍由运行时强制执行（权限判定不依赖提示词），但模型不再具备"调用前预期审批"的自觉，可能因意外审批打断而反复重试。
+- **05_using_tools**（工具使用纪律）：覆盖后批处理/Bash 纪律依赖自拟内容。
+- **11_subagent**（SubAgent 委托 + Agent Selection Guide）：覆盖后委托授权边界说明消失（运行时边界仍由机制强制）。
+
+**建议**：自定义内容时保留原段落中的安全相关行（防御性安全约束、sensitive 列表、授权边界），或在覆盖文件中重新声明同等语义；删除对应 key（及 md 文件）即可恢复内置段落。
