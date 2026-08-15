@@ -2,6 +2,10 @@
 title: "流式 Markdown 的结构缓存"
 description: Markdown 后缀会改变旧文本的语法结构，缓存必须识别表格翻转、不稳定尾块与终端宽度变化。
 date: 2026-08-13
+hero:
+  image:
+    file: ../../../assets/img_candle_in_wind_s23.png
+    alt: 风中烛火
 ---
 
 模型流式输出 Markdown 表格时，表头往往先于分隔行到达。只有表头的那一帧会被解析成普通段落，分隔行到达后，同一段旧文本才变成表格。Peri 曾复用前一帧的段落缓存，结果完整表格一直显示为竖线原文。
