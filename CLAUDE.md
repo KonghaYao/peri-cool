@@ -145,9 +145,23 @@ bun run preview  # 预览构建产物
 
 1. 在 `src/content/posts/<category>/` 下创建 `.mdx` 文件，**目录即分类**
 2. category 可选值：`engineering`（工程实践）、`product`（产品介绍）、`research`（研究分析）、`news`（版本动态）
-3. frontmatter 必填 `title`、`description`；`hero` 可选（大标题 + 头图），`image.file` 为相对该 mdx 文件的图片路径，如 `../../../assets/img_xxx.png`
-4. 自动出现在首页最新文章与 `/posts/` 路由，无需手动编辑路由
-5. 文风按上文"分类文风限制"执行，research 类最严格
+3. frontmatter 必填 `title`、`description`；`hero` 必填：`image.file`（相对该 mdx 文件的图片路径，如 `../../../assets/img_xxx.png`）与 `alt`
+4. 在 `src/lib/content.ts` 的 `postCategories` 中登记主题归属：文章 id 必须加入对应分类某个 `topics[].posts`，否则 `bun test` 失败、侧边栏不显示
+5. 自动出现在首页最新文章与 `/posts/` 路由，无需手动编辑路由
+6. 文风按上文"分类文风限制"执行，research 类最严格
+
+## 侧边栏规范
+
+站点两套侧边栏，层级统一为两层（分组 → 页面）：
+
+| 侧边栏 | 数据源 | 层级 |
+| --- | --- | --- |
+| 文档 | `astro.config.mjs` 的 `sidebar` 数组 | 分组 → 页面 |
+| 文章 | `src/lib/content.ts` 的 `postSidebar()` | 主题 → 文章 |
+
+- 文章侧边栏是 **主题 → 文章** 两层。分类（engineering / product / research / news）只是内容归属，**不参与侧边栏层级**；主题（核心执行、状态与事件……）对应文档侧边栏的分组
+- `postSidebar()` 是文章侧边栏的**唯一构造源**：列表页 `postSidebar(posts)`，分类页/单篇页 `postSidebar(posts, category)`。禁止在页面内手写 sidebar 对象
+- 主题及其文章归属登记在 `lib/content.ts` 的 `postCategories[].topics[]`，归属完整性由 `bun test` 自动校验（每篇文章恰好一个主题）
 
 ## 内容规范
 
