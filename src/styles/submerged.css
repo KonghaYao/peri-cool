@@ -347,9 +347,9 @@
   padding-inline-start: 0;
   border-inline-start: none;
 }
-.top-level > li > details > ul > li {
+/* sl-sidebar-state-persist .top-level > li > details > ul > li {
   margin-bottom: 1.75rem;
-}
+} */
 /* 分组标题：降字重，贴合全站细宋体风格 */
 .sidebar-pane .group-label {
   font-weight: 400;

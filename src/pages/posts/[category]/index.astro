@@ -7,6 +7,7 @@ import {
 	resolveFeaturedPost,
 	postCategories,
 	postPath,
+	postSidebar,
 	postsByTopic,
 	postsInCategory,
 } from '../../../lib/content';
@@ -22,15 +23,7 @@ const featured = import.meta.env.DEV
 	: getFeaturedPost(posts, category.id);
 const topicGroups = postsByTopic(posts, category.id);
 const base = import.meta.env.BASE_URL;
-const sidebar = [
-	{
-		label: category.label,
-		items: topicGroups.map(({ topic, posts }) => ({
-			label: topic.label,
-			items: posts.map((post) => ({ label: post.data.title, link: `/${postPath(post)}` })),
-		})),
-	},
-];
+const sidebar = postSidebar(posts, category.id);
 ---
 
 <StarlightPage

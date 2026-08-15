@@ -257,3 +257,24 @@ export function resolveFeaturedPost(posts: Post[], category: PostCategory): Post
 export function postPath(post: Pick<Post, 'id'>): string {
 	return `posts/${post.id.replace(/\.mdx$/, '')}/`;
 }
+
+type SidebarGroup = {
+	label: string;
+	items: { label: string; link: string }[];
+};
+
+/** 文章侧边栏：主题 → 文章（两层），与文档侧边栏（分组 → 页面）层级一致。
+ * 分类（工程/产品等）是内容归属，不参与侧边栏层级。
+ * 传 category 只返回该分类下的主题（文章页/分类页用），不传返回全部分类主题（列表页用）。 */
+export function postSidebar(posts: Post[], category?: PostCategory): SidebarGroup[] {
+	const categories = category ? [getPostCategory(category)] : postCategories;
+	return categories.flatMap((c) =>
+		postsByTopic(posts, c.id).map(({ topic, posts: topicPosts }) => ({
+			label: topic.label,
+			items: topicPosts.map((post) => ({
+				label: post.data.title,
+				link: `/${postPath(post)}`,
+			})),
+		})),
+	);
+}

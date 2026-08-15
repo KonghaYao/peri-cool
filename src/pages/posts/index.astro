@@ -1,17 +1,11 @@
 ---
 import { getCollection } from 'astro:content';
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
-import { getFeaturedPost, postCategories, postPath, postsByTopic, postsInCategory, resolveFeaturedPost, sortPosts } from '../../lib/content';
+import { getFeaturedPost, postCategories, postPath, postSidebar, postsByTopic, postsInCategory, resolveFeaturedPost, sortPosts } from '../../lib/content';
 
 const posts = sortPosts(await getCollection('posts'));
 const base = import.meta.env.BASE_URL;
-const sidebar = postCategories.map((category) => ({
-	label: category.label,
-	items: postsInCategory(posts, category.id).map((post) => ({
-		label: post.data.title,
-		link: `/${postPath(post)}`,
-	})),
-}));
+const sidebar = postSidebar(posts);
 ---
 
 <StarlightPage

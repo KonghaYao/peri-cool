@@ -2,11 +2,8 @@
 import { getCollection, render } from 'astro:content';
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 import {
-	getPostCategory,
 	getPostCategoryId,
-	postPath,
-	postsByTopic,
-	postsInCategory,
+	postSidebar,
 	sortPosts,
 } from '../../lib/content';
 
@@ -24,26 +21,11 @@ const { Content, headings } = await render(post);
 const hero = post.data.hero;
 
 const section = getPostCategoryId(post);
-const sectionMetadata = getPostCategory(section);
-const allSectionPosts = postsInCategory(await getCollection('posts'), section);
-const topicGroups = postsByTopic(allSectionPosts, section);
+const posts = sortPosts(await getCollection('posts'));
 
 const base = import.meta.env.BASE_URL;
 
-const toSidebarItem = (p: (typeof allSectionPosts)[number]) => ({
-	label: p.data.title,
-	link: `/${postPath(p)}`,
-});
-
-const sidebar = [
-	{
-		label: sectionMetadata.label,
-		items: topicGroups.map(({ topic, posts }) => ({
-			label: topic.label,
-			items: posts.map(toSidebarItem),
-		})),
-	},
-];
+const sidebar = postSidebar(posts, section);
 ---
 
 <StarlightPage
