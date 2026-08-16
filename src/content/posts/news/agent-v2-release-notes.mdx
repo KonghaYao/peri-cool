@@ -1,0 +1,141 @@
+---
+title: "Peri 2.0 版本动态：从 Agent 重构到 ACP 与 TUI 分层"
+description: 按 agent-* Git tag 整理 Peri v2.0.0 至 v2.9.8 的主要新增、修复与架构变化。
+date: 2026-08-16
+hero:
+  image:
+    file: ../../../assets/img_new_day_rising_s06.png
+    alt: 新日升起
+---
+
+这份记录覆盖 `agent-v2.0.0` 至 `agent-v2.9.8`。版本号和日期来自 Git tag；tag 的创建时间只能说明仓库建立了版本标记，不能单独证明安装制品何时发布或对所有用户可用。条目按 tag 与相邻版本之间的仓库提交整理，未把没有对应代码证据的发布说明补写进去。
+
+## v2.0.0
+
+- **新增**：引入 `goal` 命令与 builtin skills，开始把长期目标和可复用能力纳入 Agent 工作流。
+- **变更**：Workflow 架构和 Markdown 流式渲染继续整理；Windows PTY、CRLF 和 CJK 文本框选也在这一阶段得到修复。
+- **证据**：tag 创建于 2026-07-14，指向合并 `refactor/md` 的提交。
+
+## v2.1.0
+
+- **变更**：完成 2.1 的 fixture 与回归整理。该 tag 区间没有可单独归纳的新增用户入口，使用时应以当前安装制品和文档为准。
+- **证据**：tag 创建于 2026-07-14，主要提交为 `fixture/2.1.0-improve` 合并。
+
+## v2.2.0
+
+- **新增**：TUI 支持每日自动换色和 GitHub 主题快捷下载。
+- **新增**：`goal clear` 可以释放 goal 的 singleton 槽位。
+- **修复**：宽终端下 AskUser 面板布局错位；流式 Markdown 表头早于分隔符到达时的表格缓存失效；goal 自驱续跑后的 Defer 消息和 TUI 刷新问题。
+- **证据**：tag 创建于 2026-07-15。
+
+## v2.2.1
+
+- **变更**：补充 2.2 的 fixture 和回归修订，没有从该 tag 区间识别出新的独立用户入口。
+- **证据**：tag 创建于 2026-07-15。
+
+## v2.2.2
+
+- **新增**：`peri plugin marketplace add/list/remove` 命令。
+- **新增**：Workflow 在检测到 Bun 不可用时，可通过 `npx @peri-code/workflow` 触发下载路径。
+- **修复**：`/exit`、AskUser 面板和后台任务区域的交互问题。
+- **变更**：站点项目改用 Solid + Comlink 架构重写。
+- **证据**：tag 创建于 2026-07-16。
+
+## v2.3.0
+
+- **变更**：Agent 执行层开始重构，后续版本逐步把执行、会话和协议职责重新拆开。
+- **证据**：tag 创建于 2026-07-17，指向 `refactor/agent` 合并。
+
+## v2.3.1
+
+- **修复**：继续收敛 Agent 重构后的回归问题。
+- **证据**：tag 创建于 2026-07-17，指向后续 `refactor/agent` 合并。仓库提交没有提供足够证据支持更具体的用户可见差异，因此不展开推断。
+
+## v2.4.0
+
+- **变更**：完成一轮 TUI、会话和工具链改进，并继续清理 v1 事件与旧执行路径。
+- **新增**：tmux 黑盒 E2E 测试框架开始建立，覆盖工具卡片、SubAgent、Workflow、`/clear` 和 `/compact` 等场景。
+- **修复**：流式消息、工具卡片、SubAgent 内部工具展示和登录面板的多项回归。
+- **证据**：tag 创建于 2026-07-18。
+
+## v2.5.0
+
+- **新增**：`WriteSandbox` 文件写入工具；ACP Hub 的 session router、全局 request handler、集成测试和测试子进程逐步补齐。
+- **变更**：Compact 通知显示类型和 session 恢复时的 compact flags 得到保留；ACP Hub 使用独立入口运行。
+- **修复**：Anthropic `tool_result` 合并顺序、ACP v1 camelCase JSON-RPC 字段匹配等问题。
+- **证据**：tag 创建于 2026-07-20。
+
+## v2.6.0
+
+- **变更**：ACP 与 TUI 的边界开始明确，TUI 关注点抽出到 `peri-tui`，ACP 的 RequestRouter 和 Langfuse 事件路由统一。
+- **新增**：explorer/verification agent 可以获得 `allowedWriteDirs` 并创建 `WriteSandbox`。
+- **修复**：WriteSandbox 的 `file_path` 参数和不存在沙箱目录的处理；TUI 流式边界、滚动帧率和 SubAgent 卡片显示问题。
+- **证据**：tag 创建于 2026-07-20。
+
+## v2.7.0
+
+- **新增**：继续完善 TUI、SubAgent、Workflow 和 E2E 场景，补充模型切换、线程切换与 AskUser 面板交互测试。
+- **变更**：`/login` 面板补齐 Provider 编辑，以及 New/Delete 操作；TUI 事件和 loading 状态继续统一。
+- **证据**：tag 创建于 2026-07-21。
+
+## v2.8.0
+
+- **新增**：Skill Core Tool 支持由模型动态加载 skill；session rename 通过 ACP handler 更新标题通知。
+- **变更**：Micro Compact 重新设计触发策略，区分 Micro/Full 标签并截断 tool call 参数；Workflow completion 通知和 SystemNote 注入路径统一。
+- **修复**：提示词禁止用 `sleep` 等待异步结果；多 Agent 同 turn 的 SubAgent 分组和面板布局问题。
+- **证据**：tag 创建于 2026-07-22。
+
+## v2.8.1
+
+- **新增**：Langfuse 集成继续扩展，补充相关事件和追踪路径。
+- **证据**：tag 创建于 2026-07-22。该版本的具体观测效果没有独立性能数据，不作量化描述。
+
+## v2.8.5
+
+- **变更**：Langfuse 与工具链继续改进，`ToolEnded` 事件改为按工具发出，避免等待整个并发批次结束后才通知。
+- **修复**：SubAgent Langfuse trace 缺少完整结构的问题，并补充 E2E 验证；默认 Bash timeout 调整为 15 秒并增加可操作错误指引。
+- **证据**：tag 创建于 2026-07-24。
+
+## v2.8.6
+
+- **修复**：继续修复 Langfuse 和工具行为，包括工具批次时间、并发工具事件和插件 marketplace 幂等性。
+- **新增**：插件 marketplace add/install 流程与旧残留处理对齐。
+- **证据**：tag 创建于 2026-07-24。
+
+## v2.9.0
+
+- **变更**：集中处理 7 月下旬的 TUI、Compact、Workflow、ACP 和工具回归，继续移除 v1 ExecutorEvent 双轨。
+- **修复**：消息区渲染、SystemNote 位置、compact persistence、WriteSandbox 和登录/模型切换等问题。
+- **证据**：tag 创建于 2026-07-29。
+
+## v2.9.1
+
+- **新增**：ACP Hub 增加 capability negotiation 的 `PeriCaps`，TUI 与 stdio/memory transport 可以协商通知能力。
+- **变更**：Agent 事件、unstable event、HITL pending、replay、skillNames 和 usage metadata 等通道增加 capability gate。
+- **修复**：session/load、resume、fork 缺少 caps 导致 loading 状态卡住的问题。
+- **证据**：tag 创建于 2026-07-30。
+
+## v2.9.5
+
+- **新增**：artifact 支持直接上传 Markdown 文件；fork agent 可以复用 main agent 的 frozen system prompt。
+- **变更**：spinner 帧推进与 ACP bridge tick 解耦；SystemNote 改用 `TuiNoteLevel` 决定颜色；ProviderAdapter 消除 Anthropic/OpenAI invoke 层重复。
+- **证据**：tag 创建于 2026-07-30。
+
+## v2.9.8
+
+- **新增**：图片输入、四档模型 profiles、自然语言注册 cron，以及一批 TUI 鼠标和状态栏交互能力。
+- **变更**：`peri-acp` 与 `peri-tui` 的职责继续分离；Agent/SubAgent 重构、Compact v2、Langfuse v2 追踪和 `WriteSandbox` 成为后续 3.0 的迁移基础。
+- **证据**：tag 创建于 2026-08-02。
+
+## 这条版本线的主线
+
+2.x 不是单一功能的连续迭代，而是从 Agent 与 Workflow 能力扩展，走向 ACP 边界、TUI 分层、能力协商、Compact 持久化和观测旁路化。升级时不要只看版本号：旧会话、settings、Provider 配置和外部 ACP 客户端都应按当前[安装指南](/peri-cool/docs/get-started/installation/)重新检查。
+
+相关文档：[Peri v2 架构说明](/peri-cool/posts/news/demo-v2-release/) · [3.0 分层重构](/peri-cool/docs/history/3-0-refactor/) · [可验证工程里程碑](/peri-cool/docs/history/milestones/)
+
+## 证据口径
+
+- 版本范围为仓库现存 `agent-v2.0.0` 至 `agent-v2.9.8`。
+- 日期采用 annotated tag 的 tagger 日期；轻量 tag 或缺少独立 tagger 日期时，不补造发布日期。
+- 功能条目来自相邻 tag 之间的提交主题、代码结构和已有测试/文档；没有实测数据的地方不写性能结论。
+- Git tag 不等同于 GitHub Release、包注册表或安装脚本实际提供的制品版本。

@@ -1,7 +1,7 @@
 ---
-title: 系统提示词
-description: Peri Agent 的冻结上下文、项目指令与运行期消息如何划分边界。
-date: 2026-07-21
+title: meta_harness 与系统提示词
+description: 系统提示词如何按段落装配并在会话创建时冻结，meta_harness 怎样覆盖段落或关闭能力，请求缓存又依赖哪些确定性。
+date: 2026-08-16
 hero:
   image:
     file: ../../../assets/img_umbrella_of_words_s25.png
@@ -10,86 +10,172 @@ hero:
 
 import { Aside } from '@astrojs/starlight/components';
 
-系统提示词是 Agent 的**认知底座**——它告诉 Agent“你是谁、能做什么、遵守什么规则、当前面对什么”。当前源码在 `peri-acp/prompts/sections/` 中维护 **13 个 Markdown 段落文件**，并在 session/new 时与项目指令、skills 摘要和环境快照一起形成冻结上下文。运行期用户消息、工具结果和异步通知属于另一条消息路径。
+系统提示词是 Agent 的认知底座：它说明"你是谁、能做什么、遵守什么规则、当前面对什么"。Peri 把它拆成若干**段落**，每个段落有固定 ID；装配与冻结发生在会话创建时，运行期用户消息、工具结果、异步通知另走一条消息路径。`meta_harness` 是配置面上的两个旋钮——按段 ID 覆盖内容、按 middleware 名关闭能力。请求缓存能否复用前缀，最终由三件事决定：前缀是否在会话内冻结、分块是否走统一入口、工具数组顺序是否确定。本文描述的都是当前源码的行为。
 
-## 稳定层：13 个段落文件
+## 段落层：12 个文件 + 2 个渲染段
 
-这些 `.md` 文件在 Agent 启动时一次性装配并冻结，整个会话中保持不变。按功能可分为五组：
+段落文件在 `peri-acp/prompts/sections/` 下，共 **12 个 `.md` 文件**；文件名去 `.md` 就是段 ID。另有 `persona`、`language` 两个**渲染生成段**——内容不落盘，由装配面按 agent 定义和 `settings.language` 生成，但同样有 ID、同样可被覆盖。当前段 ID 全集是 14 个：
 
-### 身份与行为边界
+`01_intro`、`02_system`、`03_doing_tasks`、`04_actions`、`05_using_tools`、`06_tone_style`、`07_runtime`、`10_hitl`、`11_subagent`、`12_ask_user`、`13_skills`、`15_channel`、`persona`、`language`
 
-| 文件 | 提供什么 |
-|------|---------|
-| `01_intro.md` | **角色定义**：声明"你是 Peri CLI 编程助手"。设定安全红线——只做防御性安全任务，禁止攻击代码。URL 引用规则——不凭空编造链接，只能引用用户提供的、刚抓取验证过的、或知名官方域名的 URL |
-| `02_system.md` | **编码约定与主动性平衡**：First-look principle——修改代码前先读周围文件，不假设库存在。Secret 处理——密钥是实弹，禁止日志/错误消息/源码/测试 fixture 中泄露。主动性边界——该做的时候做，不该做的时候不擅自行动 |
-| `06_tone_style.md` | **回复风格**：简单问题 1-4 行（附带 `file_path:line` 引用）。复杂任务才展开——陈述假设、列出计划、暴露权衡、确认范围。完成就停——不加"还有什么需要帮忙"。不用 emoji |
+每个段落带**位置属性**：`01_intro` 到 `06_tone_style` 在缓存区（zone=Cached，段内序号 1-6），渲染时排在最前；`07_runtime` 及之后在非缓存区（zone=Uncached），按段内序号排。这段"01-06 在最前"的次序就是请求前缀可见部分的字节级起点。
 
-这三份文件共同定义了 Agent 的"人格"——它是工具而不是人，该简洁时简洁，该详细时详细，有明确的安全红线。
+| 段 ID | 位置 | 内容要点 |
+|------|------|---------|
+| `01_intro` | 缓存区 1 | 角色声明（Peri CLI 编程助手）、防御性安全红线、URL 引用纪律 |
+| `02_system` | 缓存区 2 | 编码约定（First-look principle）、Secret 处理、主动性边界 |
+| `03_doing_tasks` | 缓存区 3 | 任务方法论：Think Before Coding、Goal-Driven Execution、执行流程 |
+| `04_actions` | 缓存区 4 | 操作安全：可逆优先、最小改动、Git 安全协议 |
+| `05_using_tools` | 缓存区 5 | 工具使用提示词（见下一节） |
+| `06_tone_style` | 缓存区 6 | 回复风格：简洁、按需展开、不追加客套 |
+| `07_runtime` | 非缓存区 1 | 环境快照 + system-reminder 信任边界（见下） |
+| `10_hitl` | 非缓存区 | HITL 审批模式（由 `PermissionMiddleware` 持有） |
+| `11_subagent` | 非缓存区 | SubAgent 委托协议（由 `SubAgentMiddleware` 持有） |
+| `12_ask_user` | 非缓存区 | AskUserQuestion 提问纪律（由 `HumanInTheLoopMiddleware` 持有） |
+| `13_skills` | 非缓存区 | Skills 协议（由 `SkillsMiddleware` 持有） |
+| `15_channel` | 非缓存区 | 频道消息路由格式；无持有者，当前恒不渲染 |
+| `persona` | 非缓存区 0 | 渲染生成：agent 定义块（full）或 overrides 块（extend） |
+| `language` | 非缓存区尾 | 渲染生成：`settings.language` 映射的指令文本 |
 
-### 任务执行规范
+`15_channel` 没有 middleware 持有，gate 恒为关闭，实际会话里看不到它——它是留给未来 channel 能力启用时的格式文档。历史上的 `12_cron.md`、`16_workflow.md`、`14_system_reminder.md` 段落当前都已不存在：Cron 由工具与 skill 提供，Workflow 整段删除（由 ultracode skill 覆盖），`07_runtime` 是原 07_env 与 14_system_reminder 合并后的段落。
 
-| 文件 | 提供什么 |
-|------|---------|
-| `03_doing_tasks.md` | **Think Before Coding**：动手前先陈述假设，有多种解读时全部列出，有更简单的方案时主动提出。**执行流程**——用搜索工具理解代码库、验证方案、跑 lint/build。**Goal-Driven Execution**——把任务拆成带验证条件的步骤，用强成功标准驱动独立循环 |
-| `04_actions.md` | **操作安全**：优先可逆操作（Edit 优于 Delete）。高风险操作前确认范围。**最小改动原则**——只动必须动的行，不"顺手优化"相邻代码，每行改动能追溯回用户需求。**Git 安全协议**——永不 force-push main、永不 `git commit --amend`、永不跳过 hooks、不提交含密钥的文件 |
+### 工具使用提示词：05_using_tools
 
-这两份文件是 Agent 的"工作方法论"——先想再做、最小改动、操作可逆、Git 自律。
+`05_using_tools` 的正文就是一个 "Tool usage policy"，篇幅很短，教 Agent 三件事：
 
-### 工具使用手册
+- **批处理**：独立工具调用合并进同一次响应；增量搜索从最具体的关键词开始，找不到再放宽。
+- **工具选择**：每种操作一般只有一个意图工具——专用工具返回类型化输出、遵守权限规则，优先于 shell 一行流；不确定用什么时，先搜可用工具，而不是直接落到 `Bash`。
+- **Bash 纪律**：路径加引号；非破坏式优先（`git status` 优于 `git clean -f`）；禁止 `curl | sh`；glob 展开先列出再行动。
 
-| 文件 | 提供什么 |
-|------|---------|
-| `05_using_tools.md` | **工具选择指南**：每种操作告诉 Agent 该用什么工具——搜文件用 Glob 别用 `find`、读文件用 Read 别用 `cat`、编辑用 Edit/Write 别用 `sed`。**Bash 纪律**——路径加引号、非破坏式优先、禁止 `curl | sh`。批量独立调用合并到一次响应 |
-| `07_env.md` | **环境上下文**（模板变量注入）：工作目录路径、是否 Git 仓库、操作系统、当前日期。标注"这些值在会话启动时捕获，可能已过期——做不可逆操作前用 `pwd`/`git status` 重新验证" |
+这段不教 Agent 任何工具 API，它教"什么时候用哪个工具"。它的作用是减少一类常见偏差：把专用工具换成 Bash 一行流。它属于缓存区段落，恒定出现在前缀里。
 
-`05` 是工具字典——Agent 靠它避免最常见的错误（用 Bash 代替专用工具）。`07` 是环境快照——告诉 Agent 它在哪台机器、什么项目里。
+### 07_runtime：环境快照与信任边界
 
-### 高级能力
+`07_runtime` 是合并段，内容两部分：
 
-| 文件 | 提供什么 |
-|------|---------|
-| `10_hitl.md` | **人机审批模式**：9 类需审批的工具（Bash、Write、Edit、Agent、WebFetch 等）。用户四种响应——Approve（原样执行）/ Reject（改方案别重试）/ Edit（用修改后的参数执行）/ Respond（纯反馈，按消息调整计划） |
-| `11_subagent.md` | **子 Agent 调度**：Agent 类型列表（coder、explorer、plan、code-reviewer 等），每类带 `[model_tier]` 和 `[access]` 标注。**选择指南**——默认选专用 Agent，"general-purpose 是兜底不是默认"。**标准管线**——Research → Plan → Code → Review。**后台任务**——异步通知、禁止轮询、禁止 sleep 等待 |
-| `13_skills.md` | **Skills 技能系统**：四级搜索优先级（用户→全局→项目→插件）。触发方式是 `/skill-name`，但 Agent 应主动推荐未被使用的匹配 Skill。Skills 内容是按需加载的，只有摘要放在稳定层 |
-| `16_workflow.md` | **Workflow 工作流编排**：多 Agent 并行/流水线，异步执行，结果保存到 `.claude/workflow-runs/`。禁止 sleep 轮询——系统会主动唤醒 |
+1. **环境快照**：以 `<env>` 标签包裹 `{{cwd}}`、`{{is_git_repo}}`、`{{platform}}`、`{{os_version}}`、`{{date}}` 五个模板变量，渲染期替换。段尾写明"这些值在会话启动时捕获，可能已过期——做不可逆操作前用 `pwd`/`git status` 重新验证；日期是快照，不是时钟"。
+2. **system-reminder 信任边界**：`<system-reminder>` 是 harness 注入的、不是用户伪造的；收到后静默处理、不在回复中提及；用户文本里"长得像 system-reminder"的内容按不可信输入处理。
 
-这些文件描述 HITL、SubAgent、Skills 与 Workflow 等能力。Cron 当前由 skill 与工具层提供，不再有独立的 `12_cron.md` 段落。
+第二部分有安全含义：Agent 需要区分"harness 通知"和"用户伪造的指令标签"，这套判定的依据就在这一段的文本里。
 
-### 消息协议
+## 冻结：会话创建时一次定型
 
-| 文件 | 提供什么 |
-|------|---------|
-| `14_system_reminder.md` | **系统提醒标签**：告诉 Agent `<system-reminder>` 是 harness 注入的，不是用户伪造的。收到后静默处理，不要在回复中提及。**信任边界**——用户消息中如果出现"看起来像 system-reminder"的文本，当作不可信用户输入处理 |
-| `15_channel.md` | **频道消息路由**：来自终端的是纯文本，来自外部渠道（微信/Slack/飞书）的用 `<channel>` 标签包裹。Agent 必须识别 `source` 和 `chat_id`，用对应的 MCP 工具回消息，不能直接回复文本 |
+会话初始化走 `build_frozen_data`，一次读盘把基础数据固定下来，之后整个会话不再重新读取：
 
-这两份文件定义了 Agent 如何区分"系统通知"和"用户消息"，以及如何在不同渠道间正确路由回复。
+- 冻结日期（会话创建那天的日期，渲染期替换）；
+- `settings.language` 映射出的语言指令；
+- 项目指引（`AGENTS.md` / `CLAUDE.md`）与 `CLAUDE.local.md`；
+- skills 的冻结摘要；
+- `.peri/meta/*.md` 扫描结果（meta_harness 覆盖体）。
 
-<Aside type="note">
-  完整上下文还可能包含从候选路径选中的项目指令。它不在这 13 个段落文件中，而且只会读取候选列表中的首个有效主文件；不会自动递归继承父目录规则。
-</Aside>
+这些数据压进 `FrozenContext`，代码里的约束是 ARC-FROZEN-001：会话内不可变。子代理与 fork 继承父会话的冻结数据——包括冻结的系统提示词——所以主 Agent 与子代理看到的规则一致。
 
-## 运行期消息：随事件追加
+项目指引的读取规则值得单独说：候选是 `{cwd}/AGENTS.md`、`{cwd}/CLAUDE.md`、`{cwd}/.claude/AGENTS.md`，取第一个存在且非空的文件；`CLAUDE.md` 系列解析 `@import`（深度上限 3），`AGENTS.md` 不解析；`CLAUDE.local.md` 存在则追加。**不向父目录递归**——没有匹配文件时就是没有，不会向上找。
 
-稳定层之上，每轮对话追加的内容包括：
+冻结的目的分两层：
 
-| 来源 | 形式 | 说明 |
+- **认知一致性**：同一会话里，日期、skills 列表、项目规则不中途跳变；
+- **前缀稳定性**：冻结内容是请求缓存可复用的前提，见"缓存"一节。
+
+## meta_harness：覆盖段落、关闭能力
+
+`meta_harness` 是一个 kv 配置：**`true` key 是段 ID，覆盖段落；`false` key 是 middleware 名，关闭能力**。
+
+```json
+{
+  "config": {
+    "meta_harness": {
+      "01_intro": true,
+      "05_using_tools": true,
+      "WebMiddleware": false
+    }
+  }
+}
+```
+
+演示示例，不是真实会话——只展示键值语义，实际配置见本项目 [meta_harness 说明](/peri-cool/docs/features/meta-harness/)。
+
+- `"01_intro": true`：用 `{cwd}/.peri/meta/01_intro.md` 的全文替换内置 01 段落；
+- `"05_using_tools": true`：同理替换工具使用提示词段落；
+- `"WebMiddleware": false`：装配期把 Web 中间件从链上剔除，不需要 md 文件。
+
+覆盖文件**整段替换**：`.peri/meta/<ID>.md` 的全文就是新段落内容，不是插入也不是追加。扫描只读一级目录的 `*.md`，不递归；单个文件读取失败 warn 后跳过，不影响整体。
+
+**生效时机是下次会话**。段落是在会话创建时冻结的，运行期不重读覆盖文件；改配置或改 md 文件后，新会话生效，当前会话维持旧段落。删除对应的 key（连同 md 文件）即恢复内置段落。
+
+middleware 名全集是 `false` key 的合法键，共 **24 个**（事实源 `peri-acp-types/src/meta_harness.rs`）：
+
+`DefaultSystemPromptMiddleware`、`LangMiddleware`、`AgentsMdMiddleware`、`AgentDefineMiddleware`、`PluginMiddleware`、`SkillsMiddleware`、`SkillPreloadMiddleware`、`AtMentionMiddleware`、`ImageMiddleware`、`FilesystemMiddleware`、`GitAttributionMiddleware`、`TerminalMiddleware`、`WebMiddleware`、`TodoMiddleware`、`CronMiddleware`、`HookMiddleware`、`PermissionMiddleware`、`HumanInTheLoopMiddleware`、`SubAgentMiddleware`、`McpMiddleware`、`WorkflowMiddleware`、`ToolSearch`、`LspMiddleware`、`GoalMiddleware`
+
+### 段落与工具同生共死
+
+关闭持有 middleware 时，它持有的段 ID 一并消失，相关工具也随之消失：
+
+| `false` 配置 | 消失的段落 | 消失的工具 |
 |------|------|------|
-| 用户消息 | `human()` 消息 | 终端输入或频道消息（解析后的纯文本） |
-| 工具调用结果 | `tool_result` 消息 | 文件内容、命令输出、搜索结果 |
-| 中间件注入 | 异步到达的消息 | SubAgent 完成通知、HITL 审批结果、Workflow 产物 |
-| 上下文预算 | SystemNote | token 剩余量、compact 触发提醒 |
-| 中途纠正 | `human()` 消息 | Agent 走偏时注入的纠正指令（禁止用 `system()`——会被 hoist 到稳定层破坏缓存） |
+| `DefaultSystemPromptMiddleware` | 01-06、07_runtime、persona | ——（基础段持有者） |
+| `LangMiddleware` | language | —— |
+| `PermissionMiddleware` | 10_hitl | ——（审批仍由运行时强制执行） |
+| `SubAgentMiddleware` | 11_subagent | `Agent`、`AgentResult` |
+| `HumanInTheLoopMiddleware` | 12_ask_user | `AskUserQuestion` |
+| `SkillsMiddleware` | 13_skills | `SkillTool`、`DiscoverSkillsTool` |
+| `WebMiddleware` | —— | `WebFetch`、`WebSearch` |
+| `FilesystemMiddleware` | —— | `Read`、`Write`、`Edit`、`Glob`、`Grep`、`folder_operations` 等 |
 
-## 为什么必须冻结
+段落与工具一起消失，避免"工具没了但提示词还在描述它"的盲区。有一个名字变更值得注意：2026-08-15 起 `HumanInTheLoopMiddleware` 名称被新职责接管——它现在持有的是**提问能力**（`12_ask_user` + `AskUserQuestion`），审批职责（`10_hitl`）归 `PermissionMiddleware`。因此配置键 `"HumanInTheLoopMiddleware": false` 的语义从"关审批"变成了"关提问"，属于破坏性改名，升级配置时要核对语义。
 
-13 个段落文件在 Agent 启动时装配，后续整个会话不再重新读盘。原因是**认知一致性**：
+### 完全纯净与安全段覆盖
 
-- 如果每轮重新获取日期，Agent 可能在同一任务中给出不同的时间判断
-- 如果 Skills 列表在会话中变化，Agent 的可用能力集突然漂移
-- 如果 CLAUDE.md 被开发者中途修改，Agent 的行为规则不一致
+把全部 middleware 设为 `false`，系统提示词为空：基础段随 `DefaultSystemPromptMiddleware` / `LangMiddleware` 消失，`10_hitl` / `11_subagent` / `12_ask_user` / `13_skills` 随持有者消失，`15_channel` 本就不渲染；middleware 提供的工具随持有者一并消失——包括 `AskUserQuestion`。模型既没有内置段落也没有内置工具，能力只能靠提示词与对话自行重建。
 
-冻结保证**同一个会话中，Agent 看到的世界始终一致**。SubAgent 也从 main agent 继承冻结数据——主代理和子代理对项目配置、Skills 列表的理解完全相同。
-
-<Aside type="caution">
-  稳定层的结构不能中途修改。需要注入新指令时，用 <code>human()</code> 追加到动态层尾部——不能用 <code>system()</code>（会被 Provider 适配层 hoist 到稳定层区域，改变结构、破坏缓存）。
+<Aside type="caution" title="纯净模式会移除全部内置安全语义">
+  此模式下模型无法读写文件、执行命令、访问网络。防御性安全约束、HITL 审批认知、工具使用纪律原本写在段落里，一并消失。审批等行为仍由运行时强制执行（权限判定不依赖提示词），但模型不再具备"调用前预期审批"的自觉。恢复方式：删除 `meta_harness` 里对应的 key。
 </Aside>
+
+覆盖含安全语义的段落有类似风险，而且更隐蔽：覆盖即整段替换，内置的防护信息不再出现。`01_intro` 的防御性安全约束与 URL 引用纪律、`10_hitl` 的 sensitive 工具列表认知、`05_using_tools` 的纪律、`11_subagent` 的授权边界，替换后全部丢失。自定义时要么保留原段落中的安全相关行，要么在覆盖文件里重新声明同等语义。
+
+## 缓存：确定性先于缓存标记
+
+Prompt Cache 复用请求开头的稳定内容。缓存标记（`cache_control`）只是告诉 Provider 哪个块可以缓存，它不能把变化的块顺序、遗漏的分界或随机排列变成稳定。**确定性序列化要先于缓存策略成立。** 两个语义相同的模型请求，只要工具数组顺序不同或系统文本结构不同，就不是同一个请求前缀。Peri 靠三件事保证前缀确定性：
+
+### 1. 前缀在会话内冻结
+
+日期、项目指引、skills 摘要、系统提示词在会话创建时一次定型（见"冻结"节），子代理继承同一份。运行期变化（用户消息、工具结果、异步通知）都在请求后段，不影响计划复用的前缀。每轮重新扫描项目指引虽然能得到新内容，代价是同一会话的系统前缀随文件漂移——Peri 选择在新会话读取新规则，运行中的会话继续使用创建时冻结的基础上下文。
+
+### 2. 工具数组按名称稳定排序
+
+工具定义在请求体里是数组，数组位置参与序列化。共享工具表是 `BTreeMap<String, _>`，以工具名为有序键；请求的工具数组从这张表有序收集，同一工具集在进程重启、运行期新增工具后都得到同样的顺序。这个约束要求在收集链每一层保持：若过滤或装配阶段把工具重新放进无序容器，外层的排序也保不住最终前缀。
+
+### 3. 系统消息走统一分块入口
+
+Anthropic 请求构造先合并全部 System 消息，再统一调用同一个分块器（`split_system_blocks`）：
+
+- 合并后的文本找边界标记 `__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__`：有标记时拆成静态块（`cache_control: true`）与动态块（`cache_control: false`）；
+- 无标记时整个 system 作为单个块，`cache_control` 兜底挂在这个块上。
+
+一项已落地的演进让"静态/动态两分"不再由文本标记承担：波 4 设计把缓存区划分改由段落位置属性（Cached/Uncached）承担，渲染不再往提示词里写边界标记。当前装配下所有段落连成一体渲染，Provider 侧保留边界兼容：找不到标记就把整段当作一个缓存块。这意味着动态部分（`date`、环境占位符、persona）与 01-06 在同一个块里——跨会话时 `date` 一变，整块前缀就可能失效。这是"整个提示词作为单块全缓存"的取舍。
+
+主 Agent 与子代理走同一个适配器，不存在"一边分块一边不分块"的两条路径。关闭缓存时（`enable_cache: false`），边界标记先从系统文本中剥除再发送——它从不是模型可见文本，OpenAI-compatible 适配器同样在发送前剥除。
+
+### 流式提交的一致性
+
+前缀之外，请求体的结构也参与确定性。以下结论从前一篇 Provider 流式一致性文章并入：
+
+- **OpenAI-compatible 聚合器**：流式阶段累积文字、推理内容、工具调用、用量与请求标识；流结束后按统一消息结构生成完成消息——文字与推理进入内容块，工具调用进入工具调用集合。工具参数可能交错到达，聚合器按服务端给出的工具 index 保存片段、完成时按 index 生成，网络到达次序不改变逻辑次序；缺工具 id、名称或参数非法时返回协议错误，不提交一条看似完整的消息。
+- **工具执行结果顺序**：Anthropic 请求把连续工具结果尾部追加合并进同一条 user 消息，保留原始会话顺序；早期"插到头部"的实现会让并行工具的结果反序，已修复。按工具名称重新排序不是替代方案——工具名可重复，工具调用标识才是配对依据。
+
+界面上的流式展示只是消费增量，最终规范消息才是会话提交、会话恢复与外部 ACP 客户端读取的对象。在界面层补一份文字不解决问题——那只能保住屏幕内容，模型下一轮、会话恢复仍会读到缺文字的消息。
+
+### 契约测试锁什么
+
+- OpenAI-compatible 回归测试构造交错到达的两个工具调用，并在最后一个数据块同时送入文字：检查流式阶段发过文字与工具增量，也检查完成消息仍含同一段文字、两个工具调用按 index 排列且参数完整。
+- Anthropic 契约测试从请求体一侧验证系统分块、缓存控制块与工具结果顺序；无缓存测试断言边界标记不泄露到系统文本。
+
+这些测试保护的是仓库内已覆盖的契约。仓库没有提供同口径的缓存命中率、时延或成本实测数据——没有实测数据。确定性序列化只是缓存可以复用相同前缀的正确性前提，Provider 是否命中还受模型、账户、请求窗口和服务端策略影响。第三方 OpenAI-compatible 服务的字段差异同样不受这些测试覆盖，接新端点仍需要用其真实响应样本补协议测试。
+
+## 适用边界
+
+- **改了段落下个会话生效**：会话内系统提示词冻结，不要期望当前会话立即反映 `.peri/meta/` 的新内容。
+- **会话内注入用 `human()`，别用 `system()`**：运行期的 System 消息会被并进 system 文本、成为请求前缀的一部分；中途追加会改变本会话余下每轮的前缀结构。要注入会话动态指令，走 `human()` 追加到对话流。
+- **覆盖安全段时保留安全行**：`01_intro`、`10_hitl`、`05_using_tools`、`11_subagent` 的防护信息随整段替换消失，自定义内容里应原样保留或重新声明同等语义。
+- `meta_harness` 的完整配置形态、段 ID 与 middleware 名清单，还维护在用户文档里：见 [系统提示词自定义（meta_harness）](/peri-cool/docs/features/meta-harness/)。

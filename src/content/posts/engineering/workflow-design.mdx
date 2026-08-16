@@ -1,7 +1,7 @@
 ---
-title: 工作流设计
-description: 为什么多 Agent 需要脚本编排——确定性、可重放与大规模并行的设计权衡，以及 Peri 如何落地。
-date: 2026-08-06
+title: Dynamic Workflow 的设计
+description: 编排计划由 LLM 在任务现场生成、执行保持确定性的多 Agent 机制——它如何与子代理、普通回合划界，journal 怎样支撑恢复，以及适用边界在哪。
+date: 2026-08-16
 hero:
   image:
     file: ../../../assets/img_order_from_chaos_s08.png
@@ -10,116 +10,161 @@ hero:
 
 import { Aside } from '@astrojs/starlight/components';
 
-子代理解决了"一个 Agent 不够"的问题，但它把并行的决策权留在了 LLM 上下文里。这篇文章从设计角度拆解工作流：为什么需要它、在 Agent 生态里处于什么位置、设计时要关注什么、Peri 是怎么实施的。
+Dynamic Workflow 是 Peri 的多 Agent 编排机制：一段脚本描述执行计划，脚本由 LLM 在任务现场生成，执行交给独立进程并保持确定性。本文讲四件事：workflow 是什么、为什么说它是"动态"的、它与子代理和普通回合的边界、journal 与恢复怎么工作，最后是适用边界。
 
-## 为什么需要工作流
+## Workflow 是什么
 
-子代理方案的三个边界，正是工作流的动机：
-
-**决策不可重放。** 子代理的派发逻辑在 LLM 上下文里——"审查哪几个文件、并行几个、先做什么后做什么"都是运行时的临时判断。同样的任务跑两次，流程不同，结果不可比。流程没法保存、重跑、分享，也就没法成为质量基线。
-
-**规模受限。** 默认 3 个并行，扫描 200 个文件找 dead code，要排队几十轮；中间结果不断塞回主会话，上下文先撑不住。
-
-**结果无家可归。** 几十个子代理的输出散落在会话历史里，没有统一的汇总结构，主 Agent 难以可靠消费。
-
-核心论点：**当"下一步做什么"可以从 LLM 上下文里抽出来写成代码时，就应该抽出来。** 流程即代码——可版本控制、可重跑、可审查、可分享。需要确定性流程的场景很典型：
-
-- 批量审计：200 个文件、4 个维度，同一套检查规则
-- 大规模迁移：50 个文件执行同构重构，逐文件过"分析 → 改写 → 检查"
-- 质量门禁：每次合并前跑同一套多路审查，输出可比对的结果
-- 长任务恢复：跑到一半进程崩溃，能从断点继续而不是从头再来
-
-## 在 Agent 生态中的定位
-
-把谱系拉全，看工作流的位置：
-
-| 方案 | 控制流在哪 | 特点 |
-|------|-----------|------|
-| 子代理 | LLM 上下文 | 灵活，不可重放 |
-| 工作流 | 脚本 | 确定，可重放 |
-| 自主多 Agent 平台 | 系统自行编排 | 无监督，早期不可靠 |
-
-工作流之于多 Agent，相当于 GitHub Actions / Temporal 之于 CI：**agent 是 worker，脚本是 pipeline**。控制权从"上下文"转移到"代码"，换来确定性，代价是失去 LLM 的即兴判断。
-
-工作流不取代子代理，两者是互补的：
-
-- **探索性任务**（"看看这个模块怎么改更合理"）→ 子代理。没有固定流程，让 LLM 即兴发挥
-- **固定任务**（"审查这 50 个文件，跑同一套检查"）→ 工作流。流程已知，脚本化才有意义
-
-工作流里的每个节点仍然是子代理——脚本用 `agent()` 原语调度，执行者不变，变的是决策者。
-
-## 设计时需要关注什么
-
-### 确定性：可重放的前提
-
-脚本必须没有隐式状态。Peri 的沙箱限制是设计决策的直接产物：
-
-- **无时间 API**：`Date.now()` 不可用，时间信息通过 `args` 注入
-- **无随机数**：`Math.random()` 不可用
-- **无直接文件系统、无网络**：所有外部交互通过 `agent()` 内部的工具调用完成
-
-为什么这么狠？断点续跑要复用已完成 agent 的结果，重跑要结果可预期。脚本一旦能读系统时间、写随机状态，重放就会产生不一致。
-
-### 控制流原语
-
-多 Agent 编排只需要三个控制流概念，语义必须清晰：
-
-- **并发**（`parallel`）：互不依赖的任务并行跑，结果聚合成数组
-- **流水线**（`pipeline`）：数据项逐个顺序经过多个阶段。文件级串行，天然避免多个执行者写同一文件
-- **阶段**（`phase`）：组织可观测性的边界，不是控制流。它不改变执行顺序，只让面板按阶段展示
-
-<Aside type="caution">
-  parallel 的入参必须是工厂函数 `() => agent(...)`，不是 `agent(...)` 的返回值——后者会导致串行执行，并发语义静默失效。这是 API 设计上最容易踩的坑。
-</Aside>
-
-### 结果与失败
-
-结果在脚本变量里显式存在，跨阶段传递——这是工作流与子代理的本质区别之一：中间结果不依赖上下文，而是显式数据。相应地，失败语义必须显式设计：agent 失败了是重试、跳过还是中断整个流程？默认策略要有一个，且要可覆盖。
-
-### 可观测性
-
-几十个 agent 并行执行，没有面板就没法用。至少要看到：每个 agent 的状态（运行/完成/失败/排队）、token 消耗、工具调用数、当前阶段。执行日志要落盘（journal），否则事后无法排查。
-
-### 成本
-
-并行上限仍然存在，模型分层仍然有效。审计类任务用便宜模型（haiku），核心改写用强模型。脚本里每个 `agent()` 调用都可以指定模型——成本策略在脚本里是可见的，而不是藏在 LLM 的临时判断里。
-
-## Peri 如何实施
-
-**脚本模型。** 工作流是 JavaScript ESM 脚本，`meta` 声明名称、描述和阶段（供面板展示），正文是执行逻辑：
+workflow 是"用脚本定义多 Agent 执行计划"。脚本用 JavaScript 写，`meta` 声明名称与描述，正文调用少量原语完成编排。下面是一个最小脚本（演示示例，不是真实会话）：
 
 ```javascript
 export const meta = {
-  name: 'codebase-audit',
-  description: '多目录并行审计：安全、性能、代码质量',
-  phases: [{ title: 'Audit', detail: '四目录并行扫描' }],
+  name: 'parallel-review',
+  description: '从三个视角并行审查一段代码',
 }
 
-const dirs = ['src/api/', 'src/services/', 'src/db/', 'src/utils/']
+const [security, perf, bugs] = await parallel([
+  () => agent('审查这段代码的安全问题：注入、鉴权、数据暴露。', {
+    label: 'security', allowedTools: ['Read', 'Grep'],
+  }),
+  () => agent('审查这段代码的性能问题：N+1 查询、热点路径。', {
+    label: 'perf', allowedTools: ['Read', 'Grep'],
+  }),
+  () => agent('审查这段代码的边界问题：错误处理、空值分支。', {
+    label: 'bugs', allowedTools: ['Read', 'Grep'],
+  }),
+])
 
-const results = await parallel(dirs.map((dir) => () =>
-  agent(
-    `扫描 ${dir} 目录：未使用导入、unwrap 无保护、明文密钥、遗留 TODO。` +
-    '输出结构化清单：文件路径、行号、类别、严重程度、修复建议。',
-    { label: `audit:${dir}`, allowedTools: ['Read', 'Grep', 'Glob'], model: 'haiku' },
-  ),
-))
-
-return results
+return { security, perf, bugs }
 ```
 
-**六个原语覆盖全部需求。** `agent`（调度）、`parallel`（并发）、`pipeline`（顺序流水）、`phase`（阶段标记）、`log`（日志）、`workflow`（子工作流复用）。没有更多——控制流就这三样，剩下的都是表达问题。
+使用者不需要写这段脚本。对 Peri 说"用 ultracode 并行审查我改过的代码"，或直接输入 `/ultracode`，ultracode skill 载入上下文，由 LLM 把任务拆成脚本并通过 Workflow 工具提交执行。需要固定流程（比如每次合并前跑同一套审计）时，才把脚本落盘到 `.claude/workflows/` 下，用 `scriptPath` 引用。
 
-**运行架构是"脚本进程 + 调度器"。** 工作流在独立进程运行，通过 JSON-RPC 与 Peri 通信，由调度器把 `agent()` 调用派发给子代理。主会话不阻塞，完成后收到通知。
+## 为什么动作是"动态"的
 
-**断点续跑靠日志重放。** 每个 run 的 journal 记录所有生命周期事件。中断后用相同 run_id 恢复，已完成 agent 的结果从 journal 复用，只重跑未完成部分。
+### 生成是动态的
 
-**使用方式不需要写脚本。** 日常使用是对 Peri 说"用 ultracode 并行审查我刚改的代码"，Peri 生成脚本并执行；需要固定流程时，手动写脚本放进 `.claude/workflows/`，通过 `/workflows` 面板选择执行和监控。
+脚本本身是 LLM 生成的工具参数。拆几路并行、每路 `agent()` 的 prompt、模型档位、`allowedTools`、阶段划分，都是在任务当下由 LLM 决定并写进脚本的。这里没有工程师预先写死的 pipeline，也没有"工作流作者"这个角色——相对 CI 里人维护的静态流水线，动作（actions）来自生成而非手写。
 
-## 权衡
+### 运行期也是动态的
 
-工作流用确定性换灵活性：固定流程可重放、可审计、可恢复，但探索性任务塞进脚本只会拖慢节奏。选择标准很简单——**这个流程还会重跑吗？** 会，就写脚本；一次性探索，直接交给 LLM 和[子代理](/peri-cool/posts/engineering/subagent-design/)。
+- 外部数据经 `args` 在启动时注入（审查目录、commit 范围、时间戳）。
+- `phase()` 在运行中切换阶段，后续 `agent()` 自动带上当前阶段名。
+- 每个 `agent()` 是一次独立的 LLM 推理，各跑各的上下文，不共享状态。
+
+### 执行保持确定性
+
+"动态"指脚本内容，不指执行路径。一旦脚本定型，执行就是可重放的状态机：沙箱拦截 `Date.now()`、`new Date()`（无参数调用）与 `Math.random()` 这类非确定性来源，`import` 也被禁止。真正不可预期的只有 LLM 对每个 `agent()` 的回答，而它们被逐条记进 journal，成为恢复的依据。
 
 <Aside type="note">
-  工作流的功能参考（原语 API、面板操作、日志格式）见 [ultracode 工作流文档](/peri-cool/docs/features/ultracode-workflow/)。
+  分工粗略概括：动态生成计划，确定性执行计划。脚本可以每次不同，但对同一份脚本而言，重放路径应当可预期。
 </Aside>
+
+## 与子代理、普通回合的边界
+
+三种执行形态放在一起看：
+
+| 维度 | 普通回合 | 子代理 | Dynamic Workflow |
+|------|----------|--------|------------------|
+| 决策位置 | 主会话上下文 | 主会话上下文（一次派发） | 脚本（LLM 生成，随后独立执行） |
+| 执行体 | 主 ReAct 循环 | 独立 ReAct 循环 | 独立进程内的多个 ReAct 循环 |
+| 并发 | 回合内工具并行 | 同步每轮 1 个；后台并发上限 3 | 脚本内 `parallel`，默认并发 3 |
+| 可重放 | 否 | 否 | journal 前缀可复用 |
+| 结果去向 | 会话历史 | 回传主 Agent 上下文 | 脚本变量，跨阶段显式传递 |
+
+- **普通回合**：主会话的单 ReAct 循环，动作随手在上下文里产生，无法保存、重跑、比对。适合需要连续对话的任务——确认边界、逐轮追问、反复试错。
+- **子代理**：主 Agent 在回合里用 Agent 工具派发独立 ReAct 循环，输出回传上下文。派发决策仍在 LLM 手里——同一任务跑两次，拆法可能不同、结果不可比。机制细节见 [Multi Agent 架构](/peri-cool/posts/engineering/multi-agent/)。
+- **workflow**：决策权从上下文移到脚本。脚本生成后脱离主会话的推理路径独立执行，主会话只收完成通知；流程的版本、日志、结果都在脚本和磁盘上留痕。
+
+值得注意的复用点：workflow 的每个 `agent()` 最终都落到 SubAgent v2 执行体——同一套中间件链、工具过滤、ReAct 循环和 token 统计，并复用主会话在 `session/new` 时冻结的 CLAUDE.md 与 skills 快照。执行体是子代理基础设施，变的是决策者：子代理由 LLM 在回合里逐个派发，workflow 由脚本批量声明、进程统一运行。
+
+边界判据一句话：**这个流程还会重跑吗？** 会，就交给脚本；一次性探索，直接对话加子代理。两者互补，不互相取代。
+
+## 脚本模型与执行架构
+
+脚本由 meta 字面量与正文组成。引擎抽出 meta（必须是纯字面量，不能是变量或插值），正文以函数体运行，六个原语连同 `args`、`budget` 以注入参数的方式到达脚本：
+
+```text
+agent(prompt, opts)      调度一个子代理执行，返回输出
+parallel(thunks)         并发执行一组工厂函数，结果聚合成数组
+pipeline(items, stages)  数据项逐个顺序经过多个阶段
+phase(title)             切换阶段标记，供面板展示
+log(message)             写入面板日志
+workflow(ref, args)      运行子工作流（仅一层嵌套）
+```
+
+- **不复制控制流原语。** 条件分支、收敛循环这类结构是 JavaScript 自身的 `if` / `while` / `for`，直接在脚本里写。ultracode 文档里的"七种模式"（[编排模式图解](/peri-cool/docs/features/ultracode-workflow/)）多数依赖脚本语言表达力，而不是原语数量。
+- **脱离 ESM。** `import` 在脚本里会直接报错；需要外部依赖时经 `args` 由调用方注入。这既是沙箱的一部分，也让脚本与宿主进程解耦。
+- **`phase()` 只影响展示。** 它组织的是可观测性边界，不改变执行顺序；面板按阶段归组，`agent()` 的归属在 `phase()` 与显式 `opts.phase` 之间取运行时当前值。
+- **失败语义。** `agent()` 返回 dead 或抛错时整体重试一次；用户取消（killed）与中断（interrupted）直接记为失败，不做重试。`parallel` / `pipeline` 单项失败返回 `null`，不中断整轮；是否接受单项失败，由脚本作者在结构里决定。
+
+<Aside type="caution">
+  `parallel` 的入参必须是工厂函数 `() => agent(...)`，不能是 `agent(...)` 的执行结果。写后者会被当成普通值静默吞掉、该位返回 `null`，workflow 一路"成功"到底但结果是空的。这是手工写脚本时最容易踩的坑，ultracode skill 里有明示。
+</Aside>
+
+执行架构三段式：
+
+1. **进程**：runner 拉起独立 Node.js 进程跑引擎，与 Peri 主进程通过新行分隔 JSON-RPC 通信（stdout 走协议，stderr 留给日志）。脚本在启动时写盘到 `.claude/workflow-runs/<run_id>/script.js`。
+2. **回调**：脚本里每次 `agent()` 经 RPC 回到 Peri，WorkflowAgentExecutor 解析 agentType 定义、模型档位、工具白名单，装配完整中间件链，跑一次 ReAct 循环，返回结构化结果（输出、token、模型、阶段、耗时），同时经进度通道实时上报。
+3. **投递**：Workflow 工具是 fire-and-forget——调用立即返回 `run_id`，主会话不阻塞；完成时结果经会话消息流通知，快照写 `state.json`。
+
+## journal 与恢复
+
+一次 run 的全部证据落在 `.claude/workflow-runs/<run_id>/`：
+
+| 文件 | 内容 |
+|------|------|
+| `script.js` | 本次执行的脚本副本 |
+| `journal.jsonl` | 追加式 agent 调用记录 |
+| `state.json` | 结束快照（状态、返回值、错误），原子写入 |
+| `outputs/` | 超长输出的落盘 |
+
+journal 每条是 `{ key, seq, result }`：`key` 是 prompt 与参数（剔除 `label`、`phase` 后）的 SHA256，`result` 是该次 `agent()` 的完整结果。恢复时用 `resumeFromRunId` 把旧 run 的 journal 载入引擎，对 agent 调用序列做逐条比较：
+
+- **命中**：`key` 一致，旧结果直接返回，不重新执行；
+- **首个未命中**：视为新脚本与旧脚本在此处分歧，该点之后的 journal 失效并从该点重新执行，新结果续写。
+
+`label` 与 `phase` 被剔除出 `key`，意味着改标签、改阶段名不影响命中；恢复宽容的是展示性参数，不宽容 prompt 本身。
+
+确定性沙箱在这里才有价值：脚本能取系统时间或随机数时，同前缀重放就不可预期。需要时间戳的场景由调用方经 `args` 传入。
+
+两点边界要讲清：
+
+- resume 依赖的是**同一套 agent 调用序列（prompt 与参数一致）**的前缀复用，不是通用断点续跑。固定脚本每次展开的调用序列稳定，前缀命中率高；临时生成的脚本每次重写，拆解与 prompt 随之变化，`key` 会对不上——恢复对固定 `scriptPath` 的脚本才可靠，对随机生成的脚本帮助有限。
+- 恢复后的执行开销与命中率没有实测数据。
+
+磁盘按 mtime 保留最近 50 个 run，超出自动清理。
+
+## 适用边界
+
+**适合交给 workflow：**
+
+- 可拆解的独立并行子任务，扇出收益大于单次请求开销
+- 同构批量：同一套规则过 N 个文件、N 个 commit，输出可比对
+- 阶段质量门禁：plan → code → review → fix 各有验收
+- 需要跨进程证据的流程：脚本副本、日志、快照都留在磁盘
+
+**不适合**（ultracode skill 的原话语义）：
+
+- 单个 agent 就能做的小任务——直接做，不写脚本
+- 需要紧密顺序对话的任务——用普通回合
+- 内联做比写脚本更快的任务——脚本化是为固定与批量，不为"形式完整"
+
+**当前实现的硬上限**（均可回溯代码）：
+
+- `maxConcurrency` 默认 3
+- 单 run 总 `agent()` 调用上限 1000；`parallel` / `pipeline` 单次 items 上限 4096
+- 单个 `agent()` 的 ReAct 循环默认 200 轮（agentType 定义可覆盖）
+- 子工作流嵌套仅一层
+- token 预算按输出 token 计费，预算耗尽即停；工具参数面未设置 `budgetTotal` 时视为不限
+
+**细节：**
+
+- 模型分层是脚本字段：审计类用 haiku、核心改写用 sonnet，写在哪就那么执行。成本策略随脚本可见、可审查，不藏在 LLM 的临时判断里。
+- 监控走 `/workflows` 面板：阶段与 agent 的实时状态、token、工具调用数，数据经 2 秒轮询拉取（拉取间隔为当前实现值，非承诺）。
+- 编排模板与委托写法见 [ultracode 使用建议](/peri-cool/docs/features/ultracode-usage/)。
+
+## 下一步
+
+- [Multi Agent 架构](/peri-cool/posts/engineering/multi-agent/)：workflow 的执行体从哪来，子代理的派发与并发限制
+- [RCRA 中断恢复逻辑](/peri-cool/posts/engineering/rcra-interruption-recovery/)：回合级中断恢复与 workflow 的 journal 恢复是两个层次
+- [System Prompt 设计](/peri-cool/posts/engineering/system-prompt/)：workflow agent 复用的冻结系统提示词机制

@@ -1,0 +1,106 @@
+---
+title: "Peri 3.0 版本动态：分层迁移与长任务能力"
+description: 按 agent-* Git tag 整理 Peri v3.0.0 至 v3.7.0 的主要新增、修复与架构变化。
+date: 2026-08-16
+hero:
+  image:
+    file: ../../../assets/img_gears_and_path_s51.png
+    alt: 齿轮与路径
+---
+
+这份记录覆盖 `agent-v3.0.0` 至 `agent-v3.7.0`。版本号和日期来自 Git tag；tag 的创建时间只能说明仓库建立了版本标记，不能单独证明安装制品何时发布或对所有用户可用。条目按 tag 与相邻版本之间的仓库提交整理，重点记录用户可见能力和已经有代码证据的架构变化。
+
+## v3.0.0
+
+- **变更**：3.0 版本线开始把 Agent、ACP、TUI、Workflow、观测和资源访问的职责重新划分。
+- **新增**：E2E 行为基线、时序契约和跨层迁移验证成为重构约束，避免只移动文件而改变协议可见行为。
+- **证据**：tag 创建于 2026-08-02。需要注意，3.0 分层迁移的决策记录在 tag 之后建立，因此 `v3.0.0` 不是分层迁移全部完成的首发记录。
+
+## v3.1.0
+
+- **变更**：继续推进 3.0 迁移和 ACP Hub 架构，统一跨 session 的控制与协议边界。
+- **修复**：补充 8 月初的 TUI、Workflow 和 E2E 回归修复。
+- **证据**：tag 创建于 2026-08-03。
+
+## v3.2.0
+
+- **修复**：修复 5 个 E2E 失败场景：`panel_scroll` panic、rewind 候选为空、header suffix 溢出、workflow-reporting prompt，以及 judge JSON 容错。
+- **变更**：继续校正 TUI 面板边界与黑盒测试的报告路径。
+- **证据**：tag 创建于 2026-08-04。
+
+## v3.3.0
+
+- **变更**：完成 8 月 5 日的 fixture 和迁移回归整理，没有从该 tag 区间识别出新的独立用户入口。
+- **证据**：tag 创建于 2026-08-05。
+
+## v3.4.0
+
+- **新增**：3.0 分层迁移的主要代码批次合入：后台任务生命周期归 Agent，生产装配以 Agent `SessionFactory` 为蓝本，SubAgent 创建路径统一。
+- **变更**：Langfuse 向旁路观测消费者迁移；Executor 执行体回到 Agent；ACP 保留协议化薄壳和装配宿主。
+- **新增**：`peri-resources` 承载配置、会话存储和 LSP context 等外部数据通道；TUI 的双轨直连事件路径退役。
+- **证据**：tag 创建于 2026-08-07。分层重构不能据此宣称吞吐、延迟或内存提升，仓库没有对应对照数据。
+
+## v3.4.1
+
+- **修复**：继续处理分层迁移后的 ACP Hub、TUI、工具和文档回归。
+- **变更**：补齐迁移后的契约说明与 8 月 7 日的验证记录。
+- **证据**：tag 创建于 2026-08-08。
+
+## v3.5.0
+
+- **新增**：SubAgent 工具支持 `resume_thread_id`，可以让已有线程继续执行；失败时与新建子代理路径区分处理。
+- **新增**：后台 shell 输出同时写入日志文件，并在返回中提供 PID、终止和查看输出指引。
+- **新增**：Write 与 sandbox write 失败时保存草稿，可通过 `from_draft` 恢复，减少重复输出。
+- **变更**：ACP Hub Web 前端迁移为独立 Vite 工程，使用 SolidJS + Tailwind，产物在编译期内嵌；领域术语从 session/machine 调整为 chat/instance。
+- **修复**：Langfuse SubAgent 父链、`/compact` replay 提示和 ACP port downcast 等问题；`extract_draft_id` 增加 Unix 条件编译以消除 Windows 警告。
+- **证据**：tag 创建于 2026-08-10。
+
+## v3.5.5
+
+- **修复**：Windows 下 terminal process snapshot 不再留下未使用的 `pid` 参数；glob 路径分隔符测试、Write 参数宽容解析和 resume optional 语义得到修正。
+- **新增**：引入 `agent-defect-analyzer` 会话缺陷分析工具。
+- **变更**：grep 增加线程上限、预算停止和精确截断，glob 收窄 root 并支持取消；Bash 超时改为更如实地说明 stdin 与挂起边界。
+- **证据**：这是轻量 tag，没有独立 tagger 日期；指向 2026-08-10 的提交。
+
+## v3.6.0
+
+- **新增**：继续完善工具描述契约和提示词层声明机制，覆盖 17 个工具的分组提示与选择原则。
+- **新增**：后台 shell 的持续输出、子代理恢复、draft 恢复和 ACP Hub 独立 Web 前端进入可用路径。
+- **修复**：安装脚本执行后当前窗口的 PATH 立即生效。
+- **证据**：tag 创建于 2026-08-11。
+
+## v3.6.3
+
+- **新增**：MCP 状态进入首个 turn 的模型上下文，并在运行期间形成上线、下线和失败通知；OAuth 增加按钮交互与手动后备入口。
+- **新增**：会话列表支持删除，协议和存储路径补齐清理边界。
+- **修复**：后台子代理文本与主 Agent 回复隔离，TUI loading 状态聚合得到调整。
+- **证据**：tag 创建于 2026-08-12。
+
+## v3.6.5
+
+- **修复**：搜索和文件遍历进一步限制扫描范围；Did you mean 过滤无关候选；Bash 超时增加可操作分流；Write 参数宽容解析和 resume 失败提示继续修正。
+- **修复**：Langfuse SubAgent observation 结构不完整的问题。
+- **变更**：继续更新项目文档、设计记录和 `peri-cool` 内容。
+- **证据**：tag 创建于 2026-08-12。
+
+## v3.7.0
+
+- **新增**：引入新的研究工具路径，并继续完善工具选择、错误引导和后台任务可观察性。
+- **变更**：ACP Hub 独立 workspace 与 Web 前端的验收链路继续整理；Workflow 面板显示模型档位名而非解析后的模型名。
+- **修复**：搜索、glob、Bash、Write、SubAgent resume 和 TUI 状态路由的边界问题继续收敛。
+- **证据**：tag 创建于 2026-08-14。
+
+## 这条版本线的主线
+
+3.x 的核心变化不是增加一个单独的命令，而是让生命周期和所有权回到清晰的层：Session 状态归 Agent，跨 session 编排归 Runtime/Controller，协议数据归 ACP，外部配置与存储归 Resources，界面呈现归 TUI，观测作为旁路消费者。用户侧最直接的变化集中在长任务恢复、后台输出、草稿恢复、搜索边界、会话删除和 MCP 状态。
+
+使用这些能力时要保留边界：恢复要求线程仍存在且资源可访问；后台命令仍可能挂起，必须给出超时和终止条件；会话删除不可恢复；MCP 配置修改后需要按[MCP 指南](/peri-cool/docs/features/mcp/)重新启动 Peri。
+
+相关文档：[3.0 分层重构](/peri-cool/docs/history/3-0-refactor/) · [项目更新 2026-08-02 至 2026-08-12](/peri-cool/posts/news/2026-08-13-project-updates/) · [可验证工程里程碑](/peri-cool/docs/history/milestones/)
+
+## 证据口径
+
+- 版本范围为仓库现存 `agent-v3.0.0` 至 `agent-v3.7.0`。
+- 日期采用 annotated tag 的 tagger 日期；`agent-v3.5.5` 是轻量 tag，因此采用其指向提交的日期，并明确标注。
+- 功能条目来自相邻 tag 之间的提交主题、代码结构和已有测试/文档；没有实测数据的地方不写性能结论。
+- Git tag 不等同于 GitHub Release、包注册表或安装脚本实际提供的制品版本。

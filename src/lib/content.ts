@@ -7,17 +7,16 @@ export const postCategories = [
 		description: '从真实问题出发，解释 Peri 怎样诊断、取舍、恢复并验证。',
 		promise: '这里不只拆解内部模块，也记录一次任务为什么会失败、怎样恢复，以及工程判断如何落到可验证结果。',
 		boundary: '实现细节必须服务于问题与决策；没有测试或源码证据时，不把推测写成机制事实。',
-		featuredPost: 'engineering/recovering-long-running-tasks',
+		featuredPost: 'engineering/rcra-interruption-recovery',
 		topics: [
 			{
 				id: 'execution',
 				label: '核心执行',
 				description: '模型请求、执行循环与提示词怎样形成一次可重复的 Agent 回合。',
 				posts: [
-					'engineering/agent-loop',
-					'engineering/provider-stream-consistency',
 					'engineering/system-prompt',
-					'engineering/prompt-cache-determinism',
+					'engineering/agent-loop',
+					'engineering/hook-middleware-overview',
 				],
 			},
 			{
@@ -25,10 +24,9 @@ export const postCategories = [
 				label: '状态与事件',
 				description: '会话历史、压缩恢复与事件身份怎样跨轮次保持一致。',
 				posts: [
-					'engineering/transcript-atomic-commit',
-					'engineering/compact-projection-recovery',
-					'engineering/event-identity',
-					'engineering/recovering-long-running-tasks',
+					'engineering/concurrent-tool-calls',
+					'engineering/rcra-interruption-recovery',
+					'engineering/compact-multiround-stability',
 				],
 			},
 			{
@@ -36,10 +34,9 @@ export const postCategories = [
 				label: '协作与协议',
 				description: '协议边界、子代理与工作流怎样组织多个执行者。',
 				posts: [
-					'engineering/acp-positioning',
 					'engineering/multi-agent',
-					'engineering/subagent-design',
 					'engineering/workflow-design',
+					'engineering/acp-positioning',
 				],
 			},
 			{
@@ -47,8 +44,8 @@ export const postCategories = [
 				label: '界面与扩展',
 				description: '终端渲染和生命周期扩展怎样保持可观察、可验证。',
 				posts: [
-					'engineering/streaming-markdown-cache',
-					'engineering/hook-system',
+					'engineering/mcp-support',
+					'engineering/streaming-markdown-rendering',
 				],
 			},
 		],
@@ -138,7 +135,11 @@ export const postCategories = [
 				id: 'version-retrospectives',
 				label: '版本回顾',
 				description: '用 tag、提交与设计记录回看一个版本阶段的工程方向。',
-				posts: ['news/demo-v2-release'],
+				posts: [
+						'news/demo-v2-release',
+						'news/agent-v2-release-notes',
+						'news/agent-v3-release-notes',
+					],
 			},
 		],
 	},
@@ -221,7 +222,11 @@ export function postsByTopic(posts: Post[], category: PostCategory) {
 
 	return getPostTopics(category).map((topic) => ({
 		topic,
-		posts: categoryPosts.filter((post) => getPostTopic(post).id === topic.id),
+		posts: [...topic.posts]
+			.map((configuredId) =>
+				categoryPosts.find((post) => postIdWithoutExtension(post.id) === configuredId),
+			)
+			.filter((post): post is Post => Boolean(post)),
 	}));
 }
 

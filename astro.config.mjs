@@ -8,9 +8,13 @@ function remarkMermaid() {
 	return (tree) => {
 		visit(tree, 'code', (node, index, parent) => {
 			if (node.lang === 'mermaid' && parent && typeof index === 'number') {
+				const diagram = node.value
+					.replaceAll('&', '&amp;')
+					.replaceAll('<', '&lt;')
+					.replaceAll('>', '&gt;');
 				parent.children[index] = {
 					type: 'html',
-					value: `<pre class="mermaid">${node.value}</pre>`,
+					value: `<div class="peri-mermaid"><pre class="mermaid">${diagram}</pre></div>`,
 				};
 			}
 		});
@@ -119,39 +123,6 @@ export default defineConfig({
 						{ slug: 'docs/features/openspec' },
 					],
 				},
-				{
-					label: '参考',
-					collapsed: false,
-					items: [
-						{ slug: 'docs/reference/settings' },
-						{ slug: 'docs/features/cli-reference' },
-						{ slug: 'docs/reference/keyboard-shortcuts' },
-					],
-				},
-				{
-					label: '故障排除与安全',
-					collapsed: false,
-					items: [
-						{ slug: 'docs/troubleshooting' },
-						{ slug: 'docs/security/secrets-and-permissions' },
-					],
-				},
-				{
-					label: '开发者',
-					collapsed: false,
-					items: [
-						{ slug: 'docs/developer' },
-						{ slug: 'docs/developer/architecture' },
-					],
-				},
-				{
-					label: '项目历史',
-					collapsed: false,
-					items: [
-						{ slug: 'docs/history/milestones' },
-						{ slug: 'docs/history/3-0-refactor' },
-					],
-				},
 			],
 			editLink: {
 				baseUrl: 'https://github.com/KonghaYao/peri-cool/edit/main/',
@@ -163,7 +134,7 @@ export default defineConfig({
 				},
 				{
 					tag: 'script',
-					content: "document.addEventListener('DOMContentLoaded',function(){var b=document.querySelectorAll('pre.mermaid');if(!b.length)return;mermaid.initialize({startOnLoad:!1,theme:'neutral'});mermaid.run({querySelector:'pre.mermaid'});});",
+					content: "document.addEventListener('DOMContentLoaded',function(){if(typeof mermaid==='undefined')return;mermaid.initialize({startOnLoad:!1,theme:'base',themeVariables:{primaryColor:'#f6d7c8',primaryTextColor:'#241a17',primaryBorderColor:'#c96f4b',lineColor:'#8c5a48',secondaryColor:'#d9eaf2',tertiaryColor:'#e6e1f3',mainBkg:'#f6d7c8',nodeBorder:'#c96f4b',clusterBkg:'#fff7f2',clusterBorder:'#d9a58e',fontFamily:'Songti SC, Noto Serif CJK SC, sans-serif'}});mermaid.run({querySelector:'pre.mermaid'});});"
 				},
 			],
 		}),

@@ -452,7 +452,7 @@
 pre.mermaid {
   max-height: 500px;
   overflow: auto;
-  border: 1px solid var(--sl-color-gray-4);
+  /* border: 1px solid var(--sl-color-gray-4); */
   border-radius: 0.5rem;
   padding: 0.5rem;
 }
@@ -486,4 +486,38 @@ pre.mermaid svg {
 .hero > img {
   border: 1px solid var(--peri-hairline);
   border-radius: 12px;
+}
+
+/* Mermaid：彩色节点与清晰边界 */
+.peri-mermaid {
+  position: relative;
+  margin: 1.5rem 0;
+  overflow: auto;
+  border: 1px solid #d9a58e;
+  border-radius: 12px;
+  /* 0 才是最好的视觉体验 */
+  padding: 0rem;
+  background: linear-gradient(135deg, #fff7f2 0%, #f6eee8 100%);
+}
+.peri-mermaid .mermaid {
+  display: flex;
+  justify-content: center;
+  min-width: max-content;
+  margin: 0;
+  background: transparent;
+}
+.peri-mermaid svg {
+  display: block;
+  max-width: none;
+  height: auto;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+.peri-mermaid svg rect {
+  stroke-width: 1.5px;
+}
+:root[data-theme='dark'] .peri-mermaid {
+  border-color: #9b5b43;
+  background: linear-gradient(135deg, #30221e 0%, #211d1b 100%);
 }

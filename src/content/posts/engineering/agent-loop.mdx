@@ -256,7 +256,7 @@ Peri 采用 **三层工具分发架构**，核心思路是"常用工具始终可
 
 v2 `StageContext` 与 v1 `MiddlewareChain` 通过 `AgentContext` 桥接：每个 hook 调用时从 StageContext 构造临时 `AgentContext`，middleware 双写 transcript + cache，调用后 drain recall 到 `ctx.recall_buffer`。
 
-`HookMiddleware` 是中间件链的关键节点——在工具与 Agent 生命周期触发已接线的 hook 事件，实现工具调用审查、输出处理和策略注入。详见 [Hook 系统](/peri-cool/posts/engineering/hook-system/)。
+`HookMiddleware` 是中间件链的关键节点——在工具与 Agent 生命周期触发已接线的 hook 事件，实现工具调用审查、输出处理和策略注入。详见 [Hook 与 Middleware](/peri-cool/posts/engineering/hook-middleware-overview/)。
 
 ```mermaid
 classDiagram

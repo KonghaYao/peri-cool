@@ -1,192 +1,167 @@
 ---
-title: ACP 协议在生态中的定位
-description: Agent Client Protocol 如何成为 AI 编程工具的"通用语言"——从 LSP 类比到 Peri 的双传输层实现。
-date: 2026-08-01
+title: ACP 协议的设计
+description: 从 peri-acp 的实现拆解 Agent Client Protocol 的四个设计维度——session/prompt/event 分层、事件链 canonical、序列化契约与多实现方。
+date: 2026-08-16
 hero:
   image:
     file: ../../../assets/img_voices_one_star_s05.png
     alt: 众声一星
 ---
 
-import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
-
-## 命题：AI 编程工具需要一个"USB-C 接口"
-
-2025 年，AI 编程工具爆发式增长。Claude Code、GitHub Copilot、Codex CLI、Gemini CLI、Cursor、Junie——每个都是优秀的 Agent，但每一个都绑在自己的接口上。终端用户用 CLI，IDE 用户等插件，移动端用户望洋兴叹。
-
-这不是技术问题，是**接口碎片化**。回忆一下 2015 年的语言工具生态：每个编辑器都要为每种语言单独写插件，直到 LSP（Language Server Protocol）出现。微软定义了一个协议，编辑器实现客户端，语言工具实现服务端——一个 jetbrains 插件就能服务所有支持 LSP 的编辑器。
-
-**ACP 想做 AI 编程工具的 LSP**。
+import { Aside } from '@astrojs/starlight/components';
 
 ## ACP 是什么
 
-[Agent Client Protocol](https://agentclientprotocol.com)（ACP）是由 **Zed Industries** 发起、社区共同维护的开放协议，标准化了代码编辑器与 AI Coding Agent 之间的通信。协议基于 **JSON-RPC 2.0**，定义了从会话创建、Prompt 交互、工具调用上报到文件系统访问的完整生命周期。
+[Agent Client Protocol](https://agentclientprotocol.com)（ACP）是 Zed Industries 发起、社区维护的开放协议，定义编辑器（Client）与 AI 编程 Agent（Server）之间的通信，走 JSON-RPC 2.0。协议的方法集中在几个根命名空间：`initialize` 做能力协商，`session/*` 管理会话生命周期，`session/prompt` 驱动单轮交互；执行过程中的状态增量由 Agent 侧通过 `session/update` 等通知持续推回客户端，而不是等一轮结束给一个大块结果。
 
-核心思想很简单：
+Peri 在这套协议里有两个身份：它是实现 ACP Server 的 Agent，同时它的 TUI 外壳又是一个 ACP Client。两个身份共用同一套协议层，没有为 TUI 另开一套内部事件格式——协议本身就划定了这条边界。这篇文章站在 peri-acp 的实现上，拆解它的四个设计维度：**分层**、**事件链**、**序列化契约**、**多实现方**。涉及的具体文件在文中标出，协议设计的事实均以当前源码为准。
 
-```mermaid
-flowchart LR
-    subgraph "Agent 侧（实现 ACP Server）"
-        A1["Claude Code"]
-        A2["Codex CLI"]
-        A3["Gemini CLI"]
-        A4["Peri"]
-    end
+### 生态定位（背景）
 
-    subgraph "ACP 协议层"
-        P["JSON-RPC 2.0\ninitialize → session/* → prompt"]
-    end
+协议的意义在于形成多对多网络：Agent 实现一次 ACP Server，就能被所有声明了对应 capability 的 Client 接入；编辑器实现一次 ACP Client，就能使用所有 ACP Agent。按 [ACP 官网](https://agentclientprotocol.com) 登记页的数据，已有 40+ Agent 实现与 80+ 客户端表面（IDE、聊天桥接、Web UI、Jupyter、Unity 等），并有 Rust、TypeScript、Python 等语言的 SDK。Peri 属于 Agent 实现方，同时用自己的 TUI 客户端做协议一致性验证。
 
-    subgraph "Client 侧（实现 ACP Client）"
-        C1["Zed"]
-        C2["VS Code"]
-        C3["JetBrains"]
-        C4["Neovim"]
-        C5["Terminal"]
-    end
+有一个前提需要先说清：实际可用范围取决于双方协商的协议版本与 capability，而不是看客户端是否挂了"ACP"标签。Peri 的协议面基于 `agent-client-protocol` SDK 的 schema v1 实现，下文的协议语义都指 v1。
 
-    A1 & A2 & A3 & A4 --> P
-    P --> C1 & C2 & C3 & C4 & C5
-```
+## 设计维度一：session / prompt / event 分层
 
-**Agent 实现 ACP Server 后**，可以被实现了相应 ACP 能力的客户端接入。实际可用范围取决于双方支持的协议版本与 capability，而不是客户端是否挂有“ACP”标签。
+一次交互被拆成三个粒度。这个划分不是文档上的说法：三个粒度在 peri-acp 里对应三个模块目录（`src/session/`、`src/prompt/`、`src/event/`）。
 
-## 生态现状：40+ Agent × 80+ Client
+| 层 | 边界 | peri-acp 侧承担 |
+| --- | --- | --- |
+| **session** | 工作区绑定的生命周期 | 会话创建/加载/恢复/关闭，持久化，重对象复用 |
+| **prompt** | 单轮输入的执行 | system prompt 装配、单轮执行、结果回传 |
+| **event** | 执行过程中的状态增量 | 内部事件到协议通知的流式映射 |
 
-到 2026 年中，ACP 生态已经形成规模：
+### session：一个会话是一份冻结的上下文
 
-<CardGrid>
-  <Card title="40+ Agent 实现">
-    Claude Code、GitHub Copilot、Gemini CLI、Codex CLI、Cursor、Junie、Kimi CLI、OpenCode 等主流 Agent 均已接入或计划接入 ACP。
-  </Card>
-  <Card title="80+ Client 表面">
-    不仅有 **Zed、VS Code、JetBrains、Neovim、Emacs** 等 IDE，还有 **Discord/Slack/Telegram/微信/飞书** 聊天桥接、**移动端 App**（iOS/Android）、**Web UI**（Braide/Codeg）、**Jupyter Notebook**、**DuckDB** 甚至 **Unity 编辑器**。
-  </Card>
-  <Card title="5 种语言 SDK">
-    Rust、TypeScript、Python、Java、Kotlin 都有官方或社区维护的 SDK，框架集成覆盖 LangChain、LlamaIndex、Mastra、fast-agent 等。
-  </Card>
-</CardGrid>
+`AcpSession`（`peri-acp/src/session/mod.rs`）的字段说明"一次会话"在 Peri 里意味着什么：
 
-这形成了一个**多对多网络**：Agent 写一次，到处运行；编辑器接入一次，百种 Agent 可用。
+- 每个 session 有一个 `session_id`、一个关联的 `thread_id`（对应一条 ThreadStore 记录）、一个绑定的工作目录 `cwd`、一个取消令牌（`CancellationToken`）、一段 `state_messages`；
+- 会话级状态：当前 `provider_id`、`model_alias`、权限模式（`Arc<SharedPermissionMode>`）、goal steering 状态（跨 prompt 共享）；
+- 运行期状态 `active_agents`（`ThreadId → AgentRuntime` 映射），同时持有根 agent 与子 agent；
+- 一个会话级共享的 `MessageQueue`：统一收件箱，main agent 与 SubAgent / Hook / GoalSteering 互可见彼此的 deferred 与 info 消息。
 
-## ACP 协议的核心抽象
+两个关键设计值得展开。
 
-ACP 的协议交互围绕四个核心阶段展开：
+**冻结数据。** 会话创建时渲染的 `FrozenSessionData`（L5 后在 `peri-agent` 的 `session/exec/executor.rs`）从创建时刻保持不可变，保证会话内的 system prompt 不再变化；配合 ThreadStore 持久化，`session/load` 与 resume 就成立：用户关掉编辑器，下次打开还能恢复同一份上下文。这也是 session 层区别于"聊天窗口"的地方——会话是一个可恢复的持久化单元，不是一次请求。
+
+**按 session 复用重量级资源。** 与会话绑定的资源池在会话创建时装配、跨 turn 复用：`AgentPool`（`session/agent_pool.rs`）缓存 LLM 实例与其持有的 `reqwest::Client`（代码注释估计单个客户端约 1–2 MB，含连接池与 TLS 会话缓存），首次 prompt 时填充、provider 切换时失效；LSP 池与 workflow 中间件以端口形式注入（`Arc<dyn LspPoolPort>` / `Arc<dyn WorkflowMiddlewarePort>`）。这解释了协议的抽象粒度：session 是大粒度资源的边界，prompt 是轻量输入。
+
+顺带提一个实现现状（L5 重构后）：`AcpSession` 本身瘦身为对外句柄，核心状态委托给 `peri-agent::session::Session`，ACP 层保留的是协议特有字段。阅读代码时，不用再在 `AcpSession` 里找全部执行状态。
+
+一次典型的交互遵循下面的周期（演示示例，不是真实会话）：
 
 ```mermaid
 sequenceDiagram
-    participant C as Client（编辑器）
+    participant C as Client（编辑器 / TUI）
     participant A as Agent（ACP Server）
 
-    Note over C,A: ① 初始化
-    C->>A: initialize（能力协商 + 认证信息）
-    A-->>C: ServerCapabilities
-
-    Note over C,A: ② 会话建立
-    C->>A: session/new（创建工作区会话）
+    C->>A: session/new（绑定工作区）
     A-->>C: session_id + 会话状态
-
-    Note over C,A: ③ Prompt 交互（可多轮）
-    C->>A: session/prompt（用户输入）
-    A-->>C: 状态更新（流式文本 + 工具调用 + diff）
+    C->>A: session/prompt（用户消息）
+    A-->>C: session/update（流式文本 + 工具调用）
     A-->>C: session/update（完整输出）
-
-    Note over C,A: ④ 会话管理
-    C->>A: session/load / session/close / session/fork
-    A-->>C: 恢复 / 关闭 / 派生会话
+    C->>A: session/cancel（用户中断，可省略）
+    C->>A: session/load（下次恢复会话）
 ```
 
-| 阶段 | 关键能力 |
-|------|---------|
-| **initialize** | 能力协商（支持哪些功能），认证方式声明 |
-| **session/\*** | 会话 CRUD——new/load/resume/fork/close/delete，每个会话绑定一个工作区 |
-| **session/prompt** | 核心交互——流式文本输出、工具调用上报（含 diff）、权限请求、elicitation（结构化提问） |
-| **通知机制** | `session/update`（状态变更）、`session_info_update`（会话元数据）等 Push 通知 |
+### prompt：system prompt 按需装配
+
+`session/prompt` 收到输入后，Peri 先装配 system prompt，再让执行层跑一轮。装配在 `peri-acp/src/prompt/mod.rs`：prompt 由 `prompts/sections/` 下的段文件组合（01–06 与 `07_runtime` 等基础段常驻），`10_hitl`、`11_subagent`、`13_skills` 等 gated 段按运行时能力注入。
+
+注入规则的演进值得单独说。早期由一份 `PromptFeatures` 结构按 `permission_mode` 等标志判定；波 4 重构后，gated 段的 gate 变成"持有该段的 middleware 是否在链上"——段内容随持有它的中间件一起被收集，装配即收集，不再由标志位判定。单一条件源（中间件链）同时导出 prompt 段可见性、工具注册与 deferred-tool 搜索，避免三处判定漂移。如今 `PromptFeatures` 只剩一个 `channel_enabled` 字段（恒为 false，`15_channel` 段是未来启用时格式文档，不算当前可用能力）。
+
+单轮结果统一用 `PromptResult`（`peri-acp-types/src/session.rs`）回传：消息历史、是否成功、停止原因、本轮是否发生 compact 替换可见历史。prompt 层只负责"把输入变成一轮执行"，状态管理归 session。
+
+### event：状态增量流
+
+Agent 执行是流式的：文本块、推理、工具调用、上下文告警持续产生。协议面把这些增量映射为 `session/update` 通知，而不是等一轮结束给一个大块结果。事件的具体设计（分类、身份、可靠性）是下一个维度的内容，这里只说明它属于"第三层"，而且粒度分层是双向受益的：客户端得到更早的反馈，服务端也不必缓存整轮结果再发送。
 
 <Aside type="note">
-  ACP v2 已进入 Draft 阶段，增加了消息级别的 update/chunk 机制、更丰富的权限请求模型和 prompt 生命周期重构。Peri 目前基于 v1 稳定规范实现。
+  三层的边界从目录结构也能看出来：session 生命周期与重对象管理在 `src/session/`，prompt 装配在 `src/prompt/`，事件映射与转发在 `src/event/`。一个请求从协议进入后依次穿过这三层，方向与依赖都单向。
 </Aside>
 
-## Peri 的 ACP 实现：三种入口，一套逻辑
+## 设计维度二：事件链 canonical
 
-Peri 不是又一个 Agent 前端——它是一个**兼容 ACP 协议的全栈 Agent 平台**。同一套 Agent 核心逻辑，通过 ACP 传输层同时驱动三个入口。
+事件这一层的难点不在格式，而在身份一致性。Peri 早期踩过的坑可以作为这个问题的注脚（归档记录 `issue_2026-07-25-event-identity-diverges-across-dual-delivery-paths` 与 `issue_2026-08-05-3.0-m-event-chain-canonical`）。
 
-### 架构分层
+**现象。** 同一个 Agent 事件曾有两条投递路径：一条走 ACP transport 序列化，一条是 v2 事件到 TUI 本地 DTO 的直连 mapper（`v2_bridge`，后已删除）。两条路径各自维护映射与抑制规则，`message_id`、`source_agent_id` 在转换中被替换成默认值或 `None`。同一事件经双轨落地后身份不一致，外显症状包括：文本与工具卡片重复（同一内容走两个路径）、并发消息无法按稳定 `message_id` 归组、SubAgent 事件在部分路径丢失来源标识、TUI 与 IDE 对同一新增事件表现不一致。
 
-```
-┌─────────────────────────────────────────────────────┐
-│                  Client 层                           │
-│  ┌──────────┐  ┌───────────┐  ┌──────────────────┐ │
-│  │ peri-tui │  │Zed / VSCode│  │  Stdio CLI       │ │
-│  │(ratatui) │  │(外部 IDE)  │  │  (Headless)      │ │
-│  └────┬─────┘  └─────┬─────┘  └────────┬─────────┘ │
-│       │              │                │             │
-├───────┴──────────────┴────────────────┴─────────────┤
-│               ACP Transport 层                       │
-│  ┌──────────────┐  ┌──────────────────────────────┐ │
-│  │MpscTransport │  │      StdioTransport           │ │
-│  │(内存通道)     │  │  (stdin/stdout JSON-RPC)     │ │
-│  └──────┬───────┘  └──────────────┬───────────────┘ │
-│         │                         │                  │
-├─────────┴─────────────────────────┴──────────────────┤
-│                 ACP Server 层                         │
-│  ┌─────────────────────────────────────────────────┐ │
-│  │  Session Manager · Executor · Prompt Builder    │ │
-│  │  Event Mapper · Dispatch Router · Langfuse      │ │
-│  └────────────────────────┬────────────────────────┘ │
-│                           │                          │
-├───────────────────────────┼──────────────────────────┤
-│                 Agent 核心层                          │
-│  ┌────────┐  ┌──────────┐  ┌──────────────┐        │
-│  │ ReAct  │  │ 中间件链  │  │ LSP / MCP    │        │
-│  │ Loop   │  │ Middleware│  │ 集成         │        │
-│  └────────┘  └──────────┘  └──────────────┘        │
-└─────────────────────────────────────────────────────┘
+**归因。** 根因是事件语义有多个"事实源"：身份字段由各 mapper 临时补齐，而不是由统一契约承载。映射器之间的 wildcard 分支还让新增事件静默落入"不产生下游更新"的分支，错误路径没有被显式暴露。
+
+**修复。** 收敛为单事实源链路：
+
+```mermaid
+flowchart LR
+    A["Agent / EventBus<br/>三层事件发射"] --> F["EventBus forwarder<br/>映射 + 事件源身份投影"]
+    F --> P["Controller::publish_event<br/>补打 session_id + session_seq"]
+    P --> E["订阅 / 弹出队列"]
+    E --> S["EventSink<br/>能力过滤 + 协议化"]
+    S --> T["TUI"]
+    S --> I["IDE / stdio"]
 ```
 
-### 两种传输层
+具体契约（类型落在 `peri-acp-types` 的 `identity.rs` / `runtime.rs` / `event_v2.rs`）：
 
-| 传输方式 | 使用场景 | 实现文件 | 特点 |
-|---------|---------|---------|------|
-| **MpscTransport** | TUI 内部通道 | `peri-acp/src/transport/mpsc.rs` | tokio mpsc 双向通道，零序列化开销，TUI 和 ACP Server 在同一进程内通信 |
-| **StdioTransport** | 外部 IDE 接入 | `peri-acp/src/transport/stdio.rs` | stdin/stdout JSON-RPC 行协议，与 Zed、VS Code 等标准 ACP Client 对接 |
+- 每个事件强制携带 `turn_id`（`TurnId`，UUID v7，一次 turn 内所有事件的统一纽带）与 `agent_id`（来源标识，SubAgent 场景即 source）；
+- `session_id` 与 `session_seq` 由 Runtime 在聚合时补打（`Controller::publish_event` 语义），同 session 事件带单调递增序号，配合 `session_epoch` 防止迟到消息命中新 session；
+- canonical envelope 类型 `UnstampedEvent`（事件源身份的最小投影）→ `EventEnvelope`；`SessionSeq` 特意**不实现 `Default`**——必需身份缺失时拒绝构造，而不是用默认值伪装（契约测试对此有编译期断言）；
+- 映射对 canonical 事件穷尽匹配，新增事件变体无法落入丢弃分支；
+- TUI 只经 ACP 拿数据，v2 双轨直连离线。
 
-两种传输层实现了同一个 `AcpTransport` trait（`peri-acp/src/transport/mod.rs`），上层 Session Manager 和 Executor 对传输方式无感知。
+**事件分层。** 事件按消费者视角分三层（`event_v2.rs` 的枚举定义），全部强制携带 `turn_id` 与 `agent_id`：
 
-### 双传输层的设计意义
+- **渲染层**：`TextChunk` / `ThinkingChunk` / `ToolStarted` / `ToolEnded` / `BudgetWarning` / `HitlPending`，驱动实时 UI；
+- **状态层**：`TurnCompleted` / `StateSnapshot` 等，驱动 transcript 提交与恢复；
+- **观测层**：`LlmCallStart` / `LlmCallEnd` / `MessagesCompacted` / `TurnError` / SubAgent 启停等，供观测与调试。
 
-Peri 选择自己同时做 Agent 和 Client（TUI），但**不因此绕过 ACP 协议**。TUI 前端通过 MpscTransport 以 ACP 标准协议与服务层交互——这意味着：
+可靠性按层取舍：渲染与状态层走有界 mpsc 通道 + `try_send`，通道满时降级丢弃，保证慢消费者不阻塞 ReAct 循环；观测层走 broadcast 通道，慢消费者滞后自动跳过（lagging）。这里有一个不能回避的边界：**critical 通道满时的丢弃是有意设计，不是缺陷**，依赖状态层快照兜底。对"每事件必达"有硬性要求的场景，需要按这个边界重新评估。
 
-1. **内部解耦**：TUI 渲染逻辑与 Agent 执行逻辑通过 ACP 边界交互；启动装配等位置仍可能共享类型或配置
-2. **路径一致**：TUI 与外部客户端都从 ACP 边界获取 session、流式更新、工具上报与权限请求；各客户端能力仍可能不同
-3. **可替换边界**：实现所需 ACP capability 的客户端可以复用 Agent 核心；客户端能力、transport 与扩展通知仍可能需要适配
+<Aside type="note">
+  渲染层必须先于状态层被消费：转发器（`peri-acp/src/event/forwarder.rs`）里的 biased `select!` 通道顺序被注释标记为不可移除——否则下一轮的 `TextChunk` 会先于上一轮的 `TurnCompleted` 落地，渲染出错乱。这类顺序前置条件写进了代码注释，属于实现必须维护的不变量。
+</Aside>
 
-## 你该知道的关键设计决策
+## 设计维度三：序列化契约
 
-| 决策 | 做法 | 理由 |
-|------|------|------|
-| **自建实现，不依赖 SDK** | Peri 直接实现 JSON-RPC 2.0 协议，不使用官方 `acp-sdk` | 需要更细粒度的会话生命周期控制和对 Peri 特有功能（PeriCaps、HITL、Goal）的原生支持 |
-| **双 Transport trait** | `AcpTransport` trait + Mpsc/Stdio 两个实现 | 内部 TUI 走内存通道，外部客户端可走 stdio；两者延迟需分别测量 |
-| **PeriCaps 扩展通道** | `peri-acp-types/src/peri_caps.rs` | ACP 的 `_meta` 扩展机制允许自定义通知；Peri 通过能力协商声明当前构建支持的扩展 |
-| **Event 映射层** | `peri-acp/src/event/mapper.rs` 将内部 `ExecutorEvent` 映射为 ACP 标准事件 | ReAct 引擎的内部事件（工具执行、Compact 完成、Agent 错误）必须转译为 ACP 客户端可理解的消息格式 |
-| **Session 持久化** | 基于 SQLite 的 ThreadStore | 支持 session/load 和 session/resume，这是 ACP 协议要求的核心能力——用户关闭编辑器后能恢复之前的对话上下文 |
+协议面与内部实现的边界由一层契约 crate 划定：`peri-acp-types` 承载所有跨层接口类型与 serde 序列化形态，`peri-acp` 只做映射、不外泄内部类型。三处典型契约：
 
-## ACP 对 Peri 意味着什么
+**`AcpEvent`**（`peri-acp/src/event/mod.rs`，走 `peri/agent_event` 通知的 DTO）。带标签枚举，`serde(tag = "type", content = "value", rename_all = "snake_case")`，只保留 TUI 消费者需要的字段。它替代了曾在同一通道上序列化的原始内部事件——TUI 反序列化后直接消费，不依赖内部 `ExecutorEvent` 或 `BaseMessage`。
 
-理解 ACP 在 Peri 中的角色，有助于回答三个常见问题：
+**`AgentActivityWire`**（`peri-acp/src/event/activity.rs`，`peri.agentActivity` 投影）。这是隐私边界：把协议承载事件映射成紧凑 DTO 时，不复制原始消息、prompt、推理、工具 IO、摘要、路径、错误或 URL。DTO 带 `schema_version`，自由文本先做长度截断（128 字节上限）或白名单化，`correlation_id` 是命名空间加值的 SHA-256 哈希（取前 12 字节），映射对事件穷尽匹配——新增事件不会静默获得 activity 资格。
 
-**Q: Peri 是 Claude Code 的替代品吗？**
-不是。Peri 是一个**Agent 平台**，通过 ACP 协议它可以作为 Zed/VS Code 的 Agent 后端使用，也可以作为独立的 TUI 终端使用。Claude Code 是一个 ACP Agent 实现，Peri 是另一个——它们通过同一个协议与编辑器通信。
+**标准 ACP `SessionUpdate`**（`peri-acp/src/event/mapper.rs`）。面向 IDE/stdio 客户端的七类输出（文本块、推理、工具调用、todo、usage 等）来自 `agent-client-protocol` SDK 的 schema v1。其中 `messageId` 语义是协议级约定——同一消息的所有 chunk 共享一个 ID，ID 变化即新消息，客户端据此做段边界与推理结束推断，Peri 的映射严格遵循这一点。
 
-**Q: 为什么 Peri 不用任何 ACP SDK？**
-Peri 需要装配自己的中间件生命周期、PeriCaps 通知、HITL 与观测路径，因此当前选择直接维护协议集成。具体数量与能力以当前 assembly 和 capability 定义为准。
+<Aside type="note">
+  一个演进事实：v1 `ExecutorEvent`（`peri-acp-types/src/event.rs`）曾是 Agent 层的主要事件类型，现在只作为"协议序列化面的载体"保留——v2 事件经穷尽映射转成它，再 wire 化发给客户端。阅读相关代码时，不要把它当作内部 API 来依赖。
+</Aside>
 
-**Q: ACP 和 MCP 是什么关系？**
-它们是互补的。MCP（Model Context Protocol）连接 Agent 和工具/数据源；ACP 连接 Agent 和编辑器/用户界面。一个 Agent 可以同时使用 MCP 获取工具能力、使用 ACP 与用户交互。事实上，ACP 社区已经在推进 [MCP-over-ACP](https://agentclientprotocol.com/rfds/mcp-over-acp.md)，将 MCP 工具通过 ACP 通道传递给客户端。
+## 设计维度四：多实现方
 
-## 更多资源
+协议的意义在于允许多方实现。Peri 内部就有两套典型的实现方，共享同一套契约。
 
-- [Agent Loop](/peri-cool/posts/engineering/agent-loop/) — Peri 的 ReAct 引擎如何与 ACP session/prompt 周期对齐
-- [Hook 系统](/peri-cool/posts/engineering/hook-system/) — 在 ACP 事件生命周期中注入用户自定义行为
+**传输层。** `AcpTransport` trait（`peri-acp/src/transport/mod.rs`）定义四类操作：`send_request` / `send_notification` / `recv` / `send_response`。序列化方式由实现方决定：
+
+- `MpscTransport`（`transport/mpsc.rs`）：TUI 与 ACP Server 同进程，走内存通道，消息以结构化值传递，不做文本序列化；
+- `StdioTransport`（`transport/stdio.rs`）：外部 IDE 走 stdin/stdout 的 JSON-RPC 行协议。
+
+**事件出口。** 对应的 `EventSink` 实现也是两套（`peri-acp/src/session/event_sink.rs`）：`TransportEventSink`（TUI）除标准 `session/update` 外，还发 `peri/agent_event` 自定义通知（以及表示一轮终止的 `peri/agent_event_done`）；`StdioEventSink`（IDE）只发标准 `SessionUpdate`。`EventSink` trait 本身定义在契约层（`peri-acp-types::event`），核心执行逻辑对前端无感知。
+
+**装配统一。** TUI / print / stdio 三路径共用同一份 host 装配（`peri-acp/src/host/assemble.rs`），cli 作为部署装配点启动它们。不同前端只提供协议面输入（provider、config、permission、thread store、cwd），不再各自复制装配逻辑；middlewares 的具体实现（cron、MCP client pool、skill 扫描、插件管理等）全部由这一处装配面内部构造。
+
+多实现方的关键验证点是**语义等价**：同一组 canonical 事件，分别经 mpsc 与 stdio 两条通道后，下游得到的输入应当语义一致。这正是 canonical 事件链存在的理由——如果两条路径各自维护映射，等价性就无法被证明。
+
+Peri 同时扮演两种实现方（TUI 自己是 Client，对外又是 Server），因此它被迫处理双份身份问题；canonical 事件链不是为好看而做的抽象，而是多实现方场景下的一致性兜底。
+
+## 适用边界
+
+- **性能**：Mpsc 内存通道与 stdio 文本序列化的延迟差异没有实测数据，这里不估算。
+- **可靠性**：critical 通道满时的丢弃是刻意设计，依赖状态层快照兜底，见事件链一节。
+- **协议演进**：协议面基于 schema v1 实现（`agent-client-protocol` 2.x、`agent-client-protocol-schema` 1.5）。协议层的变化会先落在 `peri-acp` 的映射层，而不是内部事件链——这也是分层与契约层分离的价值。
+- **生态数字**："40+ Agent / 80+ 客户端表面"取 ACP 官网登记页的引用口径，未在本站单独核验。协议语义一节依赖的代码事实，则核验自上面列出的源码文件。
+
+## 下一步
+
+- [Agent Loop](/peri-cool/posts/engineering/agent-loop/) — ReAct 引擎如何与 session/prompt 周期对齐
+- [Hook 中间件总览](/peri-cool/posts/engineering/hook-middleware-overview/) — 中间件链如何挂在 ACP 事件生命周期上
 - [Multi Agent 架构](/peri-cool/posts/engineering/multi-agent/) — SubAgent 的事件如何在 ACP 通道中上报
-- [ACP 官网](https://agentclientprotocol.com) — 协议规范、SDK、生态列表
+- [System Prompt](/peri-cool/posts/engineering/system-prompt/) — prompt 分段如何装配
