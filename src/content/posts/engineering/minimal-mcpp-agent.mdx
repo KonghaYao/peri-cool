@@ -1,0 +1,67 @@
+---
+title: Minimal Agent
+description: 以 example/minimal 为起点，说明如何关闭默认 middleware、接入工具来源，并通过 ToolSearch 完成工具发现与任务执行。
+date: 2026-08-22
+hero:
+  image:
+    file: ../../../assets/img_toolbox_open_s53.png
+    alt: 打开的工具箱
+---
+
+`example/minimal` 展示的不是“少装几个功能”的启动参数，而是一种 Agent 装配方式：先决定哪些 middleware 进入当前 Agent，再决定工具从哪里来，最后让模型通过 ToolSearch 选择任务需要的工具。MCP 在这个例子里只是一个外部工具来源，不是 Minimal 模式的定义。
+
+这篇文章使用 minimal 的现有配置说明一条完整链路：能力开关 → 工具注册 → 工具搜索 → 工具执行。它不把示例包装成生产模板；Permission、Human-in-the-Loop、Filesystem 和 Terminal 等能力被关闭后，使用边界需要由调用方重新补齐。
+
+## Minimal 模式是什么
+
+Minimal 模式的核心是收窄主 Agent 的装配面。Meta Harness 通过 `meta_harness` 配置控制 middleware；middleware 是插入提示词、工具调用或 Agent 回合的能力组件，配置为 `false` 时，受控制的组件不会构造，也不会注册它持有的工具和提示词段落。
+
+`example/minimal/.peri/settings.json` 关闭默认系统提示词、文件系统、终端、Web、Skills、SubAgent、Workflow、Permission 和 Human-in-the-Loop 等组件，只保留 MCP 与 ToolSearch。这不是权限系统的替代品，尤其不适合未经修改地承载高风险工具。
+
+```json
+{
+  "config": {
+    "meta_harness": {
+      "McpMiddleware": true,
+      "ToolSearch": true,
+      "FilesystemMiddleware": false,
+      "TerminalMiddleware": false,
+      "PermissionMiddleware": false,
+      "HumanInTheLoopMiddleware": false
+    }
+  }
+}
+```
+
+上面是节选，完整配置以示例目录为准。Minimal 模式并不关闭 Agent 执行循环、模型调用和 session 基础设施；它只裁剪 Meta Harness 能控制的能力组件。
+
+## 从工具来源开始扩展
+
+Minimal 模式不限定工具必须来自 MCP。只要某个 middleware 或装配入口把工具放入当前 session 的工具视图，ToolSearch 就可以对其中的延迟工具建立索引；MCP 只是把远程 server 的工具转换成 Peri 工具的一条路径。
+
+示例中的 `src/index.ts` 创建一个 [MCPP server](https://github.com/KonghaYao/peri-studio/blob/main/MCPP.md)，注册 `echo` 工具，并通过 stdio 启动。`.mcp.json` 负责声明 command、args、cwd 和 `protocolVersion`，Peri 连接 server 后把它提供的工具加入当前会话。
+
+扩展到真实业务时，应该先确认工具来源，再分别定义输入 schema、权限、失败返回和生命周期。关闭本地 middleware 只改变 Peri 的装配结果，不会替远程 server 做授权，也不会自动为外部工具增加审批。
+
+## ToolSearch 如何工作
+
+ToolSearch 向模型提供两个元工具：`SearchExtraTools` 负责搜索当前 session 的延迟工具，`ExecuteExtraTool` 负责执行搜索结果中的工具。所谓延迟工具，是指工具先进入搜索索引，不直接把完整定义放进模型每次都要看到的工具列表。
+
+一次任务的执行路径可以压缩成四步：
+
+```text
+模型判断需要外部能力
+  → SearchExtraTools 搜索名称、描述和参数信息
+  → 选择结果并调用 ExecuteExtraTool
+  → 当前 session 中的真实工具执行并返回结果
+```
+
+搜索索引由当前工具视图构建，因此它不是一个全局工具目录。工具是否能被搜索，取决于它是否已经被当前 Agent 装配、是否属于延迟工具，以及当前 middleware 是否允许它进入工具视图。
+
+## 自定义 Agent 的边界
+
+用 Minimal 模式构建自定义 Agent，实际是在控制三件事：哪些能力组件被装配、哪些工具来源进入 session、模型通过什么入口发现和调用工具。长 prompt 可以补充任务说明，但不能代替工具注册、权限和失败处理。
+
+最小示例中，Agent 可以发现并调用 `echo`，而文件系统、终端和审批相关组件不会由这份配置装配。若新增一个工具来源，先为它写独立的连接和执行测试，再确认它是否应该直接暴露给模型，还是作为 deferred tool 交给 ToolSearch。
+
+因此，Minimal 模式适合作为自定义 Agent 的起点，而不是功能完整的默认配置。它把装配和扩展拆成可检查的边界：Meta Harness 决定组件是否存在，工具来源决定任务能做什么，ToolSearch 决定模型如何找到并执行这些工具。

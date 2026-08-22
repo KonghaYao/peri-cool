@@ -1,6 +1,6 @@
 ---
-title: Multi Agent 架构
-description: Peri 如何通过 SubAgent 系统实现多智能体协作——Agent 定义、派发流程、Fork 模式与后台执行。
+title: Multi Agent
+description: 说明 Peri 如何在主会话之外运行标准、Fork 和后台子代理，并梳理上下文、工具、事件与取消边界。
 date: 2026-07-28
 hero:
   image:
@@ -10,7 +10,7 @@ hero:
 
 import { Aside } from '@astrojs/starlight/components';
 
-## 概述
+## 架构位置
 
 Peri 的 Multi Agent 系统允许主 Agent 将子任务委派给专业化的 SubAgent。每个 SubAgent 是独立的 ReAct 循环实例，拥有自己的上下文窗口、工具集合和系统提示词。
 
@@ -28,18 +28,18 @@ flowchart LR
     Main -->|"最终回答"| User
 ```
 
-## Agent 定义
+## 定义子代理边界
 
 SubAgent 通过 `.claude/agents/` 目录下的 Markdown 文件定义，前导元数据声明能力边界。
 
-### 文件结构
+### 定义文件位置
 
 | 布局 | 路径 | Agent ID |
 |------|------|----------|
 | 独立文件 | `.claude/agents/code-reviewer.md` | `code-reviewer`（文件名） |
 | 目录形式 | `.claude/agents/explorer/agent.md` | `explorer`（目录名） |
 
-### 前导元数据
+### 元数据约束
 
 ```yaml
 ---
@@ -58,9 +58,9 @@ skills: []                                       # 预加载的 skills
 `tools` 为空时继承父 Agent 的全部工具。`model: inherit` 使用与主 Agent 相同的模型。
 </Aside>
 
-### 三层优先级
+### 定义覆盖顺序
 
-SubAgent 定义按优先级覆盖：
+SubAgent 定义按优先级覆盖，
 
 1. **项目级**（`{cwd}/.claude/agents/*.md`）—— 最高优先级，覆盖内置定义
 2. **内置**（编译期嵌入）—— 6 个预定义 Agent，作为 fallback
@@ -68,9 +68,9 @@ SubAgent 定义按优先级覆盖：
 
 具有相同 ID 的项目级文件**完全覆盖**内置定义，不合并。
 
-## 内置 Agent 类型
+## 复用内置执行配置
 
-Peri 当前编译期嵌入了 6 个内置 Agent，覆盖常见子任务场景：
+Peri 当前编译期嵌入了 6 个内置 Agent，覆盖常见子任务场景，
 
 | Agent | 模型 | 能力 | 适用场景 |
 |-------|------|------|----------|
@@ -85,9 +85,9 @@ Peri 当前编译期嵌入了 6 个内置 Agent，覆盖常见子任务场景：
 `coder` 和 `general-purpose` 具有 `can_mutate` 能力（Write/Edit 工具），不能并行派发——存在文件冲突风险。其余只读 Agent 可以安全并发。
 </Aside>
 
-## 派发流程
+## 派发进入独立循环
 
-主 Agent 通过 `Agent` 工具调用派发 SubAgent。`invoke()` 根据参数分为三条执行路径：
+主 Agent 通过 `Agent` 工具调用派发 SubAgent。`invoke()` 根据参数分为三条执行路径，
 
 ```mermaid
 flowchart TD
@@ -99,9 +99,9 @@ flowchart TD
     F --> G["标准 SubAgent\n独立上下文\nReAct 循环"]
 ```
 
-### 标准 SubAgent（subagent_type 指定）
+### 标准子代理
 
-最常用的派发方式。构建流程：
+最常用的派发方式。构建流程，
 
 ```mermaid
 flowchart LR
@@ -112,13 +112,13 @@ flowchart LR
     E --> F["6. 进入 ReAct 循环\n独立的 StageContext"]
 ```
 
-**中间件精简**：SubAgent 有意跳过部分中间件——GitAttribution（不需要 git 归属追踪）、AtMention（子任务上下文不需要 `@path` 解析）、Cron（独立生命周期不参与调度）、HITL（沿用父 Agent 的审批模式）。
+**中间件精简**，SubAgent 有意跳过部分中间件——GitAttribution（不需要 git 归属追踪）、AtMention（子任务上下文不需要 `@path` 解析）、Cron（独立生命周期不参与调度）、HITL（沿用父 Agent 的审批模式）。
 
-**FrozenContext 复用**：SubAgent 复用主 Agent 在 `session/new` 时捕获的项目指令和 skill 摘要快照，不重新读盘。它约束冻结输入一致；子代理自身的工具和运行期消息仍可能不同。
+**FrozenContext 复用**，SubAgent 复用主 Agent 在 `session/new` 时捕获的项目指令和 skill 摘要快照，不重新读盘。它约束冻结输入一致；子代理自身的工具和运行期消息仍可能不同。
 
-### Fork 模式（fork: true）
+### Fork 上下文
 
-Fork Agent 不是从零开始，而是**继承父 Agent 的完整对话历史**。这使它适合"在当前上下文基础上继续工作"的场景。
+Fork Agent 不是从零开始，而是**继承父 Agent 的完整对话历史**。这使它适合在当前上下文基础上继续工作的场景。
 
 ```mermaid
 flowchart TD
@@ -134,10 +134,10 @@ flowchart TD
 | **对话上下文** | 独立空上下文 | 完整继承父历史 |
 | **系统提示词** | 通过定义重建 | 复用父 FrozenContext |
 | **工具集** | 定义 + 过滤 | 继承全部（仅移除 Agent 自身） |
-| **输出格式** | 自由格式 | 结构化：Scope / Result / Key files / Files changed |
+| **输出格式** | 自由格式 | 结构化，Scope / Result / Key files / Files changed |
 | **最大轮次** | 200（可配） | 固定 200 |
 
-### 后台 Agent（run_in_background: true）
+### 后台执行
 
 后台 Agent 在独立的 tokio 任务中运行，不阻塞主 Agent。通过 `BackgroundTaskRegistry` 管理生命周期。
 
@@ -150,7 +150,7 @@ flowchart TD
     E --> F["主 Agent 在下一轮\nReceive 消费结果"]
 ```
 
-**并发限制**：
+**并发限制**，
 
 | 类型 | 限制 | 取消机制 |
 |------|------|----------|
@@ -162,14 +162,14 @@ flowchart TD
 后台 Agent 使用独立事件泵（`bg_event_sender`）——因为主 Agent 的事件通道在回合结束时关闭，后台任务的生命周期必须独立于主 Agent 的回合边界。
 </Aside>
 
-### 同步 Agent vs 后台 Agent
+### 同步与后台边界
 
-两种派发方式在架构层面差异显著，不仅是"阻塞与否"的区别：
+两种派发方式在架构层面差异显著，不仅是阻塞与否的区别，
 
 | 维度 | 同步 Agent（默认） | 后台 Agent（run_in_background: true） |
 |------|------------------|--------------------------------------|
 | **主 Agent 行为** | 阻塞等待，直到 SubAgent 完成 | 立即返回，主 Agent 继续下一轮推理 |
-| **返回值** | SubAgent 的最终回答，直接作为工具结果回传 LLM | 任务 ID（如 `"Background agent bg-xxx started"`），结果通过 MQ 异步注入 |
+| **返回值** | SubAgent 的最终回答，直接作为工具结果回传 LLM | 任务 ID（如 `Background agent bg-xxx started`），结果通过 MQ 异步注入 |
 | **取消策略** | Cascade（父取消 → 子取消） | Independent（父取消不影响子） |
 | **事件通道** | 父 Agent 的 `event_handler`（通过 `subagent_event_forwarder` 转发） | 独立 `bg_event_sender`，不受父 Agent 回合边界影响 |
 | **生命周期管理** | RAII `DeregisterGuard`（invoke 作用域退出即注销） | `BackgroundTaskRegistry` + tokio task AbortHandle |
@@ -198,7 +198,7 @@ flowchart LR
 同步 Agent 的阻塞是工具级别的——`invoke()` 内部 await `run_react_loop()` 直到完成。这意味着同步 SubAgent 内的所有工具调用事件**会实时推送到 TUI**（通过事件转发器），用户能看到 SubAgent 的执行过程。后台 Agent 的内部执行过程通过 bg_event_sender 推送，TUI 的 BgTaskArea 只显示状态概览。
 </Aside>
 
-## 生命周期
+## 运行期状态与取消
 
 SubAgent 有完整的启动 → 运行 → 停止生命周期，通过回调机制与主 Agent 联动。
 
@@ -224,14 +224,14 @@ stateDiagram-v2
 
 ### 事件序列
 
-标准 SubAgent 的事件时序：
+标准 SubAgent 的事件时序，
 
 ```
 SubagentStarted → before_agent hooks → ReAct 循环
   → SubagentStopped → lifecycle hooks → 结果回传主 Agent
 ```
 
-## TUI 渲染
+## 事件进入主界面
 
 SubAgent 在 TUI 中渲染为**可折叠的嵌套分组**（`TuiSubAgentGroup`），包含 Agent 名称、工具调用卡片和状态指示器。
 
@@ -245,13 +245,13 @@ flowchart TD
     E -->|否| G["消息区嵌套渲染\n缩进 + 前 5 工具折叠"]
 ```
 
-**渲染规则**：
-- 折叠摘要行显示 "▶ N collapsed tools"（超过 5 个工具时）
+**渲染规则**，
+- 折叠摘要行显示 ▶ N collapsed tools（超过 5 个工具时）
 - 子内容缩进 2 个空格，层级分明
 - 后台 Agent 同步显示在底部 `BgTaskArea`（完成 3 秒后自动消失）
 - 使用 `content_hash` 增量渲染，仅变更的组重绘
 
-## 关键设计决策
+## 基于会话组件的处理
 
 | 决策 | 选择 | 理由 |
 |------|------|------|
@@ -262,9 +262,9 @@ flowchart TD
 | **工具过滤三步骤** | 白名单 → 黑名单 → 移除 Agent 自身 | 安全可靠，防止递归派发 |
 | **只读 Agent 可并行** | can_mutate=false 时可并发 | 无文件冲突风险 |
 
-## 实践模式
+## 可验证的派发方式
 
-Multi Agent 在 Peri 内部被广泛使用，以下是典型编排模式：
+Multi Agent 在 Peri 内部被广泛使用，以下是典型编排模式，
 
 | 模式 | 流程 | 适用场景 |
 |------|------|----------|
@@ -282,7 +282,7 @@ flowchart LR
     end
 ```
 
-## 更多资源
+## 限制与边界
 
 - [Agent Loop](/peri-cool/posts/engineering/agent-loop/) — 每个 SubAgent 内部运行的 ReAct 循环引擎
 - [System Prompt 设计](/peri-cool/posts/engineering/system-prompt/) — FrozenContext 的静态/动态分离策略

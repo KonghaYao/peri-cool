@@ -1,6 +1,6 @@
 ---
 title: MCP 支持
-description: 从 peri-middlewares 的 MCP 接入拆解连接生命周期、Deferred 工具发现、OAuth 授权与失败边界——机制怎么走，边界在哪里。
+description: 从配置合并到工具执行，了解 Peri 如何接入 MCP server、延迟发现工具，并处理连接失败与 OAuth 授权。
 date: 2026-08-16
 hero:
   image:
@@ -8,141 +8,34 @@ hero:
     alt: 开门之路
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+MCP 在 Peri 架构中的位置是外部能力接入层。它不负责 Agent 的推理循环，也不决定某个工具是否应该执行；它负责把 server 配置转换成连接，把连接上的工具和资源转换成当前 session 可以使用的能力。
 
-## 现象：服务器连上了，工具还是搜不到
+Peri 在 `peri-middlewares` 中维护 `McpClientPool`。配置合并后形成冻结的 server 配置，连接句柄保存工具、资源和状态快照，运行中的 service 负责传输。TUI、print 和 stdio 入口共用这套装配结果，因此连接生命周期不会因入口不同而复制一份。
 
-在使用 MCP 时最典型的困惑是：`.mcp.json` 里配置了 server，`/mcp` 面板也显示连接成功，但模型就是不调用对应工具；或者上一个会话还能用的工具，这个会话搜不到了。
+## MCP 在 Agent 链路中的位置
 
-这两个现象都不是随机故障。MCP 工具在 Peri 里属于 deferred 工具——它们不常驻模型的工具表，是否可用取决于**这个会话里连接是否建立、工具是否完成了发现**。而连接建立和工具发现都发生在进程启动到首个 turn 之间，结果只会以"当时的状态"进入上下文，之后不会再自动重试。所以排查的顺序应当是：先看连接状态，再看工具注册源，最后才是配置本身。下文从机制上拆这条链路。
+一次工具调用至少经过三层：MCP client 与 server 通信，MCP middleware 建立本地工具 bridge，Agent loop 决定是否调用以及如何处理结果。这样分层后，server 的连接失败不会被伪装成模型错误，模型没有选择某个工具也不会被误判为 MCP 连接失败。
 
-## 归因一：MCP 工具的定位是 Deferred，而不是常驻
+工具发现和工具执行是两个阶段。连接初始化时 Peri 取得工具列表，随后根据 direct/deferred 属性决定工具如何进入当前工具视图。延迟工具由 ToolSearch 提供搜索和执行入口，模型先找到工具，再通过 `ExecuteExtraTool` 调用实际 bridge。
 
-Peri 的工具分发分为三层（见 [Agent Loop](/peri-cool/posts/engineering/agent-loop/) 的"工具分发三层"）：Core 工具直接发给模型，Deferred 工具（Cron、MCP、LSP、Workflow、Plugin 条件工具）不进入常驻工具表，由模型先搜索再调用。Meta 层的 `SearchExtraTools` / `ExecuteExtraTool` 是这个延迟加载的入口。
+## 配置如何变成连接
 
-MCP 放在 Deferred 层有三个直接原因：
+MCP 配置来自全局、项目和插件等来源，Peri 在装配阶段完成合并，并保留 server 名称、类型、启动参数、环境和认证配置。stdio server 由本地命令启动；streamable HTTP server 则通过 URL 建立远程连接。
 
-- **配置了不代表可用**：server 可能启动失败、认证未完成、或者连接在会话中失效。把未连接的工具塞进模型上下文，模型会尝试调用一个必然失败的工具。
-- **上下文预算**：每个 MCP server 可以声明几十上百个工具，全量常驻会让工具表膨胀，直接磨损 prompt cache。搜索按需注入只带来匹配工具的少量 token。
-- **安全边界**：第三方工具指令本不可信（见下文的失败与权限链），让模型"先搜再调"比"开局全给"更可控。
+连接建立包含 transport 初始化、协议握手、能力协商和工具/资源发现。启动超时、握手失败、server 退出和 OAuth 未完成会分别记录状态；连接池不会因为一个 server 失败而丢弃其他 server 的结果。
 
-工具在发现层有一个统一命名：`mcp__<server>__<tool>`（服务名与工具名会经过清洗，不符合 `[a-zA-Z0-9_-]` 的字符替换为下划线）。插件提供的 server 名形如 `plugin:{插件}:{server}`，出现在命名里就是 `mcp__plugin_<插件>_<server>__<tool>`。
+## MCP 之上的两点处理
 
-除了通用搜索，McpMiddleware 还注入了一个 MCP 域专用的只读查询工具 `DiscoverMCP`：它只读 client pool 的快照（server 列表、连接状态、OAuth 状态、工具元数据、资源），不执行任何工具调用。搜索默认返回最多 5 条、上限 20 条，参数错误有固定的错误码契约。排障时用它核对"服务端声明的工具到底被发现了没有"，比猜模型为什么不用更直接。
+MCP 规定了工具和资源的交换方式，但没有替 Peri 解决两个宿主问题：怎样控制模型当前可见的工具数量，以及怎样把授权和连接失败放进会话状态。Peri 用 middleware 装配和 ToolSearch 处理前者，用独立的连接状态与 OAuth 流程处理后者。
 
-## 连接生命周期：client pool 与初始化握手
+这意味着“配置里有 server”不等于“模型现在能调用工具”。至少还要满足连接成功、工具列表取得、工具被当前 middleware 注册，以及模型通过直接工具或 ToolSearch 选中它。
 
-### 配置在三处来源中合并、在启动时冻结
+## 失败边界
 
-MCP 配置来自三个来源，合并顺序是 global → plugin → project：全局 `~/.peri/settings.json`、已启用插件的 manifest、项目根目录 `.mcp.json`。两条合并规则决定了大量现象：
+普通 MCP 连接失败只影响对应 server。OAuth server 可能先进入等待授权状态，完成授权后再建立连接；如果授权、回调或凭据读取失败，工具不会被注册为可调用能力。
 
-- **项目覆盖全局是整项替换，不做字段级合并**：同名 server 时项目定义整个盖掉全局定义，想"只改一个字段保留其余"会失败。
-- **插件 server 与手动配置内容相同的会被去重**：去重按 command+args+env 的内容 hash 判定，插件 server 进入合并表前要先通过这道检查。
+订阅是连接后的可选能力，不是普通工具调用的前置条件。资源更新可以使资源缓存失效，并向注册 session 发送待处理消息；工具列表或资源列表变化主要使对应缓存失效，后续请求再决定是否回源。订阅流的异常恢复也不等于普通 MCP 连接自动重连。
 
-配置在启动会话宿主时读取一次并冻结在 client pool 里。当前没有配置文件监听或用户可用的热重载入口——修改 `.mcp.json` 或全局 settings 后需要重启 Peri，再在 `/mcp` 面板核对。
+## 这层设计带来的结果
 
-所有字符串字段支持 `${VAR}` 环境变量展开（插件来源额外支持 `CLAUDE_PLUGIN_ROOT`、`CLAUDE_PLUGIN_DATA` 与 `user_config.*` 上下文）。展开发生在连接开始前；变量未设置时替换为空字符串并打印警告——这是"stdio 命令明明单独跑能行，Peri 里却启动失败"的常见归因：检查启动 Peri 的进程环境，而不是文件里写了什么。
-
-### 连接只建立一次，失败就带着原因进入会话
-
-`McpClientPool` 持有三类状态：`configs`（冻结的合并配置）、`clients`（每个 server 的句柄，含工具/资源快照与状态）、`services`（运行中的连接本体）。整个池（连同 `McpMiddleware` 等中间件）在 `peri-acp/src/host/assemble.rs` 的装配面内部构造——TUI、print、stdio 三条路径共用这一份，不各自复制（见 [ACP 协议的设计](/peri-cool/posts/engineering/acp-positioning/) 的"装配统一"）。
-
-`run_initialize` 按配置逐台处理，每台单独走一遍：构建传输 → 带超时握手 → 成功后立刻 `list_all_tools` + `list_all_resources`，把快照缓存进句柄。这一轮是**串行**的，每台失败 server 的等待时间受各自的连接超时上界约束（stdio 10 秒、HTTP 30 秒），server 数量多时初始化时间随之线性增长——具体秒数没有实测数据，但排障时"启动变慢"先想到这一条。
-
-初始化结束时收敛成两个状态之一：
-
-- 有失败且非全待授权：`Failed`，错误信息列出失败的 server 名与原因；
-- 有连接成功（或全部待授权）：`Ready`，记录连接数。
-
-注意这里有个容易误读的细节：**所有 server 都标记为待授权时，初始化直接以 `Ready(0)` 收尾，不按失败处理**——`/mcp` 面板会显示 `NeedsAuthorization`，这是"需要你去完成 OAuth"，不是"服务挂了"。
-
-初始化完成前发生的状态变化不产生上下线通知：初始连接的结果统一由首个 turn 的连接概览注入（见下一节），避免概览与逐台上线事件重复。会话中途的重连走 `reconnect`（关闭旧连接、终止旧订阅循环、按冻结配置重建、重新做工具发现、再补记一条状态变化），但它是被显式流程（如 OAuth 完成）触发的，不是无人值守的自动重连守护——对普通断连，规范的恢复手段是重启进程重新装配。
-
-## 传输抽象：stdio 与 streamable HTTP
-
-传输类型由配置推导，而不是显式选择：
-
-| 配置 | 传输 | 备注 |
-| --- | --- | --- |
-| 含 `command` | stdio | `args`、`env` 可选 |
-| 不含 `command`、含 `url` | streamable HTTP | `headers`、`oauth` 可选 |
-| 两者都没有 | 配置无效 | 初始化即失败 |
-
-`command` 与 `url` 同时提供时，优先 stdio。
-
-stdio 是把 `command` 作为子进程拉起，以当前用户权限运行，通过 stdin/stdout 走 MCP 帧。它的生命周期跟随连接：连接关闭时子进程随之结束。单独在终端跑一遍同样的命令，可以复现出可执行文件、参数、环境变量层面的问题，是排查 stdio 连接失败的第一步。
-
-streamable HTTP 走 POST 请求，支持自定义 header 与可选的 OAuth。它的超时（30 秒）比 stdio（10 秒）宽，因为握手包含网络往返。若服务器返回认证要求（HTTP 401 一类），连接阶段不会主动走授权，而是把状态标记为 `NeedsAuthorization`，等用户在 `/mcp` 面板显式发起。
-
-一个少见但值钱的握手分支：配置里写了 `subscriptions` 时，握手协商 2026-07-28 协议（`Auto` 模式先尝试新协议，服务端不支持时回退 legacy 握手），用于资源订阅长流；没写就维持普通握手。`subscriptions` 属于高级能力，日常配置用不到。
-
-## 工具与资源进入模型上下文
-
-中间件的 `collect_tools` 把所有**已连接** server 的工具包装成 bridge，连同 DiscoverMCP、资源工具一起交给工具注册表；其中的 deferred 部分构建进搜索索引。这是"机制上正确、结果上滞后"的一环：搜索索引能搜到什么，取决于发现那一刻连接是否健康。
-
-每个 turn 开始（`before_model`）会冲刷状态变化缓冲：初始化完成后记录的状态变化（上线、下线、失败，带原因和工具数）以 Info 消息注入模型上下文，同时经由装配时注入的 notifier 发成 TUI 通知。全局缓冲任何会话消费一次即清空。
-
-**首个 turn 会注入一份连接概览**（由 `first_turn_reminder` 在首轮组装前生成）。没有任何已配置 server 时不注入（零噪音）。有配置时概览是这样一段文本：
-
-```text
-MCP: 1 connected, 1 failed, 1 disabled
-- github (connected, 3 tools)
-- chrome (failed: transport closed)
-- legacy (disabled)
-
-MCP 工具经 tool search 发现并调用（格式 mcp__<server>__<tool>）。
-```
-
-演示示例，不是真实会话——行格式取自 `middleware_test.rs` 的断言，server 名是测试夹具。真实会话里连接失败的原因来自握手错误文本，可能更长。
-
-概览包含一个配套提示：MCP 工具要经 tool search 发现并调用。这个 tool search 用法提示也出现在运行期变化推送的首条中，**每个会话实例恰好一次**（用原子标记防重），避免每轮都重复占 token。
-
-`ExecuteExtraTool` 派发到 bridge 后调用 `peer.call_tool()`，单次调用超时 120 秒；句柄 `peer` 缺失（未连接/已断开）时返回 `NotConnected` 错误，而不是把调用发给一个不存在的连接。所以"连上了才搜得到"的推论反过来说也成立：**连接断了以后，即使模型还握着工具名，调用也会失败**——报错语义明确，但这轮尝试的 token 已经花掉了。
-
-MCP 资源走 `mcp_read_resource` 读取；server 声明 Skills 扩展（SEP-2640，`skills/list` + digest + frontmatter 全量比对）时技能按规范路径异步发现，旧 server 回退 `skill://` 资源扫描。技能发现是**异步且静默**的：不阻塞连接初始化与首个 turn，失败只写告警日志，不影响连接本身。配置了 `subscriptions` 的 server 建立 `subscriptions/listen` 长流后，资源更新通知会以 Defer 消息唤醒空闲的 agent——这是 MCP 事件进会话的路，普通对话一般不经过。
-
-## OAuth 授权：启动不弹窗，按需显式发起
-
-HTTP server 配置了 `oauth.enabled` 时的工程处理有一个关键决策：**启动阶段不主动触发授权**（避免一开 Peri 就弹浏览器打扰）。没有有效凭证的 server 统一标记 `NeedsAuthorization`，由用户在 `/mcp` 面板点击入口发起。全部待授权时初始化按 `Ready(0)` 收尾，前面已经说过。
-
-面板的授权入口经 `mcp/oauth_start` RPC 触发授权流程，流程编排是：
-
-1. 先在启动该 server 前确认本地已保存的凭证；有则先走"恢复凭证 → 连接"的快速路径，验证失败（401）才继续。
-2. 走 DCR（动态客户端注册）+ PKCE，在 `127.0.0.1` 随机端口起一个本地回调服务器，重定向 URI 是 `http://127.0.0.1:<端口>/callback`；回调等待超时 120 秒。
-3. OAuth 的 `state` 参数在 token 交换阶段由协议层校验（state 一次性使用）——本地回调服务器只负责解析 URL 里的 `code` 和 `state`，不持有任何 secret。
-4. 授权成功后用拿到的 `AuthorizationManager` 重建认证传输层、重新连接并做工具发现；同时提供一个手动粘贴授权码的兜底入口。
-
-每个 server 同一时间只允许一个活跃的授权流程（按 flow identity 预留），防止重复点击或 Ack 重试造成两个并发浏览器流程。授权事件（需要授权、完成、失败、取消、凭证恢复）经装配面转发为 ACP 通知；凭证统一落在磁盘上的凭证存储，host 池与面板池共享这一份，授权完成后任何一边都能靠恢复路径接入。授权失败被分类成有限几类（回调不可用、回调超时、提供商拒绝、连接失败、内部错误），错误详情只留在进程诊断里。
-
-## /mcp 面板的边界
-
-`/mcp` 是状态视图：初始化阶段、连接数、每台 server 的状态、传输方式、工具数、OAuth 状态、配置来源。它**不是配置编辑器**——增删改 server 仍旧编辑 `.mcp.json` 或 settings.json 再重启；面板也没有面向任意 server 的通用"重新连接"按钮，`reconnect` 只被 OAuth 流程等显式路径使用。排障时把"重启进程重新装配"当成规范手段，不要指望在面板里点出健康状态。
-
-顺带一提，面板栏目的数据来自 client 表与 config 表的合并：config 里存在但 client 表里没有的 server 会显示为 `uninitialized`——这是"连接失败后被移除 / 重启前新增配置"这类场景的表现，不是 bug。
-
-## 失败与权限链的边界
-
-| 环节 | 失败表现 | 归因 / 处理 |
-| --- | --- | --- |
-| 配置解析 | server 整个消失或初始化报错 | JSON 语法、`command`/`url` 至少其一 |
-| 环境变量 | 字符串被替换为空 + 日志警告 | 未设置的 `${VAR}`；查启动进程的环境 |
-| stdio 启动 | server 状态 `failed`，错误文本含命令 | 在同一终端单独跑该命令复现 |
-| HTTP 握手 | `failed` 或 `NeedsAuthorization`（401） | URL、代理、证书、header、OAuth 状态 |
-| 运行中断连 | 工具调用返回 `NotConnected` | 重启重新装配；不要假设旧工具仍可执行 |
-
-安全边界三句话：
-
-- **stdio server 以当前用户权限运行**——它能访问什么取决于该进程与操作系统权限，加不加密都不改变这一点。
-- **远程 HTTP 返回内容是不可信输入**——可能包含 prompt injection，把它当任意第三方文本处理。订阅通知字段注入会被 XML 转义防护，但这是对结构注入的防御，不是对内容恶意的防御。
-- **MCP 工具仍受权限模式影响，但审批不是操作系统沙箱**——授权通过不代表能力被隔离。
-
-<Aside type="note">
-  最后是对性能型数字的态度：工具索引的构建/查询成本、大工具集下的搜索精度、OAuth 全流程耗时、初始化耗时，这些**没有实测数据**。本文出现的数字（stdio 10 秒、HTTP 30 秒、工具调用 120 秒、回调等待 120 秒、搜索默认 5 条上限 20 条、订阅重试 3 次退避 1/2/4 秒）都直接来自源码里的常量或表达式，可溯源；其余涉及"多快、多准、多大"的结论，在本地实测前不要写进你的判断。
-</Aside>
-
-## 下一步
-
-- [Agent Loop](/peri-cool/posts/engineering/agent-loop/)——工具分发三层与 Deferred 工具按需发现的上下文。
-- [ACP 协议的设计](/peri-cool/posts/engineering/acp-positioning/)——client pool 在宿主装配面内部构造的出处。
-- [Hook 与 Middleware](/peri-cool/posts/engineering/hook-middleware-overview/)——中间件机制，MCP 状态注入模型上下文经过的通道。
-- [MCP 配置指南](/peri-cool/docs/features/mcp/)——三层合并规则、传输配置与排障步骤的操作指引。
+MCP server 只需要遵守协议并提供工具，Peri 负责把它放进统一的 Agent 装配和会话生命周期。用户因此可以分别检查配置、连接、工具注册和实际调用，而不必把所有问题归结为“模型没有用工具”。

@@ -1,0 +1,43 @@
+---
+title: MCPP Skills
+description: 让 MCP server 直接提供远程 Skill，避免维护工作区副本；本文说明 Skill 的发现、校验、注册和连接断开边界。
+date: 2026-08-22
+hero:
+  image:
+    file: ../../../assets/img_books_and_stairs_s18.png
+    alt: 书本与阶梯
+---
+
+[MCPP Skills](https://github.com/KonghaYao/peri-studio/blob/main/MCPP.md) 在 Peri 架构中的位置是远程 Skill 适配层。它把 MCP server 发布的 Skill 条目转换成当前 session 的 Skill registry，使 Agent 可以使用远程操作说明，同时保留本地 Skill 路径作为另一种来源。
+
+本地 Skill 以目录和文件为来源，远程 Skill 以 MCP 条目和资源为来源。两者最后进入相同的 Skill 注册和命令投影流程，但远程内容由连接、资源读取和校验状态决定，不等同于安装了一个本地目录。
+
+## 它解决什么问题
+
+把远程 Skill 复制到本地后，项目需要处理下载、更新、权限和版本同步。副本可能落后于 server 发布的条目，也可能被工作区中的其他文件覆盖；删除副本还需要额外的生命周期管理。
+
+MCPP Skills 将这部分同步关系交给 MCP server 和客户端协议。server 发布条目和资源绑定，Peri 在发现阶段读取并校验主文件，再将元数据和来源注册到当前 session；不会把远程 Skill 复制成工作区目录。
+
+## Skill 如何被发现和校验
+
+Peri 通过 Skill 列表取得远程条目。条目包含 URI、完整 frontmatter，并可以包含资源清单；如果显式提供资源清单，它必须完整并包含主 `SKILL.md`，空数组或部分清单会被拒绝。
+
+发现条目后，Peri 通过资源读取取得主文件，校验资源 URI、digest（内容哈希）和 frontmatter。frontmatter 不是只比较名称和描述，而是检查条目的字段集合和值是否与读取到的文件一致；校验失败时不会把条目注册成可用 Skill。
+
+## 失败后如何处理
+
+digest 过期等表示条目可能已变化的情况，可以通过 `skills/get` 刷新条目，再按新的 URI 和资源声明重新读取。URI 不一致、资源不是文本、资源清单不完整或 frontmatter 不匹配，不会被笼统地当作可恢复的网络刷新。
+
+远程 Skill 的主文件读取发生在发现和注册阶段，附属资源可以在实际需要时再读取。读取内容可能进入客户端缓存，但这和在工作区生成一个需要手动维护的 Skill 目录是两件事。
+
+## 基于 MCP 做了什么处理
+
+MCP 原本提供工具、资源和请求响应；MCPP Skills 约定了 Skill 条目的发布方式，以及条目与 `skill://` 资源之间的绑定关系。Peri 再把这些资源转换为本地 Skill middleware 可以使用的 metadata、registry 和命令投影。
+
+这层适配让 server 负责内容版本和发布，Peri 负责来源核对、内容校验、会话注册和断连清理。连接断开后，远程条目不应被当作永久存在的本地 Skill；重连路径会重新发现并注册可用条目。
+
+## 实际收益与限制
+
+团队可以在远程 server 维护一份 Skill 内容，客户端按连接读取并校验，减少工作区副本和手动同步。更新是否立即可见取决于连接是否重建、缓存是否失效以及 server 是否返回新的条目。
+
+这种方式依赖 MCP 连接和远程资源可读性。网络不可用、授权失效、资源校验失败或 server 下线时，远程 Skill 可能无法注册；对离线仍必须可用的操作说明，应继续使用本地 Skill 或经过验证的缓存策略。

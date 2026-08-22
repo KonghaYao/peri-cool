@@ -1,6 +1,6 @@
 ---
 title: Agent Loop
-description: Peri 的核心执行引擎——四阶段 RCRA 循环如何驱动 Agent 推理、工具调用和上下文管理。
+description: 说明 RCRA 四阶段循环如何接收消息、压缩上下文、调用模型和提交工具结果，以及循环退出与失败处理条件。
 date: 2026-07-28
 hero:
   image:
@@ -10,9 +10,9 @@ hero:
 
 import { Aside } from '@astrojs/starlight/components';
 
-## 概述
+## 架构位置
 
-Agent Loop 是 Peri Agent 的核心执行模式。Agent 在循环中交替进行"思考"与"行动"——调用 LLM 推理下一步该做什么，然后分发工具执行，直到任务完成或触发上限。
+Agent Loop 是 Peri Agent 的核心执行模式。Agent 在循环中交替进行思考与行动——调用 LLM 推理下一步该做什么，然后分发工具执行，直到任务完成或触发上限。
 
 ```text
 before_agent → loop(500 次):
@@ -22,10 +22,10 @@ before_agent → loop(500 次):
      Receive 空队列 + 无 tool_calls + 无 idle → 退出
 ```
 
-- **入口**：`run_react_loop(context: StageContext, max_iterations: usize)`（`peri-agent/src/agent/stages/mod.rs`）
-- **上限**：500 轮迭代，防止死循环
-- **退出条件**：Receive 阶段发现队列空、上一轮无工具调用、且无 idle 等待任务时退出。有 tool_calls 时继续循环——工具调用结果写入 transcript 而非队列，下一轮 Receive 通过 `has_tool_calls` 标记识别，继续让 LLM 处理工具结果。
-- **RCRA 设计**：2026-07-27 从五阶段 CRRAE 简化为四阶段——Receive 合并了 End 的退出判断逻辑，Compact 移到 Receive 之后使预算判断基于完整消息集。
+- **入口**，`run_react_loop(context: StageContext, max_iterations: usize)`（`peri-agent/src/agent/stages/mod.rs`）
+- **上限**，500 轮迭代，防止死循环
+- **退出条件**，Receive 阶段发现队列空、上一轮无工具调用、且无 idle 等待任务时退出。有 tool_calls 时继续循环——工具调用结果写入 transcript 而非队列，下一轮 Receive 通过 `has_tool_calls` 标记识别，继续让 LLM 处理工具结果。
+- **RCRA 设计**，2026-07-27 从五阶段 CRRAE 简化为四阶段——Receive 合并了 End 的退出判断逻辑，Compact 移到 Receive 之后使预算判断基于完整消息集。
 
 ### 状态机总览
 
@@ -51,9 +51,9 @@ stateDiagram-v2
     Receive --> [*] : 队列空 + 无 tool_calls + 无 idle
 ```
 
-## 四阶段详解
+## 四阶段推进执行
 
-### Receive — 消息接收 + 退出判断（循环入口）
+### 接收消息与判断退出
 
 Receive 是循环入口和唯一消息消费点。调用 `drain_all()` 一次性消费队列中全部消息（Prompt + Info + Defer），写入 Transcript。同时承担退出判断逻辑——队列空时检查是否该退出循环。
 
@@ -72,7 +72,7 @@ flowchart TD
     G -->|false| I[退出循环]
 ```
 
-**三种消息消费语义**：
+**三种消息消费语义**，
 
 | 类别 | 消费阶段 | 唤醒循环 |
 |------|---------|:---:|
@@ -80,22 +80,22 @@ flowchart TD
 | **Defer** | Receive（drain_all） | ✓ |
 | **Info** | Receive（drain_all） | ✗ |
 
-**退出条件三条**（缺一不可）：
+**退出条件三条**（缺一不可），
 1. `consumed_count == 0` —— 队列空
 2. `!has_tool_calls` —— 上一轮无工具调用（工具结果在 transcript 而非队列，consumed=0 是正常状态）
 3. 无 idle 等待任务 —— `idle_should_wait` 探针返回 false
 
-**竞态保护**：退出前通过 `has_wake_up()` 再查一次队列。若退出判断期间有新消息到达，跳过退出继续循环。
+**竞态保护**，退出前通过 `has_wake_up()` 再查一次队列。若退出判断期间有新消息到达，跳过退出继续循环。
 
-**SyntheticUserMessage**：Defer 写入 transcript 前同步 emit，让 TUI bridge 刷新 committed 视图——消除 agent 状态与 UI 的时序竞争。
+**SyntheticUserMessage**，Defer 写入 transcript 前同步 emit，让 TUI bridge 刷新 committed 视图——消除 agent 状态与 UI 的时序竞争。
 
-**idle_should_wait 探针**：检查 `active_count > 0`（未完成子代理/后台任务数）。TUI 模式返回 `Some` → await_wake 阻塞等待；stdio/print 模式返回 `None` → 直接退出。
+**idle_should_wait 探针**，检查 `active_count > 0`（未完成子代理/后台任务数）。TUI 模式返回 `Some` → await_wake 阻塞等待；stdio/print 模式返回 `None` → 直接退出。
 
-### Compact — 上下文压缩
+### 压缩模型可见历史
 
 在 Receive 之后执行——先拉入新消息再压缩，预算判断基于完整消息集，更准确。
 
-Compact 根据 budget 分级触发，两级策略全覆盖：
+Compact 根据 budget 分级触发，两级策略全覆盖，
 
 ```mermaid
 flowchart TD
@@ -113,15 +113,15 @@ flowchart TD
     F --> H["LLM 生成摘要\n旧消息标 excluded\n追加摘要 + re-inject 文件/skills"]
 ```
 
-**环境变量**：`DISABLE_COMPACT` / `DISABLE_AUTO_COMPACT` 禁用自动压缩，手动触发通过 slash command `/compact`。
+**环境变量**，`DISABLE_COMPACT` / `DISABLE_AUTO_COMPACT` 禁用自动压缩，手动触发通过 slash command `/compact`。
 
-**中间件**：`before_compact` → compact 执行 → `after_compact`
+**中间件**，`before_compact` → compact 执行 → `after_compact`
 
-#### Micro Compact：零 LLM 调用的智能截断
+#### 局部截断
 
 Micro Compact 是 budget 在 0.75~0.95 的主策略，不调用 LLM，仅标记消息的 `truncated` flag，零 token 开销。
 
-**决策引擎 `plan_micro()`** 按 TurnGroup（以 Human 消息为边界）逐轮扫描：
+**决策引擎 `plan_micro()`** 按 TurnGroup（以 Human 消息为边界）逐轮扫描，
 
 ```mermaid
 flowchart TD
@@ -138,7 +138,7 @@ flowchart TD
     I -->|否| K["标记 truncated\n工具输入 → CompactToolInput\n工具结果 → CompactToolResult\n保留前 2000 + 尾 200 字符"]
 ```
 
-**关键设计决策**：
+**关键设计决策**，
 
 | 维度 | 做法 | 理由 |
 |------|------|------|
@@ -148,11 +148,11 @@ flowchart TD
 | **受保护工具** | AskUserQuestion / goal / TodoWrite | 用户答案不可恢复，长期目标状态不可丢失 |
 | **skip_existing_truncated** | Compact 阶段 `true`，Reason 阶段 `false` | Compact 阶段避免重复标记；Reason 阶段需为已标记消息生成完整投影供 LLM 查看 |
 
-**投影渲染**：Reason 阶段 `render_llm_view` 读取 `truncated` flag + projection plan，将截断后内容渲染为 LLM 可见视图——原始 transcript 内容不变，flag 独立持久化。
+**投影渲染**，Reason 阶段 `render_llm_view` 读取 `truncated` flag + projection plan，将截断后内容渲染为 LLM 可见视图——原始 transcript 内容不变，flag 独立持久化。
 
-**递进机制**：估算回收 token 不足且 budget ≥ 0.95 → 升级为 Full Compact。不足但未达 0.95 → 应用 Micro（部分收益也好）。
+**递进机制**，估算回收 token 不足且 budget ≥ 0.95 → 升级为 Full Compact。不足但未达 0.95 → 应用 Micro（部分收益也好）。
 
-#### Full Compact：LLM 摘要与重新注入
+#### 摘要与重新注入
 
 budget ≥ 0.95 或 Micro 回收不足时触发。调用独立 LLM 生成结构化摘要，旧消息标 `excluded`，摘要以 Human 消息注入 transcript。
 
@@ -169,28 +169,28 @@ flowchart TD
     H --> I
 ```
 
-**摘要结构**：LLM 生成的摘要包含任务进度、关键决策、下一步方向。摘要消息以 `CONTINUATION_HINT` 结尾（`"[Context has been compacted. Continue working based on the summary above.]"`），提示 agent 上下文已被压缩。
+**摘要结构**，LLM 生成的摘要包含任务进度、关键决策、下一步方向。摘要消息以 `CONTINUATION_HINT` 结尾（`[Context has been compacted. Continue working based on the summary above.]`），提示 agent 上下文已被压缩。
 
-**Re-inject 机制**：Full Compact 销毁了所有旧消息上下文，但关键文件和技能定义需要被重新注入——这些是 agent 继续工作所需的环境知识。
+**Re-inject 机制**，Full Compact 销毁了所有旧消息上下文，但关键文件和技能定义需要被重新注入——这些是 agent 继续工作所需的环境知识。
 
 | 注入项 | 预算 | 机制 |
 |--------|------|------|
 | **关键文件** | 最多 5 文件，各 5000 tokens，总额 25000 tokens | 从旧消息提取 `Read`/`Write`/`Edit` 操作过的文件路径 |
 | **Skills** | 总额 25000 tokens | 从旧消息提取 skill 加载记录 |
 
-**防死循环**：`max_consecutive_failures` 默认 3——连续 3 次 Full Compact 失败后降级跳过，不阻止 agent 继续工作。
+**防死循环**，`max_consecutive_failures` 默认 3——连续 3 次 Full Compact 失败后降级跳过，不阻止 agent 继续工作。
 
-**无 LLM 降级**：若 LLM 不可用，Full Compact 降级为 Micro Compact（只标记 truncated，不生成摘要）。
+**无 LLM 降级**，若 LLM 不可用，Full Compact 降级为 Micro Compact（只标记 truncated，不生成摘要）。
 
-### Reason — LLM 推理
+### 生成下一步动作
 
-将消息历史发送给 LLM，获取推理结果。核心流程：`before_model` 中间件 → `LLM.generate_reasoning`（与 cancel token 竞争）→ `after_model` 中间件。
+将消息历史发送给 LLM，获取推理结果。核心流程，`before_model` 中间件 → `LLM.generate_reasoning`（与 cancel token 竞争）→ `after_model` 中间件。
 
-**Projection 视图**：发送前通过 `render_llm_view` 将 compact plan 投影应用到消息列表——LLM 看到的已是压缩后视图。**流式桥接**：`StreamingEventBridge` 将 SSE 文本/thinking 块桥接到 EventBus，实时推送 TUI。
+**Projection 视图**，发送前通过 `render_llm_view` 将 compact plan 投影应用到消息列表——LLM 看到的已是压缩后视图。**流式桥接**，`StreamingEventBridge` 将 SSE 文本/thinking 块桥接到 EventBus，实时推送 TUI。
 
-### Act — 工具执行
+### 执行工具调用
 
-根据 Reason 结果分发：有 tool_calls 进入工具执行路径，否则产出最终回答。无论哪种路径，统一返回循环顶部 Receive。
+根据 Reason 结果分发，有 tool_calls 进入工具执行路径，否则产出最终回答。无论哪种路径，统一返回循环顶部 Receive。
 
 ```mermaid
 flowchart TD
@@ -207,23 +207,23 @@ flowchart TD
     I --> J["has_tool_calls=false ──> 回 Receive（由 Receive 判断退出）"]
 ```
 
-**关键不变式**：
+**关键不变式**，
 
-- **延迟写入**：工具调用消息在 dispatch_tools 内部统一写入 transcript——before_tool/after_tool 期间 transcript 不含本轮 AI 消息
-- **deferred_error**：多工具并发不在中途返回，先收集所有错误再统一写入
-- **error_suggest**：在 after_tool 之后、写 transcript 之前注入修复建议
+- **延迟写入**，工具调用消息在 dispatch_tools 内部统一写入 transcript——before_tool/after_tool 期间 transcript 不含本轮 AI 消息
+- **deferred_error**，多工具并发不在中途返回，先收集所有错误再统一写入
+- **error_suggest**，在 after_tool 之后、写 transcript 之前注入修复建议
 
-**连续失败追踪**：`consecutive_failures` 原子计数器，达到 5 次时通过 StateSnapshot 通知消费方。
+**连续失败追踪**，`consecutive_failures` 原子计数器，达到 5 次时通过 StateSnapshot 通知消费方。
 
-**中间件**：`before_tools_batch` → 并发执行 → `after_tool`（逐条） → `after_tools_batch` / `after_agent`（回答路径）
+**中间件**，`before_tools_batch` → 并发执行 → `after_tool`（逐条） → `after_tools_batch` / `after_agent`（回答路径）
 
 <Aside type="note">
-  <strong>Receive 是唯一退出点</strong>：RCRA 重构后，Receive 合并了 End 的退出判断——Act 无论产出工具调用还是最终回答，都统一回 Receive。Receive 通过 <code>consumed_count == 0 &amp;&amp; !has_tool_calls</code> 三重条件判断是否退出。
+  <strong>Receive 是唯一退出点</strong>，RCRA 重构后，Receive 合并了 End 的退出判断——Act 无论产出工具调用还是最终回答，都统一回 Receive。Receive 通过 <code>consumed_count == 0 &amp;&amp; !has_tool_calls</code> 三重条件判断是否退出。
 </Aside>
 
-### 退出逻辑（Receive 内）
+### 在接收阶段退出
 
-RCRA 中无独立 End 阶段。退出判断发生在 Receive 顶部，三条路：
+RCRA 中无独立 End 阶段。退出判断发生在 Receive 顶部，三条路，
 
 ```mermaid
 flowchart TD
@@ -236,11 +236,11 @@ flowchart TD
     E -->|false| G[退出循环]
 ```
 
-**`has_tool_calls` 保护**：工具调用结果写入 transcript 而非队列——下一轮 Receive `consumed_count==0` 是正常状态。`has_tool_calls` 标记确保多步工具链（如 Read → Edit）不被误判退出。
+**`has_tool_calls` 保护**，工具调用结果写入 transcript 而非队列——下一轮 Receive `consumed_count==0` 是正常状态。`has_tool_calls` 标记确保多步工具链（如 Read → Edit）不被误判退出。
 
-## 工具分发三层
+## 分层查找工具
 
-Peri 采用 **三层工具分发架构**，核心思路是"常用工具始终可见，生僻工具按需加载"——减少发给 LLM 的工具列表体积，保护 prompt cache。
+Peri 采用 **三层工具分发架构**，核心思路是常用工具始终可见，生僻工具按需加载——减少发给 LLM 的工具列表体积，保护 prompt cache。
 
 | 层级 | 代表工具 | 可见性 |
 |------|------|--------|
@@ -252,9 +252,9 @@ Peri 采用 **三层工具分发架构**，核心思路是"常用工具始终可
 - **Meta 工具**是延迟加载代理——LLM 先调用 `SearchExtraTools` 搜索，再用 `ExecuteExtraTool` 代理执行
 - **Deferred 工具**按需注册——MCP 连接、Cron 注册、Workflow 启动时动态挂载
 
-## 中间件桥接
+## 复用中间件生命周期
 
-v2 `StageContext` 与 v1 `MiddlewareChain` 通过 `AgentContext` 桥接：每个 hook 调用时从 StageContext 构造临时 `AgentContext`，middleware 双写 transcript + cache，调用后 drain recall 到 `ctx.recall_buffer`。
+v2 `StageContext` 与 v1 `MiddlewareChain` 通过 `AgentContext` 桥接，每个 hook 调用时从 StageContext 构造临时 `AgentContext`，middleware 双写 transcript + cache，调用后 drain recall 到 `ctx.recall_buffer`。
 
 `HookMiddleware` 是中间件链的关键节点——在工具与 Agent 生命周期触发已接线的 hook 事件，实现工具调用审查、输出处理和策略注入。详见 [Hook 与 Middleware](/peri-cool/posts/engineering/hook-middleware-overview/)。
 
@@ -298,7 +298,7 @@ classDiagram
     MiddlewareChain ..> MiddlewareState : "各 hook 通过\\n&mut dyn MiddlewareState 调用"
 ```
 
-**钩子发射点**：
+**钩子发射点**，
 
 | 钩子 | 阶段 | 时机 |
 |------|------|------|
@@ -315,18 +315,18 @@ classDiagram
 
 中间件链由 `MiddlewareChain` 统一管理，在 ACP 层构造（`peri-acp/src/agent/builder.rs`），顺序不可重排。v2 循环中，桥接通过 `middleware_runner.rs` 将 `StageContext` 转换为 `&mut dyn MiddlewareState` 后委托给链执行。
 
-## 错误处理策略
+## 失败按阶段收口
 
-每个阶段独立处理错误，不跨阶段传播：
+每个阶段独立处理错误，不跨阶段传播，
 
-- **Compact 失败**：`compact_consecutive_failures` 累加，达上限后降级跳过——不影响主循环
-- **Reason 失败**：`on_error` middleware 先尝试恢复，无法恢复则返回 `LoopResult::Error`
-- **Act 失败**（工具路径）：`deferred_error` 收集所有错误统一写入 transcript，不中断循环
-- **Act 失败**（回答路径）：`on_error` middleware 尝试恢复
+- **Compact 失败**，`compact_consecutive_failures` 累加，达上限后降级跳过——不影响主循环
+- **Reason 失败**，`on_error` middleware 先尝试恢复，无法恢复则返回 `LoopResult::Error`
+- **Act 失败**（工具路径），`deferred_error` 收集所有错误统一写入 transcript，不中断循环
+- **Act 失败**（回答路径），`on_error` middleware 尝试恢复
 
-## 子代理同样跑 Agent Loop
+## 子代理复用执行循环
 
-`run_react_loop` 被所有类型的子代理复用，仅参数不同：
+`run_react_loop` 被所有类型的子代理复用，仅参数不同，
 
 | 子代理类型 | max_iterations | 差异 |
 |-----------|:---:|------|
@@ -337,7 +337,7 @@ classDiagram
 
 子代理复用四阶段 Agent Loop，但中间件、工具和上下文会按子代理边界裁剪，不能视为与主 Agent 完全相同。
 
-## 更多资源
+## 限制与边界
 
 - [Multi Agent 架构](/peri-cool/posts/engineering/multi-agent/) — SubAgent 派发流程与生命周期
 - [peri-agent README](https://github.com/konghayao/peri/blob/main/peri-agent/README.md) — Agent 框架完整文档

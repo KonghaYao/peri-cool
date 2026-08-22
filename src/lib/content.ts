@@ -17,6 +17,7 @@ export const postCategories = [
 					'engineering/system-prompt',
 					'engineering/agent-loop',
 					'engineering/hook-middleware-overview',
+					'engineering/meta-harness',
 				],
 			},
 			{
@@ -40,12 +41,30 @@ export const postCategories = [
 				],
 			},
 			{
-				id: 'interface-extensions',
-				label: '界面与扩展',
-				description: '终端渲染和生命周期扩展怎样保持可观察、可验证。',
+				id: 'interface',
+				label: '界面',
+				description: '终端界面怎样保持可观察、可验证。',
+				posts: [
+					'engineering/streaming-markdown-rendering',
+				],
+			},
+			{
+				id: 'agent-mode',
+				label: 'Agent 模式',
+				description: '从最小装配开始构建 Agent，并通过工具搜索扩展任务执行能力。',
+				posts: [
+					'engineering/minimal-mcpp-agent',
+				],
+			},
+			{
+				id: 'extensions',
+				label: '扩展能力',
+				description: '外部协议和共享能力怎样接入 Agent，同时保持边界清晰。',
 				posts: [
 					'engineering/mcp-support',
-					'engineering/streaming-markdown-rendering',
+					'engineering/mcpp-caching',
+					'engineering/mcpp-skills',
+					'engineering/mcp-2026-07-28',
 				],
 			},
 		],

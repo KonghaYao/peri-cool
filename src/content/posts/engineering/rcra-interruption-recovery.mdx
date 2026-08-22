@@ -1,6 +1,6 @@
 ---
-title: "RCRA 的中断恢复逻辑"
-description: 用户中断、取消或进程退出后，会话、未完成工具调用与工作流 journal 各自如何恢复，以及恢复与 Rewind 的边界。
+title: RCRA 中断恢复
+description: 说明用户取消或进程退出后，对话、工具调用和工作流日志分别保留什么，并给出继续执行前可核对的依据。
 date: 2026-08-16
 hero:
   image:
@@ -10,32 +10,32 @@ hero:
 
 import { Aside } from '@astrojs/starlight/components';
 
-一个跨目录重构跑到一半，你按下 Ctrl+C；又或者终端被关掉，Peri 进程直接退出。重新打开 Peri，聊天记录还在，刚才的目标状态不见了，后台任务没有继续，工作流停在某个阶段。表面都是"恢复被中断的长任务"，实际恢复路径取决于中断发生在哪里、进程是否还活着。
+一个跨目录重构跑到一半，你按下 Ctrl+C；又或者终端被关掉，Peri 进程直接退出。重新打开 Peri，聊天记录还在，刚才的目标状态不见了，后台任务没有继续，工作流停在某个阶段。表面都是恢复被中断的长任务，实际恢复路径取决于中断发生在哪里、进程是否还活着。
 
-Peri 没有把对话、目标、流程进度全部包办的恢复开关。但每条路径的机制都是确定的，可以按证据核对。核心事实是：**会话保存对话文本，active goal 与后台任务只在进程内存，工作流 journal 保存已完成节点的结果**。下面按这三类状态分别讲恢复动作，最后给恢复与 Rewind 的边界。
+Peri 没有把对话、目标、流程进度全部包办的恢复开关。但每条路径的机制都是确定的，可以按证据核对。核心事实是，**会话保存对话文本，active goal 与后台任务只在进程内存，工作流 journal 保存已完成节点的结果**。下面按这三类状态分别讲恢复动作，最后给恢复与 Rewind 的边界。
 
-## 执行在哪里停下：RCRA 循环
+## 中断发生在执行循环
 
-Peri 的 agent 执行循环在源码中正式命名为 RCRA（ReAct v2 四阶段循环），早期资料里也简称四阶段循环：Receive → Compact → Reason → Act → 回到 Receive。一条用户消息触发一次执行，循环在里面反复走四阶段，直到队列为空、用户取消或出错。Receive 是循环入口，也是退出判断点，循环最终以 Completed、Interrupted 或 Error 结束。
+Peri 的 agent 执行循环在源码中正式命名为 RCRA（ReAct v2 四阶段循环），早期资料里也简称四阶段循环，Receive → Compact → Reason → Act → 回到 Receive。一条用户消息触发一次执行，循环在里面反复走四阶段，直到队列为空、用户取消或出错。Receive 是循环入口，也是退出判断点，循环最终以 Completed、Interrupted 或 Error 结束。
 
-中断在循环里有固定的检查点：
+中断在循环里有固定的检查点，
 
 - 每轮迭代开头检查取消信号，已取消就直接返回 Interrupted，不再进入下一轮。
-- Act 派发工具调用时，取消优先于等待工具结果：对每个调用监听取消分支，取消到达就停止等待并返回 Interrupted。
+- Act 派发工具调用时，取消优先于等待工具结果，对每个调用监听取消分支，取消到达就停止等待并返回 Interrupted。
 - 已经启动的文件写入、Shell 子进程或外部请求不会因为取消被撤销。
 
-结论是：取消停住的是"等待"，不是"执行"。工具副作用从按下 Ctrl+C 那一刻起就不再受 Peri 控制。这与[运行中输入的排队与取消](/peri-cool/posts/product/queued-input-and-cancel/)描述的是同一套行为：Ctrl+C 只请求中断当前轮，排队内容仍会按顺序进入下一轮。
+结论是，取消停住的是等待，不是执行。工具副作用从按下 Ctrl+C 那一刻起就不再受 Peri 控制。这与[运行中输入的排队与取消](/peri-cool/posts/product/queued-input-and-cancel/)描述的是同一套行为，Ctrl+C 只请求中断当前轮，排队内容仍会按顺序进入下一轮。
 
 ## 会话恢复的是文本，不是运行状态
 
-进程退出后用 `peri --continue`（以当前目录为筛选条件）或 `peri --resume <session-id>` 恢复，也可以在 TUI 里用 `/threads` 打开 Thread Browser 选择会话。恢复的是持久化的对话文本：消息在运行中持续写入 SQLite，重启后能读回。
+进程退出后用 `peri --continue`（以当前目录为筛选条件）或 `peri --resume <session-id>` 恢复，也可以在 TUI 里用 `/threads` 打开 Thread Browser 选择会话。恢复的是持久化的对话文本，消息在运行中持续写入 SQLite，重启后能读回。
 
-不恢复的是进程内存里的运行时状态：
+不恢复的是进程内存里的运行时状态，
 
 - active goal（`/goal`）在当前进程内保存，恢复会话不会恢复它；
 - Cron 任务、后台任务、正在排队的输入也都在进程内，重启后不随会话恢复。
 
-单靠"聊天记录还在"推不出"任务还在跑"。恢复后的第一轮应该先做只读核对，把恢复依据从聊天叙述拉回工作区。以下输入是演示示例，不是真实会话。
+单靠聊天记录还在推不出任务还在跑。恢复后的第一轮应该先做只读核对，把恢复依据从聊天叙述拉回工作区。以下输入是演示示例，不是真实会话。
 
 ```text
 继续这个会话。先不要修改文件。
@@ -44,9 +44,9 @@ Peri 的 agent 执行循环在源码中正式命名为 RCRA（ReAct v2 四阶段
 
 完整操作见[会话管理](/peri-cool/docs/guides/sessions/)，active goal 的持久化边界见[管理长任务](/peri-cool/docs/features/long-running-tasks/)。
 
-## 未完成工具调用：结果可能丢了
+## 核对未完成工具调用
 
-中断常发生在工具调用已发出、结果还没写进 transcript 的时候。重启后重放 transcript，主会话会原样保留这条"有调用、没有结果"的 AI 消息：模型可能假设结果已经存在并继续，也可能要求重跑。可靠的做法是先把这条调用是否真实执行核对清楚，再决定继续、重跑还是跳过。以下输入是演示示例，不是真实会话。
+中断常发生在工具调用已发出、结果还没写进 transcript 的时候。重启后重放 transcript，主会话会原样保留这条有调用、没有结果的 AI 消息，模型可能假设结果已经存在并继续，也可能要求重跑。可靠的做法是先把这条调用是否真实执行核对清楚，再决定继续、重跑还是跳过。以下输入是演示示例，不是真实会话。
 
 ```text
 上一条工具调用可能没有返回结果。先确认它是否真实执行过：
@@ -54,37 +54,37 @@ Peri 的 agent 执行循环在源码中正式命名为 RCRA（ReAct v2 四阶段
 确认后再决定继续还是重新执行。
 ```
 
-子代理线程走的是另一条规则：恢复（resume）时若重放的末条是含未配对工具调用的 AI 消息，会先移除这一条再重建执行，避免模型继续等待一个不会到达的结果（源码里的 R2-MID-1 规则）。主会话不自动做这个裁剪，所以要靠上面对话来收口。
+子代理线程走的是另一条规则，恢复（resume）时若重放的末条是含未配对工具调用的 AI 消息，会先移除这一条再重建执行，避免模型继续等待一个不会到达的结果（源码里的 R2-MID-1 规则）。主会话不自动做这个裁剪，所以要靠上面对话来收口。
 
-工具结果的另一类边界：多个工具调用并发发出时，结果是"提交"后才生效，界面先渲染出来的不算已提交。中断后应看 transcript 而不是屏幕。详见[并发工具调用的处理](/peri-cool/posts/engineering/concurrent-tool-calls/)。
+工具结果的另一类边界，多个工具调用并发发出时，结果是提交后才生效，界面先渲染出来的不算已提交。中断后应看 transcript 而不是屏幕。详见[并发工具调用的处理](/peri-cool/posts/engineering/concurrent-tool-calls/)。
 
-## 工作流 journal：确定性恢复
+## 从工作流日志恢复
 
-工作流是唯一有专门恢复机制的路径。每个 run 在 `.claude/workflow-runs/<runId>/` 落盘三个文件：`journal.jsonl`（append-only 的 agent() 调用结果）、`state.json`（run 完成时原子写入的状态快照）、`script.js`（脚本副本）。
+工作流是唯一有专门恢复机制的路径。每个 run 在 `.claude/workflow-runs/<runId>/` 落盘三个文件，`journal.jsonl`（append-only 的 agent() 调用结果）、`state.json`（run 完成时原子写入的状态快照）、`script.js`（脚本副本）。
 
 - 每个 `agent()` 节点完成时，结果追加进 journal；
 - 中断（包括取消）会终止工作流进程，执行到一半的节点不算完成、不写 journal；
-- 恢复时用 `resumeFromRunId` 指向上次的 run，journal 条目作为 cache-hit 使用：已完成节点只复用结果，不重新执行；
+- 恢复时用 `resumeFromRunId` 指向上次的 run，journal 条目作为 cache-hit 使用，已完成节点只复用结果，不重新执行；
 - 未完成节点恢复后重新执行。
 
 `resumeFromRunId` 必须是合法 UUID。journal 读不到或损坏时恢复仍能进行，只是缓存失效、已完成节点要重跑；journal 写失败只记录警告，不会阻断流程。run 目录按 mtime 保留最近 50 次（源码常量），更早的运行记录会被清理，超过清理时间的 run 没有 cache 可复用。
 
-恢复前做两件事：在 `/workflows` 面板查看 run 与阶段状态，确认上次停在哪；再确认脚本与输入没有改变——journal 复用的是旧结果，脚本或输入变了之后，这些结果与新输入不一定对应。这不是"改动会自动失效缓存"的机制承诺，是需要人工核对的适用边界。
+恢复前做两件事，在 `/workflows` 面板查看 run 与阶段状态，确认上次停在哪；再确认脚本与输入没有改变——journal 复用的是旧结果，脚本或输入变了之后，这些结果与新输入不一定对应。这不是改动会自动失效缓存的机制承诺，是需要人工核对的适用边界。
 
-这是[工作流设计](/peri-cool/posts/engineering/workflow-design/)里"断点续跑靠日志重放"的具体形态；面板入口见 [ultracode 工作流文档](/peri-cool/docs/features/ultracode-workflow/)。
+这是[工作流设计](/peri-cool/posts/engineering/workflow-design/)里断点续跑靠日志重放的具体形态；面板入口见 [ultracode 工作流文档](/peri-cool/docs/features/ultracode-workflow/)。
 
-## 恢复与 Rewind 的边界
+## 区分继续与回退
 
-Rewind 是回退：截断选中用户消息及其后的历史，并对历史里的 Write 与 Edit 做尽力恢复，用于方向错了要撤销。中断恢复是继续：从证据确认中断点，然后接着走。两者不要混用：
+Rewind 是回退，截断选中用户消息及其后的历史，并对历史里的 Write 与 Edit 做尽力恢复，用于方向错了要撤销。中断恢复是继续，从证据确认中断点，然后接着走。两者不要混用，
 
-- 不要用 Rewind 来"恢复中断的任务"。它会删除中断后的记录，而一个被取消的 turn 没有可供回退的完成语义。
+- 不要用 Rewind 来恢复中断的任务。它会删除中断后的记录，而一个被取消的 turn 没有可供回退的完成语义。
 - 恢复也不能当回退用。会话、RCRA 循环与 journal 都不撤销外部副作用；已写入的文件、已推送的分支、已发出的请求按各自系统的事实源核对。
 
 具体语义见[Rewind 的会话与文件恢复边界](/peri-cool/posts/product/rewind-boundaries/)。
 
-## 恢复检查表
+## 可验证的恢复步骤
 
-- 先看时间线最后几轮：有调用、没有结果的工具请求是重点怀疑对象。
+- 先看时间线最后几轮，有调用、没有结果的工具请求是重点怀疑对象。
 - 从版本控制确认哪些文件真的改变了。
 - 从测试输出确认哪些验证真的跑过。
 - 检查 active goal、Cron、后台任务是否仍在当前进程。
@@ -96,12 +96,12 @@ Rewind 是回退：截断选中用户消息及其后的历史，并对历史里�
   会话、RCRA 循环与 workflow journal 都不会替你撤销外部系统的变化。已经写入的文件、推送的分支、发送的请求和删除的数据，需要按各自系统的事实源检查。
 </Aside>
 
-## 诚实边界
+## 限制与边界
 
-恢复后继续任务多花多少 token、journal 缓存命中率、以及"取消后继续与重跑对测试结果的影响"，都没有实测数据；需要数字的场合应以实际工作负载为准。
+恢复后继续任务多花多少 token、journal 缓存命中率、以及取消后继续与重跑对测试结果的影响，都没有实测数据；需要数字的场合应以实际工作负载为准。
 
-## 下一步
+## 相关实现
 
-- [Agent Loop](/peri-cool/posts/engineering/agent-loop/)：RCRA 的迭代如何收尾并回喂给模型
-- [并发工具调用的处理](/peri-cool/posts/engineering/concurrent-tool-calls/)：工具结果何时算已提交，中断后会留下什么
-- [工作流设计](/peri-cool/posts/engineering/workflow-design/)：journal 与断点续跑的设计取舍
+- [Agent Loop](/peri-cool/posts/engineering/agent-loop/)，RCRA 的迭代如何收尾并回喂给模型
+- [并发工具调用的处理](/peri-cool/posts/engineering/concurrent-tool-calls/)，工具结果何时算已提交，中断后会留下什么
+- [工作流设计](/peri-cool/posts/engineering/workflow-design/)，journal 与断点续跑的设计取舍

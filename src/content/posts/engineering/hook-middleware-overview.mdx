@@ -1,6 +1,6 @@
 ---
-title: Hook 与 Middleware 概述
-description: Hook 是中间件链在生命周期节点上的触发面，Middleware 是承载者——概述两者的分工、事件映射与执行机制。
+title: Hook 与 Middleware
+description: 说明 MiddlewareChain 如何承载运行期能力，Hook 如何映射生命周期节点，以及规则执行、失败放行和配置顺序边界。
 date: 2026-08-16
 hero:
   image:
@@ -10,15 +10,15 @@ hero:
 
 import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
-Peri 的运行期行为由两条线组成：一条是**中间件链**（MiddlewareChain）——按固定顺序执行的 Rust 组件，负责上下文注入、工具提供、权限审批等能力；另一条是**用户 hook 配置**——JSON 规则，绑定到 Agent 生命周期的具体节点。两者通过 `HookMiddleware` 衔接，关系可以一句话概括：
+Peri 的运行期行为由两条线组成，一条是**中间件链**（MiddlewareChain）——按固定顺序执行的 Rust 组件，负责上下文注入、工具提供、权限审批等能力；另一条是**用户 hook 配置**——JSON 规则，绑定到 Agent 生命周期的具体节点。两者通过 `HookMiddleware` 衔接，关系可以一句话概括，
 
 > **中间件链是承载者，Hook 是链在生命周期节点上的触发面。**
 
-本文是概述，以 Middleware 为重点：先讲中间件链如何装配与执行，再讲 `HookMiddleware` 如何把生命周期方法映射为 hook 事件、`HookDispatcher` 如何执行用户规则。机制描述与当前 `peri-middlewares` / `peri-acp` 源码一致；事件集会随实现变化，具体清单应以当前代码为准。用户侧的配置方法见 [Hooks 文档](/peri-cool/docs/features/hooks/)。
+本文是概述，以 Middleware 为重点，先讲中间件链如何装配与执行，再讲 `HookMiddleware` 如何把生命周期方法映射为 hook 事件、`HookDispatcher` 如何执行用户规则。机制描述与当前 `peri-middlewares` / `peri-acp` 源码一致；事件集会随实现变化，具体清单应以当前代码为准。用户侧的配置方法见 [Hooks 文档](/peri-cool/docs/features/hooks/)。
 
-## 中间件链：行为的承载者
+## 中间件承载运行期能力
 
-每个会话创建时，装配器（`peri-middlewares/src/assembly.rs`）按 Agent 层 session 工厂（`peri-agent/src/session/factory.rs`）的 `production_blueprint` 蓝本构造 `MiddlewareChain`。链序是行为契约，源码注释明确禁止重排。当前蓝本分七组：
+每个会话创建时，装配器（`peri-middlewares/src/assembly.rs`）按 Agent 层 session 工厂（`peri-agent/src/session/factory.rs`）的 `production_blueprint` 蓝本构造 `MiddlewareChain`。链序是行为契约，源码注释明确禁止重排。当前蓝本分七组，
 
 | 组 | 槽位 | 职责 |
 |---|------|------|
@@ -30,27 +30,27 @@ Peri 的运行期行为由两条线组成：一条是**中间件链**（Middlewa
 | 六 | `Mcp`、`Workflow`、`ToolSearch` | 条件工具提供器 |
 | 七 | `Lsp`、`Goal` | 诊断与目标引导 |
 
-`MiddlewareChain` 执行时按注册顺序遍历：`run_before_agent` 依次调用每个中间件的 `before_agent`，任一返回错误即中断整条链；`run_before_tool` 让每个中间件依次改写 `ToolCall`，前一个的输出是后一个的输入。每个中间件还可以通过 `collect_tools` 向会话登记自己的工具。
+`MiddlewareChain` 执行时按注册顺序遍历，`run_before_agent` 依次调用每个中间件的 `before_agent`，任一返回错误即中断整条链；`run_before_tool` 让每个中间件依次改写 `ToolCall`，前一个的输出是后一个的输入。每个中间件还可以通过 `collect_tools` 向会话登记自己的工具。
 
-Middleware 之所以是"承载者"，在于**几乎所有能力都以中间件为承载单元**：上下文是中间件注入的，工具是中间件提供的，审批是中间件执行的。Hook 能做什么、在什么时候做，都受链上节点约束——它只在这些节点上获得发言权，节点之间的推进由 Agent Loop 完成（见 [Agent Loop](/peri-cool/posts/engineering/agent-loop/)）。
+Middleware 之所以是承载者，在于**几乎所有能力都以中间件为承载单元**，上下文是中间件注入的，工具是中间件提供的，审批是中间件执行的。Hook 能做什么、在什么时候做，都受链上节点约束——它只在这些节点上获得发言权，节点之间的推进由 Agent Loop 完成（见 [Agent Loop](/peri-cool/posts/engineering/agent-loop/)）。
 
-## Hook 与 Middleware 的分工
+## 生命周期节点开放配置入口
 
-三层分工可以沿《Hook 系统》时期的结论概括，但视角放在链上：
+三层分工可以沿《Hook 系统》时期的结论概括，但视角放在链上，
 
 | 层 | 职责 | 何时扩展 |
 |---|------|---------|
-| Agent Loop | 在固定生命周期节点调用链上中间件的方法，决定"什么时候触发" | 改动需要 Rust 代码 |
-| `HookMiddleware` | 把生命周期方法映射为用户可见事件，决定"触发什么事件" | 新增事件需要 Rust 代码 |
-| hook 规则 + `HookDispatcher` | 决定"怎么响应事件"，返回 Allow / Block / ModifyInput | 纯配置驱动，无需改代码 |
+| Agent Loop | 在固定生命周期节点调用链上中间件的方法，决定什么时候触发 | 改动需要 Rust 代码 |
+| `HookMiddleware` | 把生命周期方法映射为用户可见事件，决定触发什么事件 | 新增事件需要 Rust 代码 |
+| hook 规则 + `HookDispatcher` | 决定怎么响应事件，返回 Allow / Block / ModifyInput | 纯配置驱动，无需改代码 |
 
 <Aside type="note">
-三层不是三套独立机制，而是一条链上的三层视角：第 1 层和第 2 层是同一段 Rust 代码的职责切分，第 3 层就是用户写的 JSON 配置。对应到 M：`HookMiddleware` 只是链上众多中间件之一，但它把链的触发面向配置层开放。
+三层不是三套独立机制，而是一条链上的三层视角，第 1 层和第 2 层是同一段 Rust 代码的职责切分，第 3 层就是用户写的 JSON 配置。对应到 M，`HookMiddleware` 只是链上众多中间件之一，但它把链的触发面向配置层开放。
 </Aside>
 
-## 生命周期方法 → Hook 事件
+## 生命周期映射为事件
 
-`HookMiddleware`（`peri-middlewares/src/hooks/middleware.rs`）实现 Middleware trait 的六类生命周期方法，每类触发一组事件：
+`HookMiddleware`（`peri-middlewares/src/hooks/middleware.rs`）实现 Middleware trait 的六类生命周期方法，每类触发一组事件，
 
 | Middleware 方法 | 触发时机 | 触发的事件 |
 |-----------|----------|------|
@@ -63,13 +63,13 @@ Middleware 之所以是"承载者"，在于**几乎所有能力都以中间件�
 
 `SessionStart` 只在会话首次进入时触发，`source` 取 startup / resume / clear / compact 之一。
 
-另有一组 **Standalone 事件**不经过 Middleware trait，由具体模块直接调用 `fire_standalone_lifecycle_hooks()` 触发：`SubagentStart` / `SubagentStop`（SubAgent 工具）、`PreCompact` / `PostCompact`（压缩阶段）、`SessionEnd`（TUI 关闭）。它们共享同一个分发引擎。
+另有一组 **Standalone 事件**不经过 Middleware trait，由具体模块直接调用 `fire_standalone_lifecycle_hooks()` 触发，`SubagentStart` / `SubagentStop`（SubAgent 工具）、`PreCompact` / `PostCompact`（压缩阶段）、`SessionEnd`（TUI 关闭）。它们共享同一个分发引擎。
 
 <Aside type="caution">
 Standalone 路径没有 LLM factory，因此 prompt / agent 类型 hook 在这些事件上被跳过，只支持 command / http。
 </Aside>
 
-一个 turn 的事件时序大致如下：
+一个 turn 的事件时序大致如下，
 
 ```mermaid
 sequenceDiagram
@@ -95,15 +95,15 @@ sequenceDiagram
     Chain->>MW: Stop → Notification
 ```
 
-## HookDispatcher：用户规则怎么执行
+## 规则按顺序归约
 
-`HookDispatcher`（`peri-middlewares/src/hooks/dispatcher.rs`）是执行引擎。`fire_event()` 按事件名查表，对每条注册规则依次做四步判断：一次性标记（once）→ matcher 粗过滤（工具名匹配）→ if 细条件 → 执行。执行结果归约为三种动作：
+`HookDispatcher`（`peri-middlewares/src/hooks/dispatcher.rs`）是执行引擎。`fire_event()` 按事件名查表，对每条注册规则依次做四步判断，一次性标记（once）→ matcher 粗过滤（工具名匹配）→ if 细条件 → 执行。执行结果归约为三种动作，
 
-- **Allow**：允许继续
-- **Block**：短路——不再执行后续 hook
-- **ModifyInput**：累积修改输入，继续执行后续 hook
+- **Allow**，允许继续
+- **Block**，短路——不再执行后续 hook
+- **ModifyInput**，累积修改输入，继续执行后续 hook
 
-支持四种执行类型，通过 JSON 的 `type` 字段区分：
+支持四种执行类型，通过 JSON 的 `type` 字段区分，
 
 <Tabs>
 <TabItem label="command">
@@ -118,7 +118,7 @@ LLM 评估。`$ARGUMENTS` 替换为 HookInput，一次无工具调用。只在�
 </TabItem>
 <TabItem label="http">
 
-HTTP POST，HookInput 作为 JSON body。带 SSRF 防护：阻止私有网络（10.x / 172.16.x / 192.168.x），允许 loopback。
+HTTP POST，HookInput 作为 JSON body。带 SSRF 防护，阻止私有网络（10.x / 172.16.x / 192.168.x），允许 loopback。
 
 </TabItem>
 <TabItem label="agent">
@@ -128,24 +128,24 @@ HTTP POST，HookInput 作为 JSON body。带 SSRF 防护：阻止私有网络（
 </TabItem>
 </Tabs>
 
-几点可靠性设计：
+几点可靠性设计，
 
-- **fail-open**：hook 超时或进程异常按 Allow 处理，hook 不应成为 Agent 的单点故障。
-- **Stop 阻断**：`Stop` 是唯一能阻止 Agent 继续执行的事件，支持 `continue: false` 彻底停止，或 `decision: block` 软阻断重试；连续 Block 超过 8 次强制放行，防止规则过严导致 Agent 永远无法结束。软阻断反馈以 `Human` + `<system-reminder>` 注入，不使用 `BaseMessage::system()`，以免破坏冻结的 system prompt 前缀。
-- **双重过滤**：matcher 在锁外快速跳过无关工具，if 在锁内精确匹配。
+- **fail-open**，hook 超时或进程异常按 Allow 处理，hook 不应成为 Agent 的单点故障。
+- **Stop 阻断**，`Stop` 是唯一能阻止 Agent 继续执行的事件，支持 `continue: false` 彻底停止，或 `decision: block` 软阻断重试；连续 Block 超过 8 次强制放行，防止规则过严导致 Agent 永远无法结束。软阻断反馈以 `Human` + `<system-reminder>` 注入，不使用 `BaseMessage::system()`，以免破坏冻结的 system prompt 前缀。
+- **双重过滤**，matcher 在锁外快速跳过无关工具，if 在锁内精确匹配。
 
-## 配置来源与装配位置
+## 配置进入中间件链
 
-hook 规则从多个来源加载，由装配端（`peri-acp/src/host/assemble.rs`）聚成 hook 组：
+hook 规则从多个来源加载，由装配端（`peri-acp/src/host/assemble.rs`）聚成 hook 组，
 
-1. 插件 hooks：`hooks/hooks.json`（优先）或 `plugin.json` 的 `hooks` 字段
+1. 插件 hooks，`hooks/hooks.json`（优先）或 `plugin.json` 的 `hooks` 字段
 2. 全局 `~/.claude/settings.json`
 3. 项目 `.claude/settings.json`
 4. 项目 `.claude/settings.local.json`
 
-每个非空组生成一个 `HookMiddleware` 实例，按组顺序挂到链的第四组槽位（Todo / Cron 之后、Permission 之前）。这意味着：同一事件下，配置靠后的组在链上执行得也更靠后；`PreToolUse` 类 hook 先于权限审批运行，可以在弹窗出现前改写或阻断工具调用。
+每个非空组生成一个 `HookMiddleware` 实例，按组顺序挂到链的第四组槽位（Todo / Cron 之后、Permission 之前）。这意味着，同一事件下，配置靠后的组在链上执行得也更靠后；`PreToolUse` 类 hook 先于权限审批运行，可以在弹窗出现前改写或阻断工具调用。
 
-配置结构沿用 Claude 风格——事件名 → matcher 组 → hook 列表：
+配置结构沿用 Claude 风格——事件名 → matcher 组 → hook 列表，
 
 ```json
 {
@@ -166,7 +166,7 @@ hook 规则从多个来源加载，由装配端（`peri-acp/src/host/assemble.rs
 上面的 JSON 是演示示例，不是真实会话。完整字段（`timeout`、`once`、`if` 条件等）见 [Hooks 文档](/peri-cool/docs/features/hooks/)。
 </Aside>
 
-## 更多资源
+## 限制与边界
 
 - [Agent Loop](/peri-cool/posts/engineering/agent-loop/) — RCRA 循环与中间件链的调用点
 - [Multi Agent 架构](/peri-cool/posts/engineering/multi-agent/) — 子 Agent 的 standalone hook 触发路径
