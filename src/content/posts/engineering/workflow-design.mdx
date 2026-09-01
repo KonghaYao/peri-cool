@@ -75,7 +75,7 @@ return { security, perf, bugs }
 - **子代理**，主 Agent 在回合里用 Agent 工具派发独立 ReAct 循环，输出回传上下文。派发决策仍在 LLM 手里——同一任务跑两次，拆法可能不同、结果不可比。机制细节见 [Multi Agent 架构](/peri-cool/posts/engineering/multi-agent/)。
 - **workflow**，决策权从上下文移到脚本。脚本生成后脱离主会话的推理路径独立执行，主会话只收完成通知；流程的版本、日志、结果都在脚本和磁盘上留痕。
 
-值得注意的复用点，workflow 的每个 `agent()` 最终都落到 SubAgent v2 执行体——同一套中间件链、工具过滤、ReAct 循环和 token 统计，并复用主会话在 `session/new` 时冻结的 CLAUDE.md 与 skills 快照。执行体是子代理基础设施，变的是决策者，子代理由 LLM 在回合里逐个派发，workflow 由脚本批量声明、进程统一运行。
+值得注意的复用点，workflow 的每个 `agent()` 最终都落到统一的 SubAgent 执行体——复用 Agent Loop、工具过滤和 token 统计，并继承主会话在 `session/new` 时形成的 owner snapshot。执行体是子代理基础设施，变的是决策者：普通子代理由模型在回合里派发，workflow 由脚本批量声明、runner 统一运行。
 
 边界判据一句话，**这个流程还会重跑吗？** 会，就交给脚本；一次性探索，直接对话加子代理。两者互补，不互相取代。
 

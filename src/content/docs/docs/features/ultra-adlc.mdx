@@ -48,7 +48,7 @@ flowchart TD
 
 ## 三份契约
 
-每个任务在项目内写入 `peri/adlc/<task-id>/`。三份文件是唯一的任务契约：
+每个任务在项目内写入 `peri/adlc/tasks/<adlc-id>/`。三份文件是唯一的任务契约：
 
 | 契约 | 回答的问题 |
 | --- | --- |
@@ -59,17 +59,23 @@ flowchart TD
 决策、Agent 交接、测试产物和运行记录属于审计材料，不会变成额外契约。
 
 ```text
-peri/adlc/<task-id>/
-├── manifest.json
-├── contracts/
-│   ├── intent.md
-│   ├── execution.md
-│   └── evidence.md
-├── decisions/
-├── handoffs/
-├── artifacts/
-└── learning/
-    └── agent-performance.md
+peri/adlc/
+├── tasks/
+│   └── <adlc-id>/
+│       ├── manifest.json
+│       ├── contracts/
+│       │   ├── intent.md
+│       │   ├── execution.md
+│       │   └── evidence.md
+│       ├── decisions/
+│       ├── handoffs/
+│       ├── artifacts/
+│       └── learning/
+│           └── agent-performance.md
+└── evolution/
+    ├── records/
+    ├── routing-observations.md
+    └── eval-candidates/
 ```
 
 文件系统交接使每个 Agent 的输入、结论、验证命令和遗留问题都可追踪。Main Agent
@@ -98,8 +104,8 @@ Ultra-ADLC 没有“部分完成”终态。合法终态只有：
 - `cancelled`：用户取消任务。
 
 评估发现的可修复缺口会重新进入 Workflow 2，完成修复、集成和复验。只有评估通过后，
-系统才会生成 `learning/agent-performance.md`，记录本次 Agent 的有效做法、缺点和评级，
-供后续 ADLC 改进使用。
+系统才会生成 `learning/agent-performance.md` 与 evolution record，记录本次 Agent 的有效做法、
+缺点和路由信号。单次记录不会自动修改内置 Skill、项目指引或模型配置。
 
 ## 当前边界
 
@@ -107,3 +113,4 @@ Ultra-ADLC 没有“部分完成”终态。合法终态只有：
 - 未经用户单独授权，不会自动 commit、push、发布、部署或修改外部系统；
 - Ultra-ADLC 不会把密钥、令牌或密码写入 `peri/adlc/`；
 - 外部依赖不可用时，任务会明确进入 `blocked`，不会用缩减范围制造完成结论。
+- 原始 Workflow journal 仍保存在 `.claude/workflow-runs/<run-id>/`；ADLC 目录只保留精简 provenance，不复制完整运行日志。

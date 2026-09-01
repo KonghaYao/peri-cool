@@ -13,11 +13,14 @@ Peri 把模型协议、Agent 执行、能力装配、ACP 协议和终端呈现�
 flowchart LR
     U["用户"] --> TUI["peri-tui\n交互与呈现"]
     TUI --> ACP["peri-acp\nACP 服务与协议化"]
-    ACP --> AGENT["peri-agent\nSession 与 RCRA"]
+    ACP --> CTRL["peri-controller\n控制面"]
+    CTRL --> RUNTIME["peri-runtime\n多 Session 编排"]
+    RUNTIME --> AGENT["peri-agent\nSession 与 RCRA"]
     AGENT --> MODEL["peri-model\nProvider 协议"]
     MW["peri-middlewares\n工具与能力切面"] --> AGENT
-    RES["peri-resources\n配置与会话存储通道"] --> AGENT
-    CTRL["peri-controller\n控制面与观测宿主"] --> ACP
+    RES["peri-resources\n外部数据通道"] --> AGENT
+    RES --> MW
+    RES --> CTRL
 ```
 
 这张图是职责视图，不是完整 Cargo 依赖图。实际依赖关系以 workspace manifests 为事实源。
@@ -32,7 +35,7 @@ flowchart LR
 
 ### ACP：定位、映射和传输
 
-`peri-acp` 管理 ACP 会话入口、请求分发、能力门控和事件协议化。它负责把 Agent 的内部事件转换成客户端能理解的协议通知，不拥有 Agent 的最终执行权。
+`peri-acp` 管理 ACP 会话入口、请求分发、能力门控和事件协议化。它负责把内部事件转换成客户端能理解的协议通知，不拥有 Agent 的最终执行权，也不把协议 DTO 反向渗透到 Agent。
 
 新增事件需要沿完整链路核对：
 
@@ -60,11 +63,12 @@ MessageQueue → Receive → Compact → Reason → Act
 
 链序的事实源是 `peri-agent/src/session/factory.rs` 中的 `production_blueprint`；构造实现位于 `peri-middlewares/src/assembly.rs`。不能按名称排序，也不能为了局部方便任意重排。
 
-### Model、Resources 与 Controller
+### Model、Runtime、Resources 与 Controller
 
 - `peri-model` 封装 Provider 消息、流式传输、协议差异和模型错误，不解释 Agent 会话语义。
+- `peri-runtime` 维护多 Session 的运行期映射和事件路由，不持有 Session 内部业务状态。
 - `peri-resources` 提供配置和会话存储等外部数据通道，不负责 Agent 的业务决策。
-- `peri-controller` 承担控制面入口，并作为 Langfuse 旁路消费者的宿主。观测读取事件，不参与决定业务结果。
+- `peri-controller` 组合 Resources 与 Runtime，承担控制面入口，并作为 Langfuse 旁路消费者的宿主。观测读取事件，不参与决定业务结果。
 
 ## 三条关键契约
 
@@ -82,14 +86,16 @@ Prompt cache 依赖稳定前缀。工具注册和 Provider payload 不能直接�
 
 ## 事件为什么强调单一事实源
 
-同一个业务事件如果沿两条链到达 TUI，会出现重复、乱序或身份字段不同。Peri 的稳定契约要求 Agent 只发射 v2 事件，ACP 在协议边界做穷尽映射，TUI 只消费协议化路径。
+同一个业务事件如果沿两条链到达 TUI，会出现重复、乱序或身份字段不同。Peri 的稳定契约要求 Agent 使用单一内部事件链，Runtime 与 Controller 路由事件，ACP 在协议边界做穷尽映射，TUI 只消费协议化路径。
 
 ```mermaid
 sequenceDiagram
     participant A as Agent
+    participant R as Runtime / Controller
     participant P as ACP
     participant T as TUI
-    A->>P: v2 event + agent identity
+    A->>R: internal event + agent identity
+    R->>P: routed event + session identity
     P->>P: exhaustive protocol mapping
     P->>T: session/update or extension
     T->>T: update view state
@@ -103,13 +109,15 @@ sequenceDiagram
 | --- | --- | --- |
 | TUI 不直接驱动 Agent | `docs/standards/architecture-contracts.md` 的边界契约 | 检查 prompt/cancel/session 请求经 ACP client/transport |
 | frozen 数据会话内不漂移 | frozen 契约、Session 与 SubAgent 构造代码 | `cargo test -p peri-middlewares --lib frozen_claude_md` |
-| 事件为单链路 | 事件契约、`peri-acp/src/event/` | `cargo test -p peri-acp --lib mapper`、`cargo test -p peri-agent --lib events_v2` |
+| 事件为单链路 | 事件契约、Runtime/Controller 路由与 `peri-acp/src/event/` | 各层目标测试 + ACP mapper + TUI 消费测试 |
 | 工具 direct/deferred | 工具契约、tool search 实现 | `cargo test -p peri-middlewares --lib core_tools` |
 | keepgoing 终止可观测 | keepgoing 契约、session executor | `cargo test -p peri-agent --lib session::exec::executor_test` |
 | 中间件顺序唯一 | `production_blueprint` 与 assembly | assembly 契约测试和人工槽位核对 |
 
 <Aside type="note" title="设计文档与当前契约">
-  `docs/top-level.md` 记录 3.0 的完整目标分层；`docs/standards/architecture-contracts.md` 记录当前必须遵守的跨模块不变量。两者出现差异时，先按代码、契约测试和 standards 判断当前行为。
+  `docs/design/architecture.md` 是现行总体设计，`docs/design/README.md` 是权威设计索引，
+  `docs/standards/architecture-contracts.md` 记录必须遵守的跨模块不变量。出现差异时，
+  仍按代码、契约测试、standards、模块指引、design 的顺序判断。
 </Aside>
 
 ## 相关内容

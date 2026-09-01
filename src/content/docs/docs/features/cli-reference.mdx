@@ -78,9 +78,10 @@ peri plugin install frontend-design@claude-plugins-official
 
 另有 `peri sync ...`、`peri web ...` 与 `peri acp ...`。各子命令的参数以对应的 `--help` 为入口；其中 `peri web` 默认监听 `0.0.0.0`，启动前应确认网络暴露范围。
 
-## TUI 本地命令
+## 确定性命令
 
-这些命令由 TUI 直接处理，不交给 Agent：
+这些入口会在 Agent 自由解释前被确定性处理；其中一部分是 TUI 本地动作，另一部分是 ACP
+注册的 core command：
 
 | 命令 | 行为 |
 | --- | --- |
@@ -88,11 +89,13 @@ peri plugin install frontend-design@claude-plugins-official
 | `/provider` | 循环切换 Provider |
 | `/mode` | 循环切换权限模式 |
 | `/clear`、`/cls`、`/reset` | 清空当前会话 |
+| `/compact` | 手动压缩当前会话的可见历史 |
 | `/rewind [message_id] [--revert-files]`、`/undo` | 打开回退界面或回退到指定消息；是否回退文件需显式选择 |
 | `/debug-export-text [screen]` | 导出全部会话文本，或只导出当前屏幕 |
 | `/exit`、`/quit` | 退出 TUI |
 
-`/compact` 等未被本地 parser 识别的斜杠文本会发送给 Agent，由当前会话的 skill、命令或工具能力解释；它不是本地硬编码命令。
+`/compact`、`/clear` 和 `/rewind` 已进入 core command 注册表。无法解析的斜杠文本仍会
+作为普通输入进入 Agent 管线，因此 `/etc/hosts` 之类的绝对路径不会因为以 `/` 开头就被拒绝。
 
 ## 面板命令
 

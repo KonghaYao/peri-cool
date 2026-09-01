@@ -1,125 +1,102 @@
 ---
-title: 系统提示词自定义（meta_harness）
-description: 用 settings.json 覆盖系统提示词段落或关闭 middleware——注意安全段落的覆盖风险。
+title: 系统提示词与能力裁剪（Meta Harness）
+description: 在新会话创建时覆盖提示词段落、关闭 middleware，或控制内置 SubAgent 定义。
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-Peri 的系统提示词由多个**段落**组成：身份与安全、工具使用纪律、HITL 审批机制、skills 协议……每个段落有固定 ID。`meta_harness` 配置让你按段落 ID 覆盖内置内容，或按 middleware 名装配期关闭某个能力。
+Meta Harness 是会话创建阶段的高级配置。它可以做三件事：
 
-一个 kv 字段承载两项能力，bool 值决定动作：
+| key | value | 作用 |
+| --- | --- | --- |
+| 系统提示词段落 ID | `true` | 用 `.peri/meta/<ID>.md` 全文替换内置段落 |
+| middleware 名 | `false` | 不装配该 middleware，并移除它持有的工具、Hook 与提示词段落 |
+| `BuiltInSubagents` | `true` / `false` | 启用或隐藏随 Peri 编译分发的 SubAgent 定义 |
 
-- `true` key = **段落 ID** → 覆盖系统提示词段落（需 `.peri/meta/<ID>.md` 存在）；
-- `false` key = **middleware 名** → 装配期关闭该 middleware（无需 md 文件）。
+这些状态会随会话快照冻结。修改配置或覆盖文件后，请新建会话；现有会话不会中途重载。
 
 ## 配置示例
 
-`~/.peri/settings.json`（或工作区 `.peri/settings.json`）：
+全局配置位于 `~/.peri/settings.json`，项目覆盖位于 `<cwd>/.peri/settings.json`：
 
 ```json
 {
   "config": {
     "meta_harness": {
       "01_intro": true,
-      "05_using_tools": true,
-      "WebMiddleware": false
-    }
-  }
-}
-```
-
-- `"01_intro": true` 表示用 `.peri/meta/01_intro.md` 的内容替换内置的 01 段落；
-- `"05_using_tools": true` 同理，替换工具使用纪律段落；
-- `"WebMiddleware": false` 关闭 Web 工具（无需 md 文件）。
-
-## 段落 ID 清单
-
-段落 ID = `peri-acp/prompts/sections/` 文件名去 `.md`，另有渲染生成段。当前全集：
-
-`01_intro`、`02_system`、`03_doing_tasks`、`04_actions`、`05_using_tools`、`06_tone_style`、`07_runtime`、`10_hitl`、`11_subagent`、`13_skills`、`15_channel`、`persona`、`language`
-
-`persona` 与 `language` 是渲染生成段，可经 `.peri/meta/persona.md` / `.peri/meta/language.md` 覆盖。
-
-## middleware 名清单
-
-`false` key 使用的 middleware 名 = 装配面 middleware 的 `name()`，全集（23 个，事实源 `peri-acp-types/src/meta_harness.rs`）：
-
-`DefaultSystemPromptMiddleware`、`LangMiddleware`、`AgentsMdMiddleware`、`AgentDefineMiddleware`、`PluginMiddleware`、`SkillsMiddleware`、`SkillPreloadMiddleware`、`AtMentionMiddleware`、`ImageMiddleware`、`FilesystemMiddleware`、`GitAttributionMiddleware`、`TerminalMiddleware`、`WebMiddleware`、`TodoMiddleware`、`CronMiddleware`、`HookMiddleware`、`HumanInTheLoopMiddleware`、`SubAgentMiddleware`、`McpMiddleware`、`WorkflowMiddleware`、`ToolSearch`、`LspMiddleware`、`GoalMiddleware`
-
-<Aside type="note">
-  关闭 `HumanInTheLoopMiddleware` / `SubAgentMiddleware` / `SkillsMiddleware` / `DefaultSystemPromptMiddleware` / `LangMiddleware` 会同时移除其持有的段落（10_hitl / 11_subagent / 13_skills / 01-06 + 07_runtime + persona / language）与对应工具——段落与工具一起消失，不会出现"工具没了但提示词还在描述它"的盲区。
-</Aside>
-
-## 完全纯净：把系统提示词与工具降到最低
-
-将全部 middleware 设为 `false`（`AskUserQuestion` 除外），Peri 进入"完全纯净"模式：
-
-```json
-{
-  "config": {
-    "meta_harness": {
-      "DefaultSystemPromptMiddleware": false,
-      "LangMiddleware": false,
-      "AgentsMdMiddleware": false,
-      "AgentDefineMiddleware": false,
-      "PluginMiddleware": false,
-      "SkillsMiddleware": false,
-      "SkillPreloadMiddleware": false,
-      "AtMentionMiddleware": false,
-      "ImageMiddleware": false,
-      "FilesystemMiddleware": false,
-      "GitAttributionMiddleware": false,
-      "TerminalMiddleware": false,
       "WebMiddleware": false,
-      "TodoMiddleware": false,
-      "CronMiddleware": false,
-      "HookMiddleware": false,
-      "HumanInTheLoopMiddleware": false,
-      "SubAgentMiddleware": false,
-      "McpMiddleware": false,
-      "WorkflowMiddleware": false,
-      "ToolSearch": false,
-      "LspMiddleware": false,
-      "GoalMiddleware": false
+      "BuiltInSubagents": false
     }
   }
 }
 ```
 
-效果：
+这份配置会：
 
-- **系统提示词为空**：基础段（01-06 / 07_runtime / persona）随 `DefaultSystemPromptMiddleware` 消失，language 随 `LangMiddleware` 消失，gated 段（10_hitl / 11_subagent / 13_skills）随持有者消失；仅剩的 15_channel 无持有 middleware、gate 恒关闭，不渲染；
-- **工具只剩 `AskUserQuestion`**：它是核心交互工具，由运行时直接注入，不在 middleware 关闭面内；
-- **其余配置不受影响**：工作区与全局配置按字段级合并，`meta_harness` 本身逐 key 合并（项目级同 key 覆盖全局同 key，全局其余 key 保留）。
+- 从 `<cwd>/.peri/meta/01_intro.md` 读取替换内容；
+- 关闭 Web middleware，因此 Web 工具和它的提示词贡献都不会进入当前会话；
+- 隐藏 compile-time 内置 SubAgent 定义。
 
-<Aside type="caution" title="完全纯净意味着 Peri 失去全部内置能力">
-  此模式下模型无法读写文件、执行命令、访问网络——所有能力都需要通过提示词与 `AskUserQuestion` 重新赋予。安全相关约束（防御性安全、HITL 审批认知、工具使用纪律）也随之消失，后果由覆盖内容自行承担。
-</Aside>
+`BuiltInSubagents` 不会关闭 `SubAgentMiddleware`，也不会隐藏项目、插件提供的 Agent，
+不会禁用 fork、resume、`Agent` 或 `AgentResult`。
 
-恢复：删除 `meta_harness` 中对应的 key（或整个字段），下次会话即回到内置段落与工具集。
+## 段落覆盖
 
-## 覆盖文件形态
+可覆盖的段落 ID 由当前代码注册表决定。现有分组如下：
 
-`.peri/meta/<ID>.md` 的全文 = 替换体，整段替换内置段落：
+- 基础段落：`01_intro`、`02_system`、`03_doing_tasks`、`04_actions`、
+  `05_using_tools`、`06_tone_style`、`07_runtime`、`persona`、`language`；
+- 能力段落：`10_hitl`、`11_subagent`、`12_ask_user`、`13_skills`；
+- 保留段落：`15_channel`，当前 gate 关闭，不代表可用功能。
 
-```markdown
-# Tool usage policy (custom)
+覆盖文件只扫描 `<cwd>/.peri/meta/` 的一级 `.md` 文件。文件名去掉 `.md` 后就是
+段落 ID，正文会整段替换内置内容：
 
-Use tools in batches when possible. Always follow the file-write discipline:
-Read before Edit, prefer targeted edits over full-file rewrites.
+```text
+.peri/meta/01_intro.md
+.peri/meta/05_using_tools.md
 ```
 
-变更**下次会话生效**——会话内系统提示词冻结，不在中途重读覆盖文件。删除配置里的 key（及 md 文件）即恢复内置段落。
+段落 ID 配为 `false` 表示显式使用内置内容；middleware 名配为 `true` 可以在项目配置中
+恢复被全局配置关闭的组件。全局与项目的 `meta_harness` 按 key 合并，项目同名 key 优先。
 
-## 安全段落覆盖风险提示
+## 关闭 middleware
 
-<Aside type="caution" title="覆盖含防御性安全内容的段落会移除对应防护信息">
-  以下段落包含运行时安全语义，完全替换后这些信息将不再出现在系统提示词中：
+可用名称以代码注册表为准。为了便于配置，当前装配面按职责分为：
+
+| 职责 | middleware 名 |
+| --- | --- |
+| 上下文 | `DefaultSystemPromptMiddleware`、`LangMiddleware`、`AgentsMdMiddleware`、`AgentDefineMiddleware`、`PluginMiddleware`、`SkillsMiddleware`、`SkillPreloadMiddleware`、`AtMentionMiddleware`、`ImageMiddleware` |
+| 本地与网络工具 | `FilesystemMiddleware`、`GitAttributionMiddleware`、`TerminalMiddleware`、`WebMiddleware` |
+| 任务与交互 | `TodoMiddleware`、`CronMiddleware`、`HookMiddleware`、`PermissionMiddleware`、`HumanInTheLoopMiddleware`、`SubAgentMiddleware` |
+| 扩展能力 | `McpMiddleware`、`WorkflowMiddleware`、`PtcMiddleware`、`ToolSearch`、`ArtifactMiddleware`、`LspMiddleware`、`GoalMiddleware` |
+
+关闭能力必须形成闭包：direct 工具、deferred 搜索索引、命令路由、提示词说明、
+SubAgent/Workflow 继承面都不能继续暴露已经关闭的能力。遇到“工具已关闭但模型仍认为可用”
+时，应把它视为实现问题，而不是让用户再写一段提示词规避。
+
+## 审批与提问是两项能力
+
+- `PermissionMiddleware` 负责敏感工具审批，并持有 `10_hitl`；
+- `HumanInTheLoopMiddleware` 负责 `AskUserQuestion`，并持有 `12_ask_user`。
+
+关闭前者不会自动关闭提问；关闭后者也不会自动进入 Bypass。不要用其中一个开关替代另一个。
+
+<Aside type="caution" title="Meta Harness 不提供新的权限">
+  关闭本地 middleware 不会替远端 MCP server 做授权，也不会创建操作系统沙箱。
+  覆盖安全段落只能改变模型看到的说明，不能改变运行时 policy 与审批事实。
 </Aside>
 
-- **01_intro**（角色定义 + 防御性安全）：内置版本含「仅处理防御性安全任务」约束与 URL 引用纪律。覆盖后该约束消失——模型不再被提示拒绝攻击性/绕过权限的请求，URL 纪律由模型自觉维持。
-- **10_hitl**（HITL 审批 + sensitive 工具列表）：sensitive 列表由 `HumanInTheLoopMiddleware` 按代码事实（`default_requires_approval`）动态生成，但覆盖 `10_hitl` 段仍会整体移除该列表——模型失去工具敏感度认知。实际审批行为仍由运行时强制执行（权限判定不依赖提示词），但模型不再具备"调用前预期审批"的自觉，可能因意外审批打断而反复重试。
-- **05_using_tools**（工具使用纪律）：覆盖后批处理/Bash 纪律依赖自拟内容。
-- **11_subagent**（SubAgent 委托 + Agent Selection Guide）：覆盖后委托授权边界说明消失（运行时边界仍由机制强制）。
+## 安全地验证配置
 
-**建议**：自定义内容时保留原段落中的安全相关行（防御性安全约束、sensitive 列表、授权边界），或在覆盖文件中重新声明同等语义；删除对应 key（及 md 文件）即可恢复内置段落。
+每次只改一个 key，并在新会话中验证：
+
+1. 预期 middleware 是否进入生产链；
+2. direct 工具和 deferred 搜索结果是否同时符合预期；
+3. 对应提示词段落或 request-time contribution 是否存在；
+4. 审批、提问和外部系统边界是否仍符合任务要求。
+
+恢复时删除项目级 key；如果同名 key 来自全局配置，还需要修改全局配置。删除段落覆盖 key
+后，可再删除对应 `.peri/meta/<ID>.md`。
+
+相关内容：[工具系统](/peri-cool/docs/features/tools/) · [Skills](/peri-cool/docs/features/skills/) · [权限系统](/peri-cool/docs/features/permissions/)

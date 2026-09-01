@@ -1,6 +1,6 @@
 ---
 title: Skills
-description: 可复用的专项能力模块——Peri 自动加载适合当前任务的 skill。
+description: 按需加载的专项行为协议，以及本地、插件、内置和 MCP 来源的优先级。
 hero:
   image:
     file: ../../../../assets/img_toolbox_open_s53.png
@@ -9,59 +9,79 @@ hero:
 
 import { Aside, FileTree } from '@astrojs/starlight/components';
 
-Skill 是 Peri 的专项能力模块。每个 skill 定义了一种专门的行为模式——比如写博客、诊断 bug、做实验——Peri 在需要时自动加载。
+Skill 是一份带 frontmatter 的 `SKILL.md`。它告诉 Agent 何时采用某种工作流、需要读取哪些
+资源，以及完成前如何验证。Skill 不是可执行工具；它通过 System Prompt 提供行为指引，
+真正的文件、Shell、MCP 或 Workflow 操作仍由工具系统执行。
 
-## 怎么用
+## 项目 Skill
 
-Skills 放在了 `.claude/skills/` 目录下，Peri 启动时自动扫描。兼容 Claude Code 的 skill 格式。
+```md
+---
+name: diagnosing-build
+description: 在项目构建失败时定位根因并给出可验证修复。
+---
+
+# Diagnosing Build
+
+先复现失败，再缩小到最小命令；修改后重跑同一命令。
+```
+
+放在项目目录：
 
 <FileTree>
 - .claude/
   - skills/
-    - diagnosing-bugs/
-      - SKILL.md
-    - blog-writer/
-      - SKILL.md
-    - code-review/
+    - diagnosing-build/
       - SKILL.md
 </FileTree>
 
-每个 skill 的 `SKILL.md` 定义了触发条件和行为规则。Peri 根据对话内容自动匹配需要加载哪个 skill。
+Skill 目录可以包含脚本、模板和参考资料。`SKILL.md` 应给出读取路由，不要在主文件里复制
+所有素材。
 
-<Aside type="tip">
-  Peri 内置（builtin）skill 只有 4 个：cron、goal、ultracode、use-artifacts，编译在 peri-middlewares 中。其余 skill 来自用户级（~/.claude/skills/）、全局（~/.peri/settings.json 的 skillsDir）、项目级（.claude/skills/）和插件级。同名 skill 按优先级覆盖——用户级 > 全局 > 项目级 > 插件级 > 内置。
+## 来源与优先级
+
+本地来源按以下顺序扫描，先出现的 canonical name 或 alias 占用该名称：
+
+1. `~/.claude/skills/`；
+2. `~/.peri/settings.json` 的 `skillsDir`；
+3. `<cwd>/.claude/skills/`；
+4. Plugin manifest 声明的 Skill；
+5. 随 Peri 编译分发的 builtin Skill。
+
+builtin 的 canonical name 与 alias 是保留名称，非 builtin Skill 不能冒用。MCP server 还可以
+通过 `skill://` 资源发布远端 Skill；它们追加到当前 session catalog，不覆盖已经存在的本地项。
+
+## 如何触发
+
+- **按任务自动匹配**：Agent 先看到 name 与 description 摘要，再按需加载全文；
+- **直接点名**：说“使用 diagnosing-build”或输入可调用 Skill 的 `/skill-name` 形式；
+- **由另一个 Skill 路由**：上层 Skill 可以要求加载更具体的专项 Skill。
+
+`/skill-name` 会由预加载路径识别，但它不是 TUI 本地面板命令。是否允许用户直接调用还取决于
+该 Skill 的 frontmatter 和当前装配。
+
+## 当前内置 Skills
+
+| Skill | 用途 |
+| --- | --- |
+| `cron` | 创建与维护定时任务 |
+| `goal` | 跟踪需要跨轮次持续推进的目标 |
+| `programmatic-tool-calling`（alias `ptc`） | 在受限 JavaScript 程序中组合 deferred tools |
+| `self-build` | 通过项目级 MCP/MCPP 包扩展能力 |
+| `ultra-adlc` | 超大规模端到端完整交付 |
+| `ultracode` | 生成并运行多 Agent Workflow |
+| `use-artifacts` | 使用制品上传工具 |
+
+内置清单随版本变化。需要确认当前会话时，让 Agent 使用 `DiscoverSkillsTool`，不要只依赖这张表。
+
+## MCP Skill 的额外边界
+
+远端 Skill 的元数据、正文和资源 URI 绑定到发布它的 MCP server。加载后需要工具时，仍应先
+搜索该 server 的 deferred 工具并读取实际 schema，不能从 Skill 文本猜测工具名或参数。
+
+<Aside type="caution">
+  Skill 提供方法，不扩大权限。它不能绕过工具审批、文件系统边界、MCP server 授权或用户对
+  commit、push、发布和部署的单独授权。
 </Aside>
 
-## 触发方式
-
-Peri 没有 `/skill-name` 斜杠命令解析——输入 `/xxx` 会作为普通文本发给 agent。实际触发方式是：
-
-1. **自动匹配**：Peri 启动时将扫描到的所有 skill 的 name + description 摘要注入系统提示词，分析你的需求后自动加载最匹配的 skill。
-2. **直接描述**：输入技能名或描述任务（如"用 ultracode 编排并行工作流"、"每 5 分钟跑一次"），Peri 按需加载。消息中的 `/skill-name` 模式会被 SkillPreloadMiddleware 识别并预加载对应 skill 全文；内置 skill 的 SKILL.md 都声明了 `userInvocable: true`，被直接提及即可触发。
-
-## 内置 Skills
-
-Peri 内置 skill 共 4 个：
-
-| Skill | 触发场景 |
-|-------|---------|
-| **cron** | 定时任务、周期性提醒（标准 5 字段 cron 表达式） |
-| **goal** | 长任务目标跟踪，多轮持续推进直到完成 |
-| **ultracode** | 并行/流水线多 agent 工作流编排 |
-| **use-artifacts** | 制品（artifact）工具的使用时机与调用流程 |
-
-## 自定义 Skill
-
-Skill 就是一个 Markdown 文件。格式很简单：
-
-```markdown
----
-name: my-skill
-description: 触发这个 skill 的场景描述。
----
-
-# 你的 skill 内容
-这里是具体的规则和指令。
-```
-
-放在 `.claude/skills/my-skill/SKILL.md`，Peri 下次启动自动加载。
+相关内容：[工具系统](/peri-cool/docs/features/tools/) · [MCP](/peri-cool/docs/features/mcp/) · [插件管理](/peri-cool/docs/guides/plugins/)

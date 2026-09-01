@@ -49,7 +49,7 @@ git show -s --format=fuller 15269e31
 
 ## 2026 年 7 月：协议复用与事件路径收敛
 
-- 2026-07-07：决策记录 `docs/design/decisions/2026-07-07-acp-reuse-first.md` 确立“标准 ACP 能表达的事件优先复用标准协议”。这是决策记录日期。
+- 2026-07-07：仓库记录了“标准 ACP 能表达的事件优先复用标准协议”的设计决策。原过程文档已在权威设计收敛时移除，历史内容仍可从 Git 查看；当前协议语义以 `docs/design/peri-acp-protocol.md` 为准。
 - 2026-07-08：commit `f0d41fa6` 合入冗余自定义事件清理，流式消息和工具状态更多复用 `session/update`。
 - 2026-07-16：commit `af8bd2e2` 合入 Agent 与 SubAgent 架构升级。
 - 2026-07-18：Compact 持久化和事件系统继续收敛；commit `69bfd9f6` 修复 compact flags 跨 prompt 丢失，相关 v1 事件中间态也在该阶段逐步退役。

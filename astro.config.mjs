@@ -123,6 +123,27 @@ export default defineConfig({
 						{ slug: 'docs/features/openspec' },
 					],
 				},
+				{
+					label: '参考与安全',
+					collapsed: true,
+					items: [
+						{ slug: 'docs/features/cli-reference' },
+						{ slug: 'docs/reference/settings' },
+						{ slug: 'docs/reference/keyboard-shortcuts' },
+						{ slug: 'docs/security/secrets-and-permissions' },
+						{ slug: 'docs/troubleshooting' },
+					],
+				},
+				{
+					label: '开发与历史',
+					collapsed: true,
+					items: [
+						{ slug: 'docs/developer' },
+						{ slug: 'docs/developer/architecture' },
+						{ slug: 'docs/history/3-0-refactor' },
+						{ slug: 'docs/history/milestones' },
+					],
+				},
 			],
 			editLink: {
 				baseUrl: 'https://github.com/KonghaYao/peri-cool/edit/main/',

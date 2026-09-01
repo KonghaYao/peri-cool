@@ -1,6 +1,6 @@
 ---
-title: 系统提示词装配
-description: 说明 Peri 如何按段落生成并冻结系统提示词，以及缓存前缀、工具顺序和运行期消息之间的边界。
+title: 系统提示词的冻结区与动态区
+description: 说明 Peri 如何组合会话级 base prompt、request-time middleware contribution 与 Provider cache seam。
 date: 2026-08-16
 hero:
   image:
@@ -8,36 +8,67 @@ hero:
     alt: 语伞
 ---
 
-系统提示词属于 Agent 请求的静态上下文。Peri 在会话创建时收集提示词段落、agent 定义、语言和环境快照并冻结它们；用户消息、工具结果和异步通知在后续消息路径中追加，不会重新扫描这份基础上下文。
+Peri 的 System Prompt 不是一段每轮重新拼接的文本，也不是全部内容都永久静止。当前结构分为
+两部分：会话级冻结的 base prompt，以及每次模型请求从当前 middleware 链读取的 contribution。
 
-middleware 可以贡献系统提示词段落，但 middleware 是否进入装配链由独立的 Meta Harness 控制。本文只讨论提示词的组成、冻结和请求序列化；middleware 的启用、关闭和工具副作用见 [Meta Harness](/peri-cool/posts/engineering/meta-harness/)。
+## 两部分如何组合
 
-## 提示词的架构位置
+```mermaid
+flowchart LR
+    CFG[settings + Meta Harness] --> FREEZE[session/new]
+    SECTIONS[middleware 持有的基础段落] --> FREEZE
+    ENV[cwd + date + language] --> FREEZE
+    FREEZE --> BASE[frozen base prompt]
+    CHAIN[当前 middleware chain] --> DYNAMIC[request-time contributions]
+    BASE --> COMBINE[组合并插入 cache seam]
+    DYNAMIC --> COMBINE
+    COMBINE --> REQUEST[ModelRequest]
+```
 
-段落文件位于 `peri-acp/prompts/sections/`，文件名去掉 `.md` 后就是段落 ID。`persona` 和 `language` 是装配时生成的段落，分别来自 agent 定义和语言配置；它们和文件段落一样进入同一套排序和渲染流程。
+base prompt 随会话快照持久化。load、resume、fork 与 SubAgent 复用 owner snapshot，
+不能因为磁盘上的项目指引或覆盖文件后来变化而重新生成另一份前缀。
 
-段落分为 Cached 和 Uncached 两个位置。`01_intro` 到 `06_tone_style` 位于缓存区，`07_runtime` 及之后位于非缓存区，`10_hitl`、`11_subagent`、`12_ask_user` 和 `13_skills` 由对应 middleware 提供；某个持有者未进入装配时，对应段落也不会出现。
+middleware contribution 在 `before_agent` 完成能力目录准备后读取。项目指引、Skills 摘要、
+Git attribution 与当前 direct/deferred 工具说明可以通过这条路径追加，但不能重写 frozen base。
 
-## 会话创建时冻结
+## 段落所有权就是能力边界
 
-创建会话时，Peri 读取项目规则、skills 摘要、系统提示词、语言和环境信息，并生成有序的 system message。运行期文件变化不会改写已经创建的会话；新会话才会读取新的规则和段落。
+基础身份、语言、审批、提问、Skills 与 SubAgent 说明分别由对应 middleware 持有。
+middleware 没有装配时，它持有的段落、工具和 Hook 应一起消失。
 
-冻结的目的不是让内容永远不变，而是让同一会话的基础上下文有明确生命周期。日期、项目指引和工具说明如果在每轮请求前重新扫描，模型看到的系统前缀可能在会话中途改变，也会降低请求缓存的复用条件。
+这避免了两种漂移：模型仍被告知一个已经关闭的工具，或者工具仍可调用但安全与使用说明
+已经消失。Meta Harness 负责在冻结期覆盖段落或关闭整个 middleware；运行时不能再维护
+一套平行开关。
 
-## 请求前缀的确定性
+## System Prompt 不进入 Transcript
 
-Prompt Cache 能否复用，首先取决于序列化结果是否相同。Peri 使用稳定的段落顺序和工具名称顺序；共享工具表按名称排序收集，同一工具集合在不同请求中的数组顺序保持一致。
+用户消息、模型回答、ToolUse、ToolResult 和异步通知属于 Transcript。System Prompt 独立于
+Transcript，因此 Compact 与 rewind 不会把它当普通消息删除或改写。动态 contribution 也只
+存在于当次 ModelRequest，不会在历史字符串上逐轮累加。
 
-系统消息通过统一的分块入口发送给 Provider。缓存标记只描述哪个块可以缓存，不能修复段落顺序变化、动态内容漂移或工具数组重排；缓存关闭时，内部边界标记会在发送前移除，不会成为模型可见文本。
+## cache seam 是 transport 契约
 
-## 动态消息不进入基础段落
+Peri 在冻结区与动态区之间放置一个内部控制标记：
 
-用户消息、工具调用结果、订阅通知和其他运行期事件使用消息队列追加。它们可能改变下一次请求的上下文，但不会回写会话创建时冻结的系统提示词。
+```text
+frozen base → cache boundary → request-time contribution
+```
 
-这一区分也适用于子代理。主 Agent 和子代理经过同一个请求适配器，但子代理拥有自己的消息和工具视图；共享基础规则不等于共享全部运行期消息。
+支持显式 cache breakpoint 的 Provider 可以据此拆分静态和动态 system block；其他 Provider
+只保证移除标记并保持原有字节顺序。控制标记必须在 wire request 构造前被消费，不能泄漏给模型。
 
-## 验证提示词装配
+缓存命中仍取决于 Provider、模型、TTL 和实际请求。稳定前缀提供的是可复用条件，不是费用或
+命中率承诺。
 
-排查提示词问题时，应分别检查段落来源、装配顺序、会话创建时间和最终请求序列化结果。关闭某个 middleware 后，先确认它是否贡献对应段落，再判断模型是否仍收到其他 middleware 提供的规则。
+## 确定性要求
 
-如果问题只在跨轮次或跨会话出现，还要比较冻结前缀、动态消息边界和工具数组顺序。不要只通过模型回复推断提示词是否生效，最终请求记录和装配测试才是更直接的证据。
+- 段落和 contribution 按生产链顺序组合；
+- 工具定义与能力说明使用稳定顺序，不能依赖 `HashMap` 迭代；
+- 空 contribution 不应改变 base prompt 的字节；
+- contribution provider 返回自有字符串，不能持锁跨越模型请求；
+- 重复或损坏的缓存边界必须 fail closed。
+
+排查问题时分别比较 frozen snapshot、middleware chain、request-time contribution 和 Provider
+最终序列化结果。只观察模型回复无法证明是哪一层发生了漂移。
+
+相关内容：[Meta Harness](/peri-cool/posts/engineering/meta-harness/) · [工具系统](/peri-cool/docs/features/tools/) · [上下文工程](/peri-cool/docs/features/context-engineering/)

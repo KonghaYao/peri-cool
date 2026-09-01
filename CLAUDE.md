@@ -60,8 +60,19 @@ Peri 的官方文档与博客站点，基于 Astro + Starlight 构建。
 关键认知：
 - **Peri 的功能是给 Agent 用的，不是给用户手写的。** 比如 ultracode 工作流——用户不需要写 JavaScript 脚本，只需要对 Peri 说"帮我并行审查这几个文件"，Peri 自己生成并执行工作流脚本。
 - **所有文章从任务出发**：用户想解决什么问题 → 怎么对 Peri 说 → Peri 做了什么 → 结果是什么。不介绍"你可以用 agent() 原语"这种面向 Peri 开发者的内容。
-- **区分"用户操作"和"Agent 操作"**：`/theme`、`/goal`、`/model` 是用户直接输入的命令。ultracode、子代理、compact 是 Peri 在后台自动用的能力。写清楚各自的触发方式。
+- **区分确定性命令、Skill 和 Agent 操作**：`/theme`、`/model` 是界面入口，`/compact`、`/clear` 是 core command；`/goal`、`/ultracode`、`/ultra-adlc` 通过 Skill/命令路由进入 Agent；SubAgent 与 Workflow 通常由 Agent 调用。写清楚触发入口，不把所有 `/xxx` 都描述成同一种机制。
 - **示例对话 > 技术参数**：展示用户和 Peri 之间的真实对话片段，胜过列一页配置项表格。
+
+## 上游事实源与同步
+
+`peri-cool` 位于 Peri 主仓库的子模块中。同步产品行为时，优先级为：代码与契约测试 >
+`docs/standards/` > 模块 `CLAUDE.md` > `docs/design/` > active spec > history。
+
+- `docs/design/README.md` 是权威设计索引；先确认文档状态，再转译到站点。
+- 用户文档回答“怎么完成任务、会看到什么、有什么限制”，不复制内部 crate inventory、固定源码行号或实施批次。
+- engineering 文章可以解释机制与取舍，但当前机制必须服从现行设计；过程叙述应明确为历史，不能冒充现状。
+- 调查、迁移计划、完成清单和未采纳 proposal 不同步为产品文档。
+- 上游设计改名、合并或删除时，检查 `developer/`、`history/`、engineering 文章和站内链接；完成前运行 `bun test` 与 `bun run check:site`。
 
 ## 项目结构
 
@@ -73,23 +84,15 @@ src/
       [...slug].astro         # 单篇博客文章页
   styles/submerged.css        # 全局主题 CSS
   content/
-    docs/                     # 文档内容（Starlight 渲染）
-      get-started/            # 开始使用
-        introduction.mdx      # 概述
-        quickstart.mdx        # 快速上手
-        why-peri.mdx          # 为什么选择 Peri
-      features/               # 功能文档
-        ultracode.mdx         # ultracode 工作流
-        subagent.mdx          # 子代理
-        skills.mdx            # Skills
-        tools.mdx             # 工具系统
-        theme.mdx             # /theme 主题
-        goal.mdx              # /goal 长任务
-      reference/              # 参考文档
-      community/              # 社区
-        contributing.mdx      # 贡献指南
-      developer/              # 开发者文档
-        index.mdx             # 开发者指南
+    docs/docs/                # 文档内容（Starlight 渲染）
+      get-started/            # 安装与快速上手
+      guides/                 # TUI、Provider、Session、Plugin 等使用指南
+      features/               # 任务与能力说明
+      reference/              # Settings 与键盘参考
+      security/               # 权限与凭据边界
+      troubleshooting/        # 故障排除
+      developer/              # 开发者入口与现行架构
+      history/                # 明确标注证据边界的工程历史
     posts/                    # 博客内容（独立 Astro collection，目录即分类）
       engineering/            # 工程实践
       product/                # 产品介绍
@@ -137,7 +140,7 @@ bun run preview  # 预览构建产物
 
 ## 添加新文档页
 
-1. 在 `src/content/docs/<专题>/` 下创建 `.mdx` 文件
+1. 在 `src/content/docs/docs/<专题>/` 下创建 `.mdx` 文件
 2. 在 `astro.config.mjs` 的 sidebar 对应 section 中添加条目
 3. frontmatter 必须包含 `title` 和 `description`
 

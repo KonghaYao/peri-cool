@@ -1,6 +1,6 @@
 ---
-title: Meta Harness
-description: 通过 middleware 装配配置裁剪 Agent 能力，说明哪些组件会被构造、哪些工具与提示词段落会随之消失，以及它和 Minimal Agent 的关系。
+title: Meta Harness 的能力闭包
+description: 说明段落覆盖、middleware 卸载与内置 SubAgent 策略如何在会话创建时形成一致的能力边界。
 date: 2026-08-22
 hero:
   image:
@@ -8,49 +8,62 @@ hero:
     alt: 打开的工具箱
 ---
 
-Meta Harness 位于 middleware 装配层。它读取 `meta_harness` 配置，在构建当前 Agent 时决定哪些 middleware 进入装配链；它不是运行期的 prompt 开关，也不是一个单独替代 Agent loop 的执行器。
+Meta Harness 不是运行中的 prompt 开关，而是会话装配策略。它在创建会话时把配置解析为
+一份冻结状态，再由同一份状态决定提示词段落、middleware 链和内置 SubAgent 定义是否存在。
 
-middleware 负责注册工具、贡献系统提示词段落或挂接生命周期事件。Meta Harness 在这些组件构造之前做裁剪，因此关闭组件的影响不仅是少一段提示词，还包括对应工具和注册副作用不会进入当前装配结果。
+## 一个 map，三类 key
 
-## 配置控制装配
+| key 类型 | 行为 |
+| --- | --- |
+| 段落 ID | `true` 时读取 `.peri/meta/<ID>.md` 并整段替换 |
+| middleware 名 | `false` 时跳过该组件；`true` 可恢复全局配置中的关闭项 |
+| `BuiltInSubagents` | 控制 compile-time 内置定义，默认启用 |
 
-`meta_harness` 使用一个键值映射。`false` 值对应 middleware 名称，表示该组件不参与当前装配；段落覆盖属于另一种配置入口，不能把任意 `true` 键理解成自动加载文件。
+全局与项目配置按 key 合并。项目可以恢复一个被全局关闭的 middleware，但不能用 `null`
+删除全局 key。未知 key 会告警并忽略；非布尔值是配置错误。
 
-例如关闭 `FilesystemMiddleware`、`TerminalMiddleware` 和 `McpMiddleware`，会从当前 middleware 链中移除这些能力的注册入口。Agent loop、模型调用和 session 基础设施不由这些开关关闭，它们仍然负责处理消息和执行回合。
+## 关闭必须形成能力闭包
 
-```json
-{
-  "config": {
-    "meta_harness": {
-      "FilesystemMiddleware": false,
-      "TerminalMiddleware": false,
-      "McpMiddleware": false,
-      "ToolSearch": false
-    }
-  }
-}
+一个 middleware 可能同时拥有提示词段落、direct 工具、deferred 工具、Hook 和命令投影。
+因此“关闭”不能只从模型工具数组删除一个名字。当前设计要求以下消费面一起收口：
+
+```text
+middleware 缺席
+  → 持有段落缺席
+  → direct 工具缺席
+  → deferred index / resolver 缺席
+  → slash route 与 ACP/TUI 投影缺席
+  → SubAgent / Workflow 不继承该能力
 ```
 
-## 组件关闭后的影响
+工具视图按 session、按 turn 从当前生产链派生；ToolSearch 也从同一视图建立索引，不能
+依赖一份静态工具名单猜测当前能力。
 
-不同 middleware 持有不同内容。关闭 `DefaultSystemPromptMiddleware` 会移除它贡献的基础系统提示词，关闭 `SkillsMiddleware` 会移除 Skills 相关提示词和注册工具；关闭 `HumanInTheLoopMiddleware` 则会影响 AskUserQuestion 相关能力。
+## 审批与提问已经拆分
 
-这些变化不能只看最终工具列表判断。组件可能同时贡献提示词、工具和初始化回调，检查配置时应按 middleware 的持有范围确认影响；关闭 Permission 或 Human-in-the-Loop 也意味着当前 Agent 不再拥有相应的审批路径。
+`PermissionMiddleware` 持有审批策略和 `10_hitl`，`HumanInTheLoopMiddleware` 持有
+`AskUserQuestion` 与 `12_ask_user`。这两个能力有不同的生命周期和失败语义：关闭审批
+不应让提问消失，关闭提问也不应把敏感工具自动放行。
 
-## 与 Minimal Agent 的关系
+## 段落冻结，动态贡献按请求读取
 
-Minimal Agent 使用 Meta Harness 把默认装配收窄，再按任务需要打开少数 middleware。`example/minimal` 当前打开 MCP 和 ToolSearch，关闭多个默认能力，因此它适合验证一条明确的工具链，不等于一个默认安全配置。
+段落覆盖在会话创建时进入 frozen base prompt。与此同时，当前 middleware 链还可以在
+每次模型请求前提供 contribution，例如项目指引、Skills 摘要或 session-local 工具说明。
+这些贡献只能追加在冻结前缀之后，不能回写 Transcript，也不能绕过当前能力策略。
 
-MCP 只是 Minimal Agent 的一种外部工具来源。Meta Harness 先决定 MCP middleware 和 ToolSearch 是否存在，MCP 再提供 server 连接，ToolSearch 最后决定延迟工具如何被模型发现和执行；三层职责互不替代。
+这条分界同时服务一致性与缓存：冻结区保持稳定，运行时能力说明可以随当前 session-local
+工具视图变化。Provider adapter 会在发送请求前消费内部缓存边界标记，模型不会看到该标记。
 
-## 适合控制什么
+## `BuiltInSubagents` 的边界
 
-Meta Harness 适合控制 Agent 的能力边界和装配成本。例如只保留工具搜索与一个外部工具来源，或者关闭不适用于当前运行环境的文件、网络和子代理能力。
+`BuiltInSubagents: false` 只移除随二进制分发的 Agent 定义。项目与插件定义仍可进入
+catalog，fork、resume、`Agent` 和 `AgentResult` 仍由 `SubAgentMiddleware` 控制。
+如果目标是完全关闭子代理，应关闭 `SubAgentMiddleware`，而不是只修改定义来源。
 
-它不替代远程 server 的权限校验，也不替代模型 provider 的安全策略。关闭本地 middleware 后，外部 MCP server 仍需独立限制工具输入、身份和副作用。
+## 验证方法
 
-## 验证装配结果
+对每个配置同时写 presence 与 absence 检查：生产链里是否有该 middleware，提示词是否有
+对应段落，工具视图和 ToolSearch 是否能发现相关工具，子代理与 Workflow 是否继承相同
+边界。只看模型回复不能证明装配正确。
 
-配置修改发生在装配阶段，不能只通过下一轮 prompt 判断是否生效。应检查 middleware 链、最终工具列表和系统提示词投影；对 ToolSearch，还要确认搜索索引中是否存在预期的延迟工具。
-
-一个可复现的验证方式是先列出期望存在和期望不存在的工具，再执行一次搜索和调用。若工具未注册，问题应回到配置键、middleware 名称和装配路径，而不是先修改系统提示词。
+用户配置与风险说明见 [Meta Harness 文档](/peri-cool/docs/features/meta-harness/)。

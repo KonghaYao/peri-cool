@@ -82,9 +82,9 @@ export const postCategories = [
 				label: '认识与开始',
 				description: '先理解 Peri 适合什么任务，再完成第一次真实模型请求。',
 				posts: [
-					'product/demo-introducing-peri',
-					'product/where-peri-fits',
 					'product/provider-first-success',
+					'product/where-peri-fits',
+					'product/demo-introducing-peri',
 				],
 			},
 			{

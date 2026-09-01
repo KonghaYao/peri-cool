@@ -1,6 +1,6 @@
 ---
 title: 上下文工程
-description: 理解 Peri 如何管理上下文窗口——缓存策略、自动压缩与渐进式信息加载
+description: 理解 Peri 的会话快照、项目指引、Compact 与渐进式能力发现。
 hero:
   image:
     file: ../../../../assets/img_toolbox_open_s53.png
@@ -9,274 +9,102 @@ hero:
 
 import { Aside } from '@astrojs/starlight/components';
 
-## 为什么上下文重要
+上下文不是越多越好。项目规则、对话历史、工具定义和工具结果都会占用模型窗口；重复、
+过时或没有行动价值的内容会增加请求成本，也会让当前任务的证据更难定位。
 
-大语言模型的注意力机制存在 **n² 的复杂度关系**：输入序列长度翻倍，注意力计算量翻四倍。更关键的是，token 越多，模型的注意力越稀释——"长上下文"不等于"好理解"。
+Peri 用四个边界控制这件事：会话级冻结快照、request-time contribution、Compact 投影，
+以及 Skills 与 deferred tools 的渐进式发现。
 
-### 长上下文的隐性成本
-
-| 维度 | 短上下文（~10K tokens） | 长上下文（~100K tokens） |
-|------|------------------------|--------------------------|
-| API 延迟 | 取决于 Provider、模型与负载 | 通常需要处理更多输入，但必须实测 |
-| 输入费用 | 低 | token 数 × 单价 |
-| 注意力质量 | 精准，关键信息密度高 | 稀释，模型可能"遗忘"中间部分 |
-| 缓存命中 | 维护简单 | 缓存碎片化，命中率下降 |
-
-**核心思路：把上下文当作有限资源管理，而非无限垃圾桶。**
-
-Peri 的设计哲学就是帮你管理这一资源——系统提示词冻结缓存、按需文件加载、自动压缩、子代理隔离——全是为了用最少的 token 传达最精准的信息。
-
-## Peri 的冻结前缀缓存
-
-### 传统方式的问题
-
-模型请求需要携带系统提示词；如果 Provider 支持 prompt cache，稳定前缀可以复用其缓存语义。具体计费与有效期由 Provider 决定。
-
-```mermaid
-sequenceDiagram
-    participant U as 用户
-    participant A as 传统助手
-    participant API as API
-
-    U->>A: 第1轮对话
-    A->>API: System + Context + 本轮输入
-    U->>A: 第2轮对话
-    A->>API: System + 全部历史 + 本轮输入
-    U->>A: 第3轮对话
-    A->>API: System + 全部历史 + 本轮输入
-    Note over A,API: 重复前缀是否优惠取决于 Provider 缓存
-```
-
-### Peri 的冻结前缀方案
-
-Peri 将系统提示词、项目指令与启动时装配的静态内容组织为**冻结前缀（frozen prefix）**，尽量保持序列化稳定，从而让支持 prompt cache 的 Provider 有机会复用缓存。冻结是架构契约，不是固定命中率或费用承诺。
-
-```mermaid
-sequenceDiagram
-    participant U as 用户
-    participant P as Peri
-    participant API as API
-
-    U->>P: 第1轮对话
-    P->>API: [FROZEN System] + 动态Context + 本轮输入
-    Note over P,API: 首次请求建立可复用前缀
-    U->>P: 第2轮对话
-    P->>API: [稳定前缀] + 动态Context + 本轮输入
-    Note over P,API: usage 返回值决定是否命中缓存
-    U->>P: 第3-10轮对话
-    P->>API: [稳定前缀] + 动态Context + 本轮输入
-    Note over P,API: 前缀变化、TTL 与模型切换都可能失效
-```
-
-### 如何验证效果
-
-冻结前缀中的内容不由对话 compaction 修剪，但仍会占据请求上下文，并可能产生缓存写入、读取或普通输入费用。不要把 CLAUDE.md 当作“免费指令”。应从 Provider 返回的 usage 字段分别观察 cache write、cache read 和普通输入 token，并在同一模型、同一前缀下比较多轮请求。
-
-<Aside type="note">
-  冻结前缀在什么时候失效？当模型切换、系统提示词变更或 <code>/clear</code> 重置会话时。日常对话中前缀高度稳定，这也是为什么保持 CLAUDE.md 精简很重要——每一行都留在前缀里。
-</Aside>
-
-## CLAUDE.md 的上下文工程视角
-
-CLAUDE.md 不是文档 dump，而是**浓缩指令**——它占据冻结前缀，每次会话都要携带。你的每个字都在决定 Peri 将注意力分配到何处。
-
-### 好的 CLAUDE.md vs 差的 CLAUDE.md
-
-**差的设计（信息 dump）：**
-
-```markdown
-# 项目说明
-本项目是一个用 Rust 编写的终端 AI 编码助手。使用 tokio 异步运行时，
-ratatui 作为 TUI 框架，clap 处理命令行参数。项目结构分为 agent、
-tui、tools、mcp 等模块。agent 负责 ReAct 循环，tui 负责界面渲染，
-tools 负责工具定义和执行，mcp 负责与外部 MCP 服务器通信...
-（继续 200 行项目介绍）
-```
-
-Peri 加载进来全是描述性信息，没有一个指令告诉它"该怎么做"。
-
-**好的设计（浓缩指令）：**
-
-```markdown
-# 编码规范
-- 禁止 println!，统一用 tracing（info/warn/error）
-- CJK 截断用 chars().take()，禁止 bytes().take()
-- 错误处理统一用 anyhow::Result，禁止裸 unwrap()
-
-# 模块速查
-| 模块 | 入口 | 关键规则 |
-|------|------|----------|
-| peri-agent | agent.rs | 中间件顺序不可变 |
-| peri-mcp | client.rs | 连接超时 5 秒 |
-
-# TRAP
-- [TRAP] Windows 路径含反斜杠导致 glob 失败 → 统一 normalize 后再 glob
-```
-
-每一行都是可执行指令，Peri 不需要从中"提取信息"——直接遵守。
-
-### 用 @import 引用拆分大文件
-
-主 CLAUDE.md 放全局规则，细节用 `<!-- @import path -->` 引用展开（仅 CLAUDE.md 系列文件解析，AGENTS.md 不处理）：
-
-```markdown
-# 项目根 CLAUDE.md（< 50 行）
-<!-- @import .claude/rules/coding-style.md -->
-<!-- @import .claude/rules/testing.md -->
-```
-
-被引用的文件也参与冻结前缀缓存，但在文件层面分离，方便维护。路径相对于当前文件所在目录，递归深度上限 3。Peri 自身的 CLAUDE.md 就是这样做的大约 200 行主文件引用规则文件。
-
-<Aside type="tip">
-  <code>@import</code> 引用文件的内容和直接写在主文件中效果相同——都进入冻结前缀。区别在于文件隔离降低了维护心智负担。不要在引用的文件里写"冗余摘要"——上下文已经包含信息源，写摘要就是浪费。
-</Aside>
-
-## 自动压缩
-
-当对话历史接近模型的 token 限制时，Peri 触发自动压缩（compaction）。压缩器遍历对话历史，将已完成的操作总结为结构化摘要，丢弃原始的工具调用细节。
-
-### 压缩事件
-
-`PreCompact` 事件在压缩前触发——你可以通过 hook 在压缩前备份关键信息，或注入指令指定哪些内容必须保留。
-
-`PostCompact` 在压缩后触发——验证压缩结果是否丢了关键上下文。
-
-```json
-{
-  "hooks": {
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo 'compaction开始' >> /tmp/peri-compaction.log"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### 压缩保留策略（内置规则）
-
-压缩保留什么由内置规则决定，不需要（也无法）在 CLAUDE.md 中声明。Micro Compact 有一份黑名单工具列表，这些工具的消息（输入 + 输出）**不参与截断**：
-
-| 工具 | 保留原因 |
-|------|---------|
-| `Agent` | 子任务描述等结构化参数不可恢复，丢失会导致子代理调度失败 |
-| `AskUserQuestion` | 用户答案不可恢复，丢失会导致对话断裂 |
-| `goal` | 长期目标状态，丢失会导致 agent 漂移方向 |
-| `TodoWrite` | 任务列表结构，丢失会导致工作记忆重置 |
-
-此外，Smart Compact（遗留实现，默认关闭）会保留最近 5 条 User/Assistant 消息和最近 3 个工具调用结果。压缩完成后会追加续接指令 `[Context has been compacted. Continue working based on the summary above.]`。
-
-压缩后，Peri 的上下文变成一个"精简摘要 + 冻结前缀 + 最新几轮对话"的结构，既保留了项目知识，又释放了空间继续推理。
-
-## 渐进式信息加载
-
-Peri 不会在会话开始时把所有项目文件读进上下文。它的工作方式是：
-
-1. **收到任务** → 分析需求
-2. **用 glob 发现文件** → 只获取匹配的文件路径
-3. **用 grep 定位代码** → 只读取匹配行附近的上下文
-4. **按需 Read** → 只在需要完整内容时读取整个文件
-
-每一步都只向上下文添加最少的信息。
-
-```mermaid
-flowchart TD
-    T[任务: 修改用户认证逻辑] --> G[glob: **/auth*]
-    G --> GR[grep: verify_token | login | authenticate]
-    GR --> R[Read: 仅读匹配文件中的相关函数]
-    R --> E[Edit: 精确修改]
-    E --> V[验证: cargo check]
-```
-
-### 工具结果也是 token 高效的
-
-Peri 的工具输出自动截断——过长的 grep 结果、文件内容会被压缩为摘要。你不需要手动限制工具范围，Peri 内置了输出裁剪机制。
-
-<Aside type="note">
-  如果 Peri 反复读取同一个大文件，说明它没有从先前的上下文中保留关键信息——此时应将该文件的模块索引加入 CLAUDE.md，让 Peri 知道"去哪里找什么"，而非依赖上下文中的文件内容。
-</Aside>
-
-## 子代理隔离
-
-每个子代理拥有独立的上下文窗口，不会污染主对话。
+## System Prompt 有冻结区和动态区
 
 ```mermaid
 flowchart LR
-    M[主 Agent<br/>上下文: 冻结前缀 + 摘要 + 最新对话] --> |派发任务| S1[子代理 1<br/>独立上下文]
-    M --> |派发任务| S2[子代理 2<br/>独立上下文]
-    M --> |派发任务| S3[子代理 3<br/>独立上下文]
-
-    S1 --> |结果摘要| M
-    S2 --> |结果摘要| M
-    S3 --> |结果摘要| M
+    S[session/new] --> F[frozen base prompt]
+    M[当前 middleware chain] --> C[request-time contributions]
+    F --> R[ModelRequest]
+    C --> R
+    T[Transcript 可见历史] --> R
 ```
 
-这意味着：
-- 子代理执行过程中产生的大量搜索和读取不会挤占主对话的上下文
-- 主 Agent 收到的是子代理的**结构化摘要**，而非原始工具调用日志
-- 可以并行搜索多个代码区域而不互相干扰
+base prompt、Meta Harness 状态和项目静态输入在创建会话时形成快照。load、resume、fork
+与 SubAgent 复用这份 owner snapshot，避免同一会话在磁盘变化后悄悄换一套基础规则。
 
-子代理适合处理"搜索-分析-总结"类的密集型任务——它们吃掉 token，但只向主 Agent 返回提炼后的结论。
+middleware contribution 在每次模型请求前从当前生产链读取。项目指引、Skills 摘要、
+Git attribution 与 session-local 工具说明可以通过这一区域加入请求。它们位于冻结前缀之后，
+不会回写 Transcript。
 
-## 长任务策略
-
-长时间任务（如重构 20 个模块、批量迁移测试）面临 token 积累问题。三种处理策略：
-
-### 策略 1：压缩 + 结构化笔记
-
-Peri 在压缩时会保留"结构化笔记"——你可以在任务开始前让 Peri 建立笔记文件：
-
-```
-在 notes/task-log.md 中创建任务日志。每完成一个模块，
-记录：模块名、改动摘要、验证结果。压缩时优先保留此文件的内容。
-```
-
-压缩后 Peri 通过笔记文件恢复上下文，而非依赖对话历史。
-
-### 策略 2：子代理架构
-
-将长任务拆成独立子代理，每个子代理处理一个相对独立的子任务。子代理完成后返回结果摘要，主 Agent 负责编排。
-
-```
-主 Agent：编排重构流程
-  ├── 子代理 1：重构 src/models/（独立上下文，完成即返回摘要）
-  ├── 子代理 2：重构 src/services/（独立上下文）
-  └── 子代理 3：更新测试（独立上下文）
-```
-
-子代理的内部对话历史在完成后销毁——主 Agent 只留下三份摘要。
-
-### 策略 3：Combine
-
-两种策略可以组合：让每个子代理在自己的上下文中使用压缩，处理更大的子任务。主 Agent 用笔记文件协调全局状态。
-
-## 实用建议
-
-**拆分大任务。** 一句"重构整个项目"会让 Peri 在单一上下文中同时处理几百行新老代码对比——注意力崩了。拆成"先重构模块 A → 验证 → 再重构模块 B"。
-
-**精简你的 CLAUDE.md。** 每季度回顾一次——哪些规则 Peri 已经不再需要？哪些描述可以用 @import 引用拆出去？过了 200 行就考虑重构。
-
-**主动 `/compact`。** 不等到自动触发。当对话超过 15 轮时，主动执行 `/compact` 释放空间。压缩后确认 Peri 仍理解任务目标再继续。
-
-**给 Peri 明确的"当前关注点"。** 每次 `/clear` 或 `/compact` 后的第一条消息，先重申当前任务的目标和进度：
-
-```
-（续）当前在重构 auth 模块，已完成：
-- JWT 签发逻辑迁移 ✓
-- 中间件提取 ✓
-下一步：迁移 refresh token 逻辑
-```
-
-这让 Peri 不需要从上下文中"猜测"当前状态。
-
-**分批改，分批交。** 30 个文件的重构，不要一个 commit 搞定。每改 5-8 个文件，验证通过就 commit。如果某个批次出问题，损失可控，`/clear` 后也很容易恢复。
-
-<Aside type="caution">
-  接近 token 限制时 Peri 的输出质量会下降——不是模型能力的问题，而是注意力被长历史稀释。如果你发现 Peri 开始忽略指令或"忘记"几分钟前的决定，主动 <code>/compact</code> 或 <code>/clear</code>。
+<Aside type="note">
+  稳定前缀只提供 Prompt Cache 的复用条件。是否命中、保存多久以及怎样计费，仍由 Provider
+  和模型决定，应以实际 usage 字段为准。
 </Aside>
+
+## 项目指引文件是路由，不是文档仓库
+
+Peri 从候选路径中选择第一个存在的项目指引。会话冻结入口只检查当前工作目录下的：
+
+```text
+AGENTS.md
+CLAUDE.md
+.claude/AGENTS.md
+```
+
+它不会向父目录递归继承。因此在子目录启动 Peri 时，需要让该目录自己的指引明确路由到
+适用规则。普通 middleware 路径还可以追加用户级 `~/.claude/AGENTS.md` 与宿主提供的额外
+路径，同样只选择第一个匹配项。
+
+选中的 `CLAUDE.md` 支持 `<!-- @import path -->`，递归深度和循环受到限制；`AGENTS.md`
+不展开这套 import。import 只是组织文件的方式，被导入内容仍会进入上下文，不能用它规避
+体积成本。
+
+一份有效的根指引通常只保留：
+
+- 事实优先级和必须遵守的少量不变量；
+- 按任务查找模块说明、标准、设计与 active issue 的路由；
+- 常用验证命令；
+- 容易造成真实错误的项目特定陷阱。
+
+模块 inventory、事故过程、实现细节和规范正文应留在各自事实源中，不要复制进根指引。
+
+## Compact 不修改原始消息正文
+
+自动 Compact 发生在 Agent Loop 的 Compact 阶段。当前主要有两级：
+
+- **Micro Compact**：生成投影计划，对较旧的工具输入、结果或媒体做字段级压缩；
+- **Full Compact**：用摘要替代一段可见历史，并按预算重新注入必要文件与 Skill 信息。
+
+Micro 使用标记和持久化 projection directive 重建模型视图。原始 Transcript 正文保留，
+Reason 阶段将投影应用到副本后再发送给模型。ToolUse 与 ToolResult 必须继续配对，JSON 根类型
+和 Provider 对 reasoning block 的限制也必须保持。
+
+Full Compact 会把旧消息标为 excluded，再追加带续接提示的 Human 摘要。失败时会显式降级，
+不会把一次压缩失败误写成任务完成。
+
+`smart_compact_enabled` 是兼容开关，不是新项目应依赖的第三套主路径。需要手动释放上下文时，
+可以使用 `/compact`；想完全清空对话历史时使用 `/clear`。两者语义不同。
+
+## 工具与 Skills 按需进入上下文
+
+direct 工具的 schema 直接进入当前模型请求。deferred 工具保留在 session-local 注册表中，
+先通过 `SearchExtraTools` 发现，再通过 `ExecuteExtraTool` 调用。这样低频、动态工具不必全部
+常驻每一轮请求。
+
+Skills 先以 name 与 description 摘要参与能力发现，需要时再加载 `SKILL.md` 全文。MCP
+提供的远端 Skill 也进入 session catalog，但其正文和关联资源仍受来源绑定与当前 MCP 连接约束。
+
+## 子代理隔离工作上下文
+
+适合独立交付的调查、实现或验证可以交给 SubAgent。子代理拥有自己的消息历史和工具视图，
+同时继承父会话冻结的项目上下文。主会话接收的是交付结果，不需要承载子代理的全部搜索过程。
+
+隔离不等于自动正确：任务边界、允许工具、写入范围和验收条件仍需明确。共享写入面应由唯一
+owner 收敛，不能因为并发而让多个 Agent 同时改同一组文件。
+
+## 长任务建议
+
+1. 把目标、工作包、验证证据和剩余风险写入项目文件或 Goal，不依赖聊天记忆。
+2. 对可独立验证的子任务使用 SubAgent；跨阶段、可重放的批量流程使用 Workflow。
+3. 每完成一个可验证切片就运行目标测试，并更新事实记录。
+4. Compact 后先读取任务记录和当前 diff，再继续修改。
+5. 不要把日志、大段工具输出或重复规则复制到项目指引。
+
+相关内容：[项目指引文件](/peri-cool/docs/features/claude-md/) · [工具系统](/peri-cool/docs/features/tools/) · [Skills](/peri-cool/docs/features/skills/) · [管理长任务](/peri-cool/docs/features/long-running-tasks/)

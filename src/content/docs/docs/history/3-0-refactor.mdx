@@ -99,12 +99,13 @@ cargo test -p peri-agent --lib model_bridge
 - 3.0 PRD明确把性能调优列为范围外；本文没有性能结论。
 - 多客户端 attach 在该 PRD 中只落实了 writer lease 方向，协议级扩展不属于这次迁移。
 - provider 工厂和模型实例生命周期在 PRD 归档文本中仍保留未完全收口的跟踪说明。
-- `docs/top-level.md` 是目标分层；当前实现发生变化时，应先查代码、契约测试和 standards。
+- `docs/design/architecture.md` 已收敛为现行总体设计；当前实现发生变化时，仍应先查代码、契约测试和 standards。
 
 ## 证据入口
 
 - 伞形 PRD：`spec/archive-issues/architecture/2026-08-05-peri-3.0-refactor-prd.md`
 - 当前跨层契约：`docs/standards/architecture-contracts.md`
+- 当前权威设计索引：`docs/design/README.md`
 - 历史索引：`spec/global/problems.md` 与 `spec/global/domains/agent.md`
 - 3.0 主线合入：commit `1fcacf75`
 - 具体实现：`peri-agent/src/session/`、`peri-controller/src/`、`peri-resources/src/`、`peri-acp/src/event/`
