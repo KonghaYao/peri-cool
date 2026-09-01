@@ -61,25 +61,21 @@ skill 构建完成后，提功能需求只需要一句话：
 
 Peri 加载 skill 后按流程走：理解需求 →（大改动先出方案等你确认）→ 分批实施 → 独立验证。skill 的存放位置、自动加载机制和修改方式，见[探索陌生代码库](/peri-cool/docs/features/explore-codebase/)的说明。
 
-## 进阶：auto-devflow 流水线
+## 进阶：Ultra-ADLC 完整交付
 
-上面构建的 implement-feature 是主代理单线执行。功能更大、跨模块多时，可以用 **auto-devflow**——它把整个开发过程编排成流水线：探索 → 方案 → 编码 → 审查 → 验证，每个阶段由独立子代理接力完成、结果写入手稿文件，主代理只做控制器。子代理各管一段，主会话的上下文始终保持干净，适合大功能。
+上面构建的 implement-feature 是主代理单线执行。任务跨越多个模块、需要多个工作流协作，
+并且必须完整交付时，可以使用 builtin **Ultra-ADLC**。它先调查仓库，再让用户确认产品与
+风险决策，随后并发执行实现和验证，最后由独立评估 Agent 检查任务是否完整完成。
 
-获取方式：
-
-```text
-npx skills add https://github.com/konghayao/peri --skill auto-devflow
-```
-
-安装后，描述任务时提及它即可触发：
+描述最终目标即可启动：
 
 ```text
-/auto-devflow 实现一个插件系统，支持从远程仓库安装插件
+/ultra-adlc 实现一个插件系统，支持从远程仓库安装、升级和回滚插件
 ```
 
-auto-devflow 会自己判断任务复杂度：小任务走精简流程；复杂任务（涉及公共 API、数据迁移、并发等）自动加一道方案审查关卡，方案确认后才开始编码。
-
-两个怎么选：功能中等、边界清晰用 implement-feature，单代理流程轻、确认点少；功能大、跨模块多、希望每阶段独立审查用 auto-devflow。
+两个怎么选：功能中等、边界清晰时使用 implement-feature；任务规模很大、存在多个独立
+工作流并且不能接受部分完成时使用 Ultra-ADLC。详细流程见
+[Ultra-ADLC：超大规模完整交付](/peri-cool/docs/features/ultra-adlc/)。
 
 ## 进阶：mattpocock 流水线
 

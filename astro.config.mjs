@@ -81,7 +81,7 @@ export default defineConfig({
 						{ slug: 'docs/features/parallel-work' },
 						{ slug: 'docs/features/ultracode-workflow' },
 						{ slug: 'docs/features/ultracode-usage' },
-						{ slug: 'docs/features/auto-devflow' },
+						{ slug: 'docs/features/ultra-adlc' },
 						{ slug: 'docs/features/long-running-tasks' },
 						{ slug: 'docs/features/cron' },
 					],

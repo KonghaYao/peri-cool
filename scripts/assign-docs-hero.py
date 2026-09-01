@@ -18,7 +18,7 @@ GROUPS = {
     "write-tests": ("img_lamp_and_workbench_s50.png", "台灯与工作台"),
     "parallel-work": ("img_gears_and_path_s51.png", "齿轮与轨道"),
     "ultracode-workflow": ("img_gears_and_path_s51.png", "齿轮与轨道"),
-    "auto-devflow": ("img_gears_and_path_s51.png", "齿轮与轨道"),
+    "ultra-adlc": ("img_gears_and_path_s51.png", "齿轮与轨道"),
     "long-running-tasks": ("img_gears_and_path_s51.png", "齿轮与轨道"),
     "cron": ("img_gears_and_path_s51.png", "齿轮与轨道"),
     "model-profiles": ("img_keys_and_star_s52.png", "钥匙与星"),

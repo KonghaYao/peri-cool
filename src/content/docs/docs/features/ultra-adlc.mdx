@@ -1,0 +1,109 @@
+---
+title: Ultra-ADLC：超大规模完整交付
+description: 用一句自然语言目标启动环境发现、用户决策、并行实现和独立完成度评估
+hero:
+  image:
+    file: ../../../../assets/img_gears_and_path_s51.png
+    alt: 齿轮与轨道
+---
+
+Ultra-ADLC 面向跨模块、长周期、必须完整交付的超大规模开发任务。用户不需要先了解
+仓库结构、实现文件或测试命令，只需要描述最终目标：
+
+```text
+/ultra-adlc 实现一个插件系统，支持从远程仓库安装、升级和回滚插件
+```
+
+Peri 会先调查环境，再把真正需要用户决定的产品或风险问题集中提出来。用户确认后，
+系统进入实现与验证阶段；在独立完成度评估证明全部范围已经覆盖前，任务不会被标记为完成。
+
+## 什么时候使用
+
+适合 Ultra-ADLC 的任务通常同时具备多项特征：
+
+- 跨多个模块或独立工作流；
+- 需要架构设计、实现、测试、文档和迁移一起交付；
+- 可以把相互独立的调查、实现或验证工作并发执行；
+- 不能接受“先完成核心部分，其余以后再说”。
+
+普通功能、局部修复、代码审查或一次性并行任务不需要 Ultra-ADLC。使用常规开发流程会更快。
+
+## 人机协作流程
+
+```mermaid
+flowchart TD
+    U["用户：一句自然语言目标"] --> M["Main Agent：读取仓库与约束"]
+    M --> W1["Workflow 1：环境发现与设计"]
+    W1 --> Q["Main Agent：AskUserQuestion"]
+    Q --> D["用户：只做产品与风险决策"]
+    D --> W2["Workflow 2：实现、集成与验证"]
+    W2 --> A["单一 Completion Assessor"]
+    A -->|发现可修复缺口| W2
+    A -->|100% 覆盖| C["完整交付与 Agent 表现记录"]
+    A -->|需要新授权或外部条件| B["阻塞并交回用户"]
+```
+
+流程只有两个逻辑 Workflow。用户决策发生在两者之间，由 Main Agent 发起；Workflow
+中的执行 Agent 不会直接向用户提问。
+
+## 三份契约
+
+每个任务在项目内写入 `peri/adlc/<task-id>/`。三份文件是唯一的任务契约：
+
+| 契约 | 回答的问题 |
+| --- | --- |
+| `contracts/intent.md` | 为什么做、最终必须交付什么、哪些内容不在范围内 |
+| `contracts/execution.md` | 工作如何拆分、依赖关系、负责人和验收方式 |
+| `contracts/evidence.md` | 哪些证据证明全部需求和工作包已经完成 |
+
+决策、Agent 交接、测试产物和运行记录属于审计材料，不会变成额外契约。
+
+```text
+peri/adlc/<task-id>/
+├── manifest.json
+├── contracts/
+│   ├── intent.md
+│   ├── execution.md
+│   └── evidence.md
+├── decisions/
+├── handoffs/
+├── artifacts/
+└── learning/
+    └── agent-performance.md
+```
+
+文件系统交接使每个 Agent 的输入、结论、验证命令和遗留问题都可追踪。Main Agent
+也可以在上下文压缩或任务恢复后从这些记录继续执行。
+
+## 并发与模型分工
+
+Ultra-ADLC 优先缩短关键路径，而不是让所有工作都使用同一个模型：
+
+| Profile | 典型职责 |
+| --- | --- |
+| `haiku` | 清单、搜索、格式检查等低风险机械任务 |
+| `sonnet` | 边界清楚的实现、测试、修复和普通审查 |
+| `opus` | 需求综合、架构冲突、高风险审查和最终完成度评估 |
+| `fable` | 少量无法通过分解降低复杂度的关键决策 |
+
+互不依赖且写入范围不冲突的工作会并发执行；存在依赖或共享写入面的工作保持串行。
+Ultra-ADLC 复用现有 Workflow 调度能力，不增加新的 DAG 或执行引擎。
+
+## 完成意味着什么
+
+Ultra-ADLC 没有“部分完成”终态。合法终态只有：
+
+- `complete`：独立 Completion Assessor 证明需求、工作包、验收场景和必需验证均已覆盖；
+- `blocked`：需要新的用户授权、外部系统或当前无法取得的证据；
+- `cancelled`：用户取消任务。
+
+评估发现的可修复缺口会重新进入 Workflow 2，完成修复、集成和复验。只有评估通过后，
+系统才会生成 `learning/agent-performance.md`，记录本次 Agent 的有效做法、缺点和评级，
+供后续 ADLC 改进使用。
+
+## 当前边界
+
+- 任务运行状态继续通过 `/workflows` 和 `/tasks` 查看，没有独立的 ADLC 面板；
+- 未经用户单独授权，不会自动 commit、push、发布、部署或修改外部系统；
+- Ultra-ADLC 不会把密钥、令牌或密码写入 `peri/adlc/`；
+- 外部依赖不可用时，任务会明确进入 `blocked`，不会用缩减范围制造完成结论。
