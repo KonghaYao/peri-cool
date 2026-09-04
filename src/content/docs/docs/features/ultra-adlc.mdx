@@ -48,7 +48,7 @@ flowchart TD
 
 ## 三份契约
 
-每个任务在项目内写入 `peri/adlc/tasks/<adlc-id>/`。三份文件是唯一的任务契约：
+每个任务在项目内写入 `.peri/adlc/tasks/<adlc-id>/`。三份文件是唯一的任务契约：
 
 | 契约 | 回答的问题 |
 | --- | --- |
@@ -59,7 +59,7 @@ flowchart TD
 决策、Agent 交接、测试产物和运行记录属于审计材料，不会变成额外契约。
 
 ```text
-peri/adlc/
+.peri/adlc/
 ├── tasks/
 │   └── <adlc-id>/
 │       ├── manifest.json
@@ -111,6 +111,7 @@ Ultra-ADLC 没有“部分完成”终态。合法终态只有：
 
 - 任务运行状态继续通过 `/workflows` 和 `/tasks` 查看，没有独立的 ADLC 面板；
 - 未经用户单独授权，不会自动 commit、push、发布、部署或修改外部系统；
-- Ultra-ADLC 不会把密钥、令牌或密码写入 `peri/adlc/`；
+- Ultra-ADLC 不会把密钥、令牌或密码写入 `.peri/adlc/`；
+- ADLC 记录是本地审计，默认被 `.peri/*` 忽略，未经单独授权不会 commit；
 - 外部依赖不可用时，任务会明确进入 `blocked`，不会用缩减范围制造完成结论。
 - 原始 Workflow journal 仍保存在 `.claude/workflow-runs/<run-id>/`；ADLC 目录只保留精简 provenance，不复制完整运行日志。
