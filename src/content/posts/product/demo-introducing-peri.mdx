@@ -41,7 +41,7 @@ Peri 支持 Anthropic 以及 OpenAI-compatible 的 provider 路径。兼容端�
 Peri 可以读取和装配 Claude 风格的 skills、agents、hooks 以及 MCP 配置，但“能够读取相同格式”不等于所有第三方扩展行为完全相同。事件支持、终端交互、工具名称和权限链都需要在当前版本中验证。
 
 <Aside type="caution">
-  无参数启动当前默认使用 Bypass。它会跳过 Peri 的工具审批，但不提供 OS 沙箱。第一次在真实仓库使用时建议运行 <code>peri -a</code>，并保持工作区可回滚。
+  无参数启动当前默认使用 Bypass。它会跳过 Peri 的工具审批，但不提供 OS 沙箱。第一次在真实仓库使用时建议运行 <code>peri --permission-mode default</code>，并保持工作区可回滚。
 </Aside>
 
 ## 从哪里开始

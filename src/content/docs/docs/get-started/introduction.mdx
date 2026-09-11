@@ -58,7 +58,7 @@ Peri TUI 有三个始终可见的区域：
 这些操作的完整步骤见[连接模型服务](/peri-cool/docs/guides/providers/)。手动编辑 Settings 只用于自动化、审计或界面不可用时的恢复。
 
 <Aside type="caution" title="审批不是系统沙箱">
-  Peri 的权限模式决定工具调用是否需要确认，不等于容器、虚拟机或操作系统隔离。当前无参数启动默认进入 Bypass；第一次在真实仓库使用时，建议运行 <code>peri -a</code>，并保持工作区可以回滚。
+  Peri 的权限模式决定工具调用是否需要确认，不等于容器、虚拟机或操作系统隔离。当前无参数启动默认进入 Bypass；第一次在真实仓库使用时，建议运行 <code>peri --permission-mode default</code>，并保持工作区可以回滚。
 </Aside>
 
 ## 从这里开始

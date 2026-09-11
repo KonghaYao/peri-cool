@@ -17,10 +17,10 @@ import { Aside } from '@astrojs/starlight/components';
 
 ```bash
 cd /path/to/a/test-repository
-peri -a
+peri --permission-mode default
 ```
 
-`-a` 以 Default 权限模式启动，敏感工具会请求确认。无参数 `peri` 当前默认使用 Bypass，会自动批准工具调用。
+`--permission-mode default` 以 Default 权限模式启动，敏感工具会请求确认。无参数 `peri` 当前默认使用 Bypass，会自动批准工具调用。
 
 ## 2. 按屏幕完成首次设置
 
@@ -36,7 +36,7 @@ peri -a
 向导里的连通性检查只能提供有限的网络探测，不能证明 API key、模型调用或 TLS 可用。完成界面也不是配置有效的证明。
 
 <Aside type="caution" title="完成向导后重启">
-  当前向导把配置写入磁盘，但不会更新正在运行的 ACP 会话。完成后退出 Peri，再次运行 <code>peri -a</code>。不要依赖 <code>/setup</code> 重置向导，它可能重新显示之前的状态。
+  当前向导把配置写入磁盘，但不会更新正在运行的 ACP 会话。完成后退出 Peri，再次运行 <code>peri --permission-mode default</code>。不要依赖 <code>/setup</code> 重置向导，它可能重新显示之前的状态。
 </Aside>
 
 ## 3. 在 TUI 中检查模型

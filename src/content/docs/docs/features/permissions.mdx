@@ -16,7 +16,7 @@ Peri 可以读写文件、执行 shell 命令、访问网络。权限系统让�
 权限系统由两部分组成：全局的**权限模式**决定审批的默认行为，**工具敏感度判定**（按工具名）决定哪些工具属于敏感操作、需要审批。
 
 <Aside type="caution" title="当前启动默认值">
-  无参数运行 <code>peri</code> 时，当前实现默认使用 <strong>Bypass</strong>。使用 <code>peri -a</code> 才会以 Default 启动。权限模式只控制 Peri 内部是否询问，不是操作系统沙箱。
+  无参数运行 <code>peri</code> 时，当前实现默认使用 <strong>Bypass</strong>。使用 <code>peri --permission-mode default</code> 才会以 Default 启动。权限模式只控制 Peri 内部是否询问，不是操作系统沙箱。
 </Aside>
 
 ## 四种权限模式
@@ -45,7 +45,7 @@ peri --permission-mode bypass
 运行中按 `Shift+Tab` 在 Default -> AcceptEdit -> AutoMode -> Bypass 之间循环切换。状态栏会显示当前模式。
 
 <Aside type="note">
-  还有两个便捷参数：`--approve` 等价于 `--permission-mode default`；`--dangerously-skip-permissions` 等价于 `--permission-mode bypass`（仅限沙箱环境）。
+  便捷参数 `--dangerously-skip-permissions` 等价于 `--permission-mode bypass`（仅限沙箱环境）。
 </Aside>
 
 ## HITL 审批

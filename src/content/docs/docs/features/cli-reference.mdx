@@ -16,7 +16,7 @@ import { Aside } from '@astrojs/starlight/components';
 | 命令 | 当前行为 |
 | --- | --- |
 | `peri` | 启动交互式 TUI。没有显式权限参数时，初始权限模式是 Bypass |
-| `peri -a` | 启动 TUI，并把初始权限模式设为 Default |
+| `peri --permission-mode default` | 启动 TUI，并把初始权限模式设为 Default |
 | `peri --permission-mode <mode>` | 设置初始权限模式：`bypass`、`default`、`accept-edit` 或 `auto-mode` |
 | `peri -c` | 在 TUI 中加载当前目录最近的会话（如果存在） |
 | `peri -r <session_id>` | 在 TUI 中加载指定会话；请传入实际 UUID |
