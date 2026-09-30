@@ -43,10 +43,13 @@ Skill 目录可以包含脚本、模板和参考资料。`SKILL.md` 应给出读
 本地来源按以下顺序扫描，先出现的 canonical name 或 alias 占用该名称：
 
 1. `~/.claude/skills/`；
-2. `~/.peri/settings.json` 的 `skillsDir`；
-3. `<cwd>/.claude/skills/`；
-4. Plugin manifest 声明的 Skill；
-5. 随 Peri 编译分发的 builtin Skill。
+2. `<cwd>/.claude/skills/`；
+3. Plugin manifest 声明的 Skill；
+4. 随 Peri 编译分发的 builtin Skill。
+
+`skillsDir` / `skills_dir` 配置已移除，旧值不再添加技能来源。
+`~/.peri/settings.json` 中的 `disableBundledSkills` 仍可关闭 builtin Skill，
+支持顶层字段或放在 `config` 中，不影响用户、项目和 Plugin 来源。
 
 builtin 的 canonical name 与 alias 是保留名称，非 builtin Skill 不能冒用。MCP server 还可以
 通过 `skill://` 资源发布远端 Skill；它们追加到当前 session catalog，不覆盖已经存在的本地项。

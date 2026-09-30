@@ -30,7 +30,7 @@ Peri 先加载全局配置，再合并工作区配置：
 | `providers` | 非空列表整体替换 |
 | `active_alias` | 非空字符串替换 |
 | `profiles.<档位>` | 非默认档位整体替换，不做字段级合并 |
-| `skills_dir`、`env`、`compact`、`language` 等可选字段 | 工作区显式出现时替换 |
+| `env`、`compact`、`language` 等可选字段 | 工作区显式出现时替换 |
 | 未知字段 | 读入 `extra`；不能把未知字段当作已支持功能 |
 
 ## 主要字段
@@ -46,7 +46,6 @@ Peri 先加载全局配置，再合并工作区配置：
       "sonnet": {},
       "haiku": {}
     },
-    "skills_dir": null,
     "env": null,
     "compact": null,
     "language": null,
