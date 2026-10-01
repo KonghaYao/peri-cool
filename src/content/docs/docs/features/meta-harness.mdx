@@ -10,7 +10,7 @@ Meta Harness 是会话创建阶段的高级配置。它可以做三件事：
 | key | value | 作用 |
 | --- | --- | --- |
 | 系统提示词段落 ID | `true` | 用 `.peri/meta/<ID>.md` 全文替换内置段落 |
-| middleware 名 | `false` | 不装配该 middleware，并移除它持有的工具、Hook 与提示词段落 |
+| 链槽位名 / builtin 实例策略键 | `false` | 关闭宿主 adapter 或对应 MCP 能力面；策略关闭不等于销毁连接 |
 | `BuiltInSubagents` | `true` / `false` | 启用或隐藏随 Peri 编译分发的 SubAgent 定义 |
 
 这些状态会随会话快照冻结。修改配置或覆盖文件后，请新建会话；现有会话不会中途重载。
@@ -34,7 +34,7 @@ Meta Harness 是会话创建阶段的高级配置。它可以做三件事：
 这份配置会：
 
 - 从 `<cwd>/.peri/meta/01_intro.md` 读取替换内容；
-- 关闭 Web middleware，因此 Web 工具和它的提示词贡献都不会进入当前会话；
+- 关闭 builtin `web` 实例的工具面，因此 Web 工具和它的提示词贡献都不会进入当前会话；
 - 隐藏 compile-time 内置 SubAgent 定义。
 
 `BuiltInSubagents` 不会关闭 `SubAgentMiddleware`，也不会隐藏项目、插件提供的 Agent，
@@ -47,7 +47,6 @@ Meta Harness 是会话创建阶段的高级配置。它可以做三件事：
 - 基础段落：`01_intro`、`02_system`、`03_doing_tasks`、`04_actions`、
   `05_using_tools`、`06_tone_style`、`07_runtime`、`persona`、`language`；
 - 能力段落：`10_hitl`、`11_subagent`、`12_ask_user`、`13_skills`；
-- 保留段落：`15_channel`，当前 gate 关闭，不代表可用功能。
 
 覆盖文件只扫描 `<cwd>/.peri/meta/` 的一级 `.md` 文件。文件名去掉 `.md` 后就是
 段落 ID，正文会整段替换内置内容：
@@ -60,16 +59,35 @@ Meta Harness 是会话创建阶段的高级配置。它可以做三件事：
 段落 ID 配为 `false` 表示显式使用内置内容；middleware 名配为 `true` 可以在项目配置中
 恢复被全局配置关闭的组件。全局与项目的 `meta_harness` 按 key 合并，项目同名 key 优先。
 
-## 关闭 middleware
+## 关闭能力：链槽位与 MCP 实例分开
 
-可用名称以代码注册表为准。为了便于配置，当前装配面按职责分为：
+合法键以契约注册表为准。链槽位控制宿主消费与编排，builtin 策略键控制对应 MCP 实例：
 
-| 职责 | middleware 名 |
+| 职责 | 链槽位名 |
 | --- | --- |
-| 上下文 | `DefaultSystemPromptMiddleware`、`LangMiddleware`、`AgentsMdMiddleware`、`AgentDefineMiddleware`、`PluginMiddleware`、`SkillsMiddleware`、`SkillPreloadMiddleware`、`AtMentionMiddleware`、`ImageMiddleware` |
-| 本地与网络工具 | `FilesystemMiddleware`、`GitAttributionMiddleware`、`TerminalMiddleware`、`WebMiddleware` |
-| 任务与交互 | `TodoMiddleware`、`CronMiddleware`、`HookMiddleware`、`PermissionMiddleware`、`HumanInTheLoopMiddleware`、`SubAgentMiddleware` |
-| 扩展能力 | `McpMiddleware`、`WorkflowMiddleware`、`PtcMiddleware`、`ToolSearch`、`ArtifactMiddleware`、`LspMiddleware`、`GoalMiddleware` |
+| 上下文 | `DefaultSystemPromptMiddleware`、`LangMiddleware`、`AgentsMdMiddleware`、`PluginMiddleware`、`SkillsMiddleware`、`SkillPreloadMiddleware`、`AtMentionMiddleware`、`ImageMiddleware` |
+| 任务与交互 | `GitAttributionMiddleware`、`TodoMiddleware`、`HookMiddleware`、`PermissionMiddleware`、`HumanInTheLoopMiddleware`、`SubAgentMiddleware` |
+| 扩展消费与编排 | `McpMiddleware`、`WorkflowMiddleware`、`PtcMiddleware`、`ToolSearch`、`LspSyncMiddleware`、`GoalMiddleware` |
+
+| builtin 实例 | MetaHarness 策略键 |
+| --- | --- |
+| `web` | `WebMiddleware` |
+| `artifact` | `ArtifactMiddleware` |
+| `cron` | `CronMiddleware` |
+| `lsp` | `LspMiddleware` |
+| `workspace` | `WorkspaceMiddleware` |
+
+`WorkspaceMiddleware: false` 同时关闭文件/终端工具、技能/Agent/项目指令与覆盖资源面；
+不是旧 filesystem、terminal 或 Agent 定义单项关闭的等价替换。
+`LspMiddleware: false` 关闭 LSP 工具面与同步目标；`LspSyncMiddleware: false` 只关闭同步。
+`AgentDefineMiddleware`、`FilesystemMiddleware`、`TerminalMiddleware`、`GitWatchMiddleware`
+及退役的 `15_channel` 不再是合法键，配置中出现时告警并忽略。
+
+MetaHarness 管理的是会话内的能力使用策略，不负责 MCP server 的安装或物理销毁。
+外部 server 由 MCP 配置、连接与授权管理，不支持把任意 server 名写成 MetaHarness 键。
+Agent 的 allowlist/disallowlist 和运行时审批另管工具执行权。
+`McpMiddleware` 控制 MCP 消费 adapter；`ToolSearch` 控制额外工具发现/执行入口，
+两者都不是 pool shutdown，也不是任意外部 server 的独立关闭键。
 
 关闭能力必须形成闭包：direct 工具、deferred 搜索索引、命令路由、提示词说明、
 SubAgent/Workflow 继承面都不能继续暴露已经关闭的能力。遇到“工具已关闭但模型仍认为可用”

@@ -69,7 +69,7 @@ sequenceDiagram
 
 `session/prompt` 收到输入后，执行层读取会话创建时冻结的 base prompt，再从当前 middleware 链收集 request-time contribution，组合后运行一轮。基础段与能力段分别由对应 middleware 持有；middleware 缺席时，它的段落、工具和 Hook 必须一起消失。
 
-单一条件源是当前 middleware 链。它同时导出段落所有权、direct 工具、deferred-tool 搜索和命令投影，避免多处判定漂移。`PermissionMiddleware` 持有审批与 `10_hitl`，`HumanInTheLoopMiddleware` 持有提问工具与 `12_ask_user`；两项能力不能互相代替。`15_channel` 仍由关闭的 feature gate 保留，不算当前可用能力。
+单一条件源是当前 middleware 链。它同时导出段落所有权、direct 工具、deferred-tool 搜索和命令投影，避免多处判定漂移。`PermissionMiddleware` 持有审批与 `10_hitl`，`HumanInTheLoopMiddleware` 持有提问工具与 `12_ask_user`；两项能力不能互相代替。channel 消息功能已退役，系统提示词不再保留其无持有者的 feature gate。
 
 单轮结果统一用 `PromptResult`（`peri-acp-types/src/session.rs`）回传，消息历史、是否成功、停止原因、本轮是否发生 compact 替换可见历史。prompt 层只负责把输入变成一轮执行，状态管理归 session。
 
