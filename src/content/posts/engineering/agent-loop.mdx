@@ -93,11 +93,11 @@ flowchart LR
 - **deferred**：不常驻工具数组，经 `SearchExtraTools` 发现，再由 `ExecuteExtraTool` 执行。
 
 “Core”可以作为对高频工具的口语称呼，但不是运行时白名单。实际集合从当前 session 的
-middleware chain、配置与 Agent filter 派生。PTC、MCP、Workflow、LSP、Plugin 等能力是否
+middleware chain、配置与 Agent filter 派生。MCP、Workflow、LSP、Plugin 等能力是否
 可搜索，最终也由同一工具视图决定。
 
 包装调用不能改变权限事实。审批、事件和工具卡片应按 effective target 处理，不能因为外层
-名字是 `ExecuteExtraTool` 或 `RunPtcCode` 就跳过真实工具边界。
+名字是 `ExecuteExtraTool` 就跳过真实工具边界。
 
 ## Middleware 链的所有权
 

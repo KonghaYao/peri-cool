@@ -27,7 +27,7 @@ Peri 的运行期行为由两条线组成，一条是**中间件链**（Middlewa
 | 三 | `Todo`、`Cron` | 待办与定时工具 |
 | 四 | `Hook` | 每个非空 hook 组展开一个 `HookMiddleware` 实例 |
 | 五 | `Permission`、`AskUser`、`SubAgent` | 审批、提问通道、子 Agent |
-| 六 | `Mcp`、`Workflow`、`Ptc`、`ToolSearch`、`Artifact` | 条件工具提供器 |
+| 六 | `Mcp`、`Workflow`、`ToolSearch`、`Artifact` | 条件工具提供器 |
 | 七 | `Lsp`、`Goal` | 诊断与目标引导 |
 
 `MiddlewareChain` 执行时按注册顺序遍历，`run_before_agent` 依次调用每个中间件的 `before_agent`，任一返回错误即中断整条链；`run_before_tool` 让每个中间件依次改写 `ToolCall`，前一个的输出是后一个的输入。每个中间件还可以通过 `collect_tools` 向会话登记自己的工具。
