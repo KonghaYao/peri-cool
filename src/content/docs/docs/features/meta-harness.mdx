@@ -67,19 +67,17 @@ Meta Harness 是会话创建阶段的高级配置。它可以做三件事：
 | --- | --- |
 | 上下文 | `DefaultSystemPromptMiddleware`、`LangMiddleware`、`AgentsMdMiddleware`、`PluginMiddleware`、`SkillsMiddleware`、`SkillPreloadMiddleware`、`AtMentionMiddleware`、`ImageMiddleware` |
 | 任务与交互 | `GitAttributionMiddleware`、`TodoMiddleware`、`HookMiddleware`、`PermissionMiddleware`、`HumanInTheLoopMiddleware`、`SubAgentMiddleware` |
-| 扩展消费与编排 | `McpMiddleware`、`WorkflowMiddleware`、`ToolSearch`、`LspSyncMiddleware`、`GoalMiddleware` |
+| 扩展消费与编排 | `McpMiddleware`、`WorkflowMiddleware`、`ToolSearch`、`GoalMiddleware` |
 
 | builtin 实例 | MetaHarness 策略键 |
 | --- | --- |
 | `web` | `WebMiddleware` |
 | `artifact` | `ArtifactMiddleware` |
 | `cron` | `CronMiddleware` |
-| `lsp` | `LspMiddleware` |
 | `workspace` | `WorkspaceMiddleware` |
 
 `WorkspaceMiddleware: false` 同时关闭文件/终端工具、技能/Agent/项目指令与覆盖资源面；
 不是旧 filesystem、terminal 或 Agent 定义单项关闭的等价替换。
-`LspMiddleware: false` 关闭 LSP 工具面与同步目标；`LspSyncMiddleware: false` 只关闭同步。
 `AgentDefineMiddleware`、`FilesystemMiddleware`、`TerminalMiddleware`、`GitWatchMiddleware`
 及退役的 `15_channel` 不再是合法键，配置中出现时告警并忽略。
 
