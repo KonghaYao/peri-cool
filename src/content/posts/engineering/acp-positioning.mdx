@@ -43,7 +43,7 @@ Peri 在这套协议里有两个身份，它是实现 ACP Server 的 Agent，同
 
 **冻结数据。** 会话创建时形成的 owner snapshot 从创建时刻保持不可变。frozen base prompt、项目静态输入和 Meta Harness 状态随 ThreadStore 持久化，`session/load`、resume、fork 与 SubAgent 复用同一快照；每次请求的 middleware contribution 只能追加在冻结前缀之后。这也是 session 层区别于聊天窗口的地方——会话是一个可恢复的持久化单元，不是一次请求。
 
-**按 session 复用重量级资源。** 与会话绑定的资源池在会话创建时装配、跨 turn 复用，`AgentPool`（`session/agent_pool.rs`）缓存 LLM 实例与其持有的 `reqwest::Client`（代码注释估计单个客户端约 1–2 MB，含连接池与 TLS 会话缓存），首次 prompt 时填充、provider 切换时失效；LSP 池与 workflow 中间件以端口形式注入（`Arc<dyn LspPoolPort>` / `Arc<dyn WorkflowMiddlewarePort>`）。这解释了协议的抽象粒度，session 是大粒度资源的边界，prompt 是轻量输入。
+**按 session 复用重量级资源。** 与会话绑定的资源池在会话创建时装配、跨 turn 复用，`AgentPool`（`session/agent_pool.rs`）缓存 LLM 实例与其持有的 `reqwest::Client`（代码注释估计单个客户端约 1–2 MB，含连接池与 TLS 会话缓存），首次 prompt 时填充、provider 切换时失效。原本以端口形式注入的 LSP 池与 workflow 中间件在 v4 已删除：LSP 能力整体移除，workflow 改为同进程的 builtin MCP 实例（`mcp__workflow__*`）。这解释了协议的抽象粒度，session 是大粒度资源的边界，prompt 是轻量输入。
 
 顺带提一个实现现状（L5 重构后），`AcpSession` 本身瘦身为对外句柄，核心状态委托给 `peri-agent::session::Session`，ACP 层保留的是协议特有字段。阅读代码时，不用再在 `AcpSession` 里找全部执行状态。
 

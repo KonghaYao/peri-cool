@@ -16,7 +16,7 @@ hero:
 
 Minimal 模式的核心是收窄主 Agent 的装配面。Meta Harness 通过 `meta_harness` 配置控制 middleware；middleware 是插入提示词、工具调用或 Agent 回合的能力组件，配置为 `false` 时，受控制的组件不会构造，也不会注册它持有的工具和提示词段落。
 
-`example/minimal/.peri/settings.json` 关闭默认系统提示词、文件系统、终端、Web、Skills、SubAgent、Workflow、Permission 和 Human-in-the-Loop 等组件，只保留 MCP 与 ToolSearch。这不是权限系统的替代品，尤其不适合未经修改地承载高风险工具。
+`example/minimal/.peri/settings.json` 关闭默认系统提示词、工作区文件与终端工具、Web、Skills、SubAgent、Workflow、Permission 和 Human-in-the-Loop 等组件，只保留 MCP 与 ToolSearch。这不是权限系统的替代品，尤其不适合未经修改地承载高风险工具。
 
 ```json
 {
@@ -24,8 +24,7 @@ Minimal 模式的核心是收窄主 Agent 的装配面。Meta Harness 通过 `me
     "meta_harness": {
       "McpMiddleware": true,
       "ToolSearch": true,
-      "FilesystemMiddleware": false,
-      "TerminalMiddleware": false,
+      "WorkspaceMiddleware": false,
       "PermissionMiddleware": false,
       "HumanInTheLoopMiddleware": false
     }

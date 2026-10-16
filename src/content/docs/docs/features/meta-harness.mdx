@@ -65,7 +65,7 @@ Meta Harness 是会话创建阶段的高级配置。它可以做三件事：
 | --- | --- |
 | 上下文 | `DefaultSystemPromptMiddleware`、`LangMiddleware`、`AgentsMdMiddleware`、`PluginMiddleware`、`SkillsMiddleware`、`SkillPreloadMiddleware`、`AtMentionMiddleware`、`ImageMiddleware` |
 | 任务与交互 | `GitAttributionMiddleware`、`TodoMiddleware`、`HookMiddleware`、`PermissionMiddleware`、`HumanInTheLoopMiddleware`、`SubAgentMiddleware` |
-| 扩展消费与编排 | `McpMiddleware`、`WorkflowMiddleware`、`ToolSearch`、`GoalMiddleware` |
+| 扩展消费与编排 | `McpMiddleware`、`ToolSearch`、`GoalMiddleware` |
 
 | builtin 实例 | MetaHarness 策略键 |
 | --- | --- |
@@ -73,6 +73,7 @@ Meta Harness 是会话创建阶段的高级配置。它可以做三件事：
 | `artifact` | `ArtifactMiddleware` |
 | `cron` | `CronMiddleware` |
 | `workspace` | `WorkspaceMiddleware` |
+| `workflow` | `WorkflowMiddleware` |
 
 `WorkspaceMiddleware: false` 同时关闭文件/终端工具、技能/Agent/项目指令与覆盖资源面；
 不是旧 filesystem、terminal 或 Agent 定义单项关闭的等价替换。
