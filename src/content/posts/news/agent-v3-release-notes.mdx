@@ -94,9 +94,9 @@ hero:
 
 3.x 的核心变化不是增加一个单独的命令，而是让生命周期和所有权回到清晰的层：Session 状态归 Agent，跨 session 编排归 Runtime/Controller，协议数据归 ACP，外部配置与存储归 Resources，界面呈现归 TUI，观测作为旁路消费者。用户侧最直接的变化集中在长任务恢复、后台输出、草稿恢复、搜索边界、会话删除和 MCP 状态。
 
-使用这些能力时要保留边界：恢复要求线程仍存在且资源可访问；后台命令仍可能挂起，必须给出超时和终止条件；会话删除不可恢复；MCP 配置修改后需要按[MCP 指南](/peri-cool/docs/features/mcp/)重新启动 Peri。
+使用这些能力时要保留边界：恢复要求线程仍存在且资源可访问；后台命令仍可能挂起，必须给出超时和终止条件；会话删除不可恢复；MCP 配置修改后需要按[MCP 指南](/docs/features/mcp/)重新启动 Peri。
 
-相关文档：[3.0 分层重构](/peri-cool/docs/history/3-0-refactor/) · [项目更新 2026-08-02 至 2026-08-12](/peri-cool/posts/news/2026-08-13-project-updates/) · [可验证工程里程碑](/peri-cool/docs/history/milestones/)
+相关文档：[3.0 分层重构](/docs/history/3-0-refactor/) · [项目更新 2026-08-02 至 2026-08-12](/posts/news/2026-08-13-project-updates/) · [可验证工程里程碑](/docs/history/milestones/)
 
 ## 证据口径
 

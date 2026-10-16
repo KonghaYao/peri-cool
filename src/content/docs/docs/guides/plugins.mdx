@@ -3,8 +3,6 @@ title: 插件管理
 description: 注册 marketplace，并安装、启用、更新、检查和卸载 Peri 插件。
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
 Plugin 是一组可分发的 skills、hooks、agents 或 MCP 配置。命令行接受的插件 ID 格式是 `name@marketplace`；安装命令一次只接收一个插件。
 
 ## 注册 Marketplace
@@ -60,4 +58,4 @@ peri plugin cleanup
 
 插件内容以 Peri 进程的用户权限运行或影响 Agent 决策。安装前审查来源；不要把 API key 写进插件仓库；高风险插件先在临时项目和 Default 权限模式下验证。
 
-相关文档：[Skills](/peri-cool/docs/features/skills/) · [Hooks](/peri-cool/docs/features/hooks/) · [MCP](/peri-cool/docs/features/mcp/) · [安全边界](/peri-cool/docs/security/secrets-and-permissions/)
+相关文档：[Skills](/docs/features/skills/) · [Hooks](/docs/features/hooks/) · [MCP](/docs/features/mcp/) · [安全边界](/docs/security/secrets-and-permissions/)

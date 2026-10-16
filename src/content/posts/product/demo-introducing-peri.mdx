@@ -9,8 +9,6 @@ hero:
     alt: 蝶与手机
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
 Peri 是一个用 Rust 编写、运行在终端中的 AI 编码助手。它提供交互式 TUI，同时把 Agent 循环、协议装配和扩展中间件分开维护。
 
 这篇文章最初用二进制大小、内存、缓存命中和代码生成比例介绍产品。那些数字没有附带可复现的公开基准，无法支持跨版本或竞品比较，因此不再作为产品承诺。判断 Peri 是否适合你的项目，更可靠的方法是看它的边界与验证方式。
@@ -34,7 +32,7 @@ peri-tui → peri-acp → peri-agent::run_react_loop
 
 Peri 支持 Anthropic 以及 OpenAI-compatible 的 provider 路径。兼容端点是否支持工具调用、图片、流式响应和特定推理参数，仍由服务端与模型决定。
 
-四个模型档位把“当前任务需要的能力层级”与具体模型名分开。切换档位可以通过 TUI Model 面板完成；不要假设所有 CLI 覆盖参数都已接线，命令行为以[参考页](/peri-cool/docs/features/cli-reference/)为准。
+四个模型档位把“当前任务需要的能力层级”与具体模型名分开。切换档位可以通过 TUI Model 面板完成；不要假设所有 CLI 覆盖参数都已接线，命令行为以[参考页](/docs/features/cli-reference/)为准。
 
 ## 扩展生态
 
@@ -46,7 +44,7 @@ Peri 可以读取和装配 Claude 风格的 skills、agents、hooks 以及 MCP �
 
 ## 从哪里开始
 
-- [概述](/peri-cool/docs/get-started/introduction/)
-- [安装、升级与卸载](/peri-cool/docs/get-started/installation/)
-- [Provider 配置](/peri-cool/docs/guides/providers/)
-- [架构与历史](/peri-cool/docs/developer/)
+- [概述](/docs/get-started/introduction/)
+- [安装、升级与卸载](/docs/get-started/installation/)
+- [Provider 配置](/docs/guides/providers/)
+- [架构与历史](/docs/developer/)

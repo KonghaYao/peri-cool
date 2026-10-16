@@ -1,50 +1,79 @@
 ---
-import { getCollection, render } from 'astro:content';
-import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import PostHero from "../../components/ui/post-hero/PostHero.astro";
 import {
-	getPostCategoryId,
-	postSidebar,
-	sortPosts,
-} from '../../lib/content';
+	getCollectionPage,
+	getCollectionStaticPaths,
+	getEditUrl,
+	getLastUpdated,
+	getRouteFlags,
+	getTOC,
+	stripBase,
+} from "@cloudflare/nimbus-docs/runtime";
+import { components } from "../../components";
+import { getPostCategoryId, postSidebar, sortPosts } from "../../lib/content";
+import { resolveHeroImage } from "../../lib/hero-image";
+import { toNimbusSidebar } from "../../lib/post-sidebar";
+import { getCollection } from "astro:content";
 
-export async function getStaticPaths() {
-	const posts = sortPosts(await getCollection('posts'));
-	return posts.map((post) => ({
-		params: { slug: post.id.replace(/\.mdx$/, '') },
-		props: { post },
-	}));
-}
+export const prerender = true;
+export const getStaticPaths = getCollectionStaticPaths("posts");
 
-const { post } = Astro.props;
-const { Content, headings } = await render(post);
+const page = await getCollectionPage<"posts">(Astro);
+if (page instanceof Response) return page;
+const { entry, Content, headings, markdownUrl, ogImageUrl } = page;
 
-const hero = post.data.hero;
+const currentSlug = stripBase(Astro.url.pathname, import.meta.env.BASE_URL).replace(/\/$/, "") || "/";
+const { tableOfContents: tocOn } = await getRouteFlags(entry);
+const tocConfig = entry.data.tableOfContents;
+const toc = tocOn && tocConfig !== false ? getTOC(headings, tocConfig) : false;
 
-const section = getPostCategoryId(post);
-const posts = sortPosts(await getCollection('posts'));
+// 文章侧栏按「主题」分组（lib/content.ts 的治理模型），不是 Nimbus 默认
+// 的按目录自动生成——文章分类是内容归属，不参与侧栏层级。
+const posts = sortPosts(await getCollection("posts"));
+const sidebar = toNimbusSidebar(postSidebar(posts, getPostCategoryId(entry)));
 
-const base = import.meta.env.BASE_URL;
-
-const sidebar = postSidebar(posts, section);
+const editUrl = await getEditUrl(entry);
+const lastUpdated = entry.data.lastUpdated ?? (await getLastUpdated(entry));
+const socialImage = entry.data.socialImage ?? ogImageUrl;
+const hero = entry.data.hero;
+const heroImage = hero ? resolveHeroImage(hero.image.file, entry.filePath) : undefined;
 ---
 
-<StarlightPage
-	frontmatter={{
-		title: post.data.title,
-		...(hero
-			? { hero: { ...hero, tagline: hero.tagline ?? post.data.description } }
-			: {}),
-	}}
+<DocsLayout
+	title={entry.data.title}
+	description={entry.data.description}
 	sidebar={sidebar}
-	tableOfContents={{}}
-	headings={headings}
+	headings={toc}
+	prevNext={false}
+	breadcrumbs={false}
+	mode={entry.data.mode}
+	banner={entry.data.banner}
+	head={entry.data.head}
+	searchable={entry.data.searchable}
+	noindex={entry.data.noindex}
+	markdownUrl={markdownUrl}
+	socialImage={socialImage}
+	lastUpdated={lastUpdated}
+	editUrl={editUrl}
+	draft={entry.data.draft}
+	collection={entry.collection}
+	entryId={entry.id}
+	pageHero={Boolean(heroImage)}
 >
+	{heroImage && <PostHero slot="page-hero" image={heroImage} alt={hero.image.alt} />}
 	{
-		post.data.date && (
-			<p style="margin: 0 0 1.5rem; color: var(--sl-color-gray-3); font-size: 0.85rem;">
-				编写于 {post.data.date.toISOString().slice(0, 10)}
-			</p>
+		entry.data.date && (
+			<p class="post-date">编写于 {entry.data.date.toISOString().slice(0, 10)}</p>
 		)
 	}
-	<Content />
-</StarlightPage>
+	<Content components={components} />
+</DocsLayout>
+
+<style>
+	.post-date {
+		margin: 0 0 1.5rem;
+		color: var(--nb-muted-foreground);
+		font-size: 0.85rem;
+	}
+</style>

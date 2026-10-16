@@ -9,8 +9,6 @@ hero:
     alt: 新日东升
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
 Peri v2 阶段的关键变化，是把 Agent 执行与终端界面之间的交互收敛到 ACP 边界，让 TUI 不再直接复制 Agent 业务逻辑。
 
 <Aside type="note" title="日期口径">
@@ -31,6 +29,6 @@ v2 的 TUI 使用 ratatui-kit 组织组件、路由和状态，负责渲染与�
 
 ## 升级边界
 
-仓库证据可以说明 v2 的架构变化，但不足以支持旧文中“配置格式不变、二进制路径和内部存储不同”的完整迁移承诺。升级前请备份 settings 与会话数据库，按当前[安装指南](/peri-cool/docs/get-started/installation/)重新检查路径和依赖。
+仓库证据可以说明 v2 的架构变化，但不足以支持旧文中“配置格式不变、二进制路径和内部存储不同”的完整迁移承诺。升级前请备份 settings 与会话数据库，按当前[安装指南](/docs/get-started/installation/)重新检查路径和依赖。
 
-延伸阅读：[Agent Loop](/peri-cool/posts/engineering/agent-loop/) · [可验证里程碑](/peri-cool/docs/history/milestones/)
+延伸阅读：[Agent Loop](/posts/engineering/agent-loop/) · [可验证里程碑](/docs/history/milestones/)

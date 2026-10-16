@@ -3,8 +3,6 @@ title: 系统提示词与能力裁剪（Meta Harness）
 description: 在新会话创建时覆盖提示词段落、关闭 middleware，或控制内置 SubAgent 定义。
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
 Meta Harness 是会话创建阶段的高级配置。它可以做三件事：
 
 | key | value | 作用 |
@@ -115,4 +113,4 @@ SubAgent/Workflow 继承面都不能继续暴露已经关闭的能力。遇到�
 恢复时删除项目级 key；如果同名 key 来自全局配置，还需要修改全局配置。删除段落覆盖 key
 后，可再删除对应 `.peri/meta/<ID>.md`。
 
-相关内容：[工具系统](/peri-cool/docs/features/tools/) · [Skills](/peri-cool/docs/features/skills/) · [权限系统](/peri-cool/docs/features/permissions/)
+相关内容：[工具系统](/docs/features/tools/) · [Skills](/docs/features/skills/) · [权限系统](/docs/features/permissions/)

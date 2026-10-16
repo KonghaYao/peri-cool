@@ -1,0 +1,87 @@
+---
+import DocsLayout from "../layouts/DocsLayout.astro";
+import {
+  getDocsStaticPaths,
+  getDocsPage,
+  getRouteFlags,
+  getSidebar,
+  getPrevNext,
+  getBreadcrumbs,
+  getEditUrl,
+  getLastUpdated,
+  getTOC,
+  stripBase,
+} from "@cloudflare/nimbus-docs/runtime";
+import { components } from "../components";
+import PostHero from "../components/ui/post-hero/PostHero.astro";
+import { resolveHeroImage } from "../lib/hero-image";
+import type { SidebarTransform } from "@cloudflare/nimbus-docs/runtime";
+
+export const prerender = true;
+export const getStaticPaths = getDocsStaticPaths;
+
+const page = await getDocsPage(Astro);
+if (page instanceof Response) return page;
+const { entry, Content, headings, markdownUrl, ogImageUrl } = page;
+
+const currentSlug = stripBase(Astro.url.pathname, import.meta.env.BASE_URL).replace(/\/$/, "") || "/";
+
+const { sidebar: sidebarOn, tableOfContents: tocOn } = await getRouteFlags(entry);
+
+// 顶栏的章节标签复用 posts collection（Nimbus 只把跨 collection 的 section
+// 当作标签）。那些 section 只服务顶部导航，整棵文章树出现在文档侧栏里没有意义，
+// 所以在文档路由把它们摘掉；文章页用自己的主题侧栏，不受影响。
+const dropPostSections: SidebarTransform = ({ tree }) =>
+  tree.filter((item) => !(item.type === "group" && item._prefix?.startsWith("/posts/")));
+
+const sidebar = sidebarOn
+  ? await getSidebar(currentSlug, { collection: entry.collection, transform: dropPostSections })
+  : false;
+const prevNext = await getPrevNext(currentSlug, {
+  sidebarTree: sidebar === false ? [] : sidebar,
+  overrides: { prev: entry.data.prev, next: entry.data.next },
+});
+// Pass `collection` so versioned pages (docs-<v>) get version-prefixed
+// breadcrumb hrefs — parity with the getSidebar call above.
+const breadcrumbs = await getBreadcrumbs(currentSlug, { collection: entry.collection });
+const editUrl = await getEditUrl(entry);
+// Frontmatter wins; git is the fallback.
+const lastUpdated = entry.data.lastUpdated ??
+  await getLastUpdated(entry);
+// `tocOn` already implies `tableOfContents !== false`, but TS can't carry
+// that boolean narrowing to the value here — re-check it so `getTOC` only
+// ever sees its options object (or undefined), never `false`.
+const tocConfig = entry.data.tableOfContents;
+const toc = tocOn && tocConfig !== false ? getTOC(headings, tocConfig) : false;
+const socialImage = entry.data.socialImage ?? ogImageUrl;
+
+// 旧的 Starlight `hero` frontmatter 保留原样，交给标题区的 `page-hero` 槽渲染。
+const hero = entry.data.hero;
+const heroImage = hero ? resolveHeroImage(hero.image.file, entry.filePath) : undefined;
+---
+
+<DocsLayout
+  title={entry.data.title}
+  description={entry.data.description}
+  sidebar={sidebar}
+  headings={toc}
+  breadcrumbs={breadcrumbs}
+  prevNext={prevNext}
+  mode={entry.data.mode}
+  banner={entry.data.banner}
+  head={entry.data.head}
+  searchable={entry.data.searchable}
+  noindex={entry.data.noindex}
+  markdownUrl={markdownUrl}
+  socialImage={socialImage}
+  lastUpdated={lastUpdated}
+  editUrl={editUrl}
+  draft={entry.data.draft}
+  audience={entry.data.audience}
+  collection={entry.collection}
+  entryId={entry.id}
+  pageHero={Boolean(heroImage)}
+>
+  {heroImage && <PostHero slot="page-hero" image={heroImage} alt={hero.image.alt} />}
+  <Content components={components} />
+</DocsLayout>

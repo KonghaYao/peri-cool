@@ -7,8 +7,6 @@ hero:
     alt: 门与路
 ---
 
-import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
-
 Peri 是一个运行在终端里的 AI 编码助手。启动后，你面对的是一套完整 TUI，而不是需要自己拼装的命令管道。任务、工具调用、审批、会话和模型状态都在同一个界面里呈现。
 
 ## 打开后会看到什么
@@ -24,16 +22,16 @@ Peri TUI 有三个始终可见的区域：
 ## 适合做什么
 
 <CardGrid>
-  <Card title="理解代码" icon="information">
+  <Card title="理解代码" icon="ph:info">
     让 Peri 阅读仓库、解释调用关系、定位实现入口，并列出结论所依据的文件。
   </Card>
-  <Card title="修改与验证" icon="code">
+  <Card title="修改与验证" icon="ph:code">
     让 Peri 修改文件、运行测试，并在消息区持续展示工具过程和验证结果。
   </Card>
-  <Card title="推进长任务" icon="rocket">
+  <Card title="推进长任务" icon="ph:rocket">
     在同一会话中继续工作，必要时使用子代理、后台任务或工作流拆分独立部分。
   </Card>
-  <Card title="连接外部工具" icon="puzzle">
+  <Card title="连接外部工具" icon="ph:puzzle-piece">
     通过 MCP、plugins、skills 与 hooks 扩展 Peri 能调用的能力。
   </Card>
 </CardGrid>
@@ -55,7 +53,7 @@ Peri TUI 有三个始终可见的区域：
 - 输入 `/login` 管理 Provider、地址、密钥和模型映射。
 - 输入 `/model` 选择模型档位并调整当前配置。
 
-这些操作的完整步骤见[连接模型服务](/peri-cool/docs/guides/providers/)。手动编辑 Settings 只用于自动化、审计或界面不可用时的恢复。
+这些操作的完整步骤见[连接模型服务](/docs/guides/providers/)。手动编辑 Settings 只用于自动化、审计或界面不可用时的恢复。
 
 <Aside type="caution" title="审批不是系统沙箱">
   Peri 的权限模式决定工具调用是否需要确认，不等于容器、虚拟机或操作系统隔离。当前无参数启动默认进入 Bypass；第一次在真实仓库使用时，建议运行 <code>peri --permission-mode default</code>，并保持工作区可以回滚。
@@ -63,9 +61,9 @@ Peri TUI 有三个始终可见的区域：
 
 ## 从这里开始
 
-1. [安装 Peri](/peri-cool/docs/get-started/installation/)
-2. [在 TUI 中完成第一次任务](/peri-cool/docs/get-started/quickstart/)
-3. [学习 TUI 导航](/peri-cool/docs/guides/tui-navigation/)
-4. [判断 Peri 适合哪些仓库任务](/peri-cool/posts/product/where-peri-fits/)
+1. [安装 Peri](/docs/get-started/installation/)
+2. [在 TUI 中完成第一次任务](/docs/get-started/quickstart/)
+3. [学习 TUI 导航](/docs/guides/tui-navigation/)
+4. [判断 Peri 适合哪些仓库任务](/posts/product/where-peri-fits/)
 
-如果你关心内部层次与协议边界，再读[开发者指南](/peri-cool/docs/developer/)；它不属于首次使用的必读内容。
+如果你关心内部层次与协议边界，再读[开发者指南](/docs/developer/)；它不属于首次使用的必读内容。

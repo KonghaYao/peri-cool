@@ -8,8 +8,6 @@ hero:
     alt: 园丁之心
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
 7 月底到 8 月初，Peri 攒了一批用户可见的更新。挑重点说。
 
 ## 图片输入：截图直接粘贴
@@ -23,7 +21,7 @@ import { Aside } from '@astrojs/starlight/components';
 你: 这个报错窗口是什么意思？怎么修？
 ```
 
-底层是 `@image <路径>` 语法，支持 `~` 和相对路径，也能手动引用磁盘图片。图片会存到 `~/.peri/images/`，大小上限 20MB。详见 [图片输入](/peri-cool/docs/features/image-input/)。
+底层是 `@image <路径>` 语法，支持 `~` 和相对路径，也能手动引用磁盘图片。图片会存到 `~/.peri/images/`，大小上限 20MB。详见 [图片输入](/docs/features/image-input/)。
 
 ## 模型档位：四档独立配置
 
@@ -42,7 +40,7 @@ import { Aside } from '@astrojs/starlight/components';
 [read-only] repo-name  sonnet · claude-sonnet-4-5 · xhigh  CPU 2% MEM 1.2G
 ```
 
-省钱的正确姿势也简单了：`haiku` 配便宜模型 + `low` effort 日常探索，写代码切 `sonnet`，架构设计切 `opus`。详见 [模型档位](/peri-cool/docs/features/model-profiles/)。
+省钱的正确姿势也简单了：`haiku` 配便宜模型 + `low` effort 日常探索，写代码切 `sonnet`，架构设计切 `opus`。详见 [模型档位](/docs/features/model-profiles/)。
 
 ## 定时任务：自然语言注册 cron
 
@@ -56,7 +54,7 @@ Peri: 已注册定时任务 #3
       下次执行: 11:30
 ```
 
-内置 `cron_register` / `cron_list` / `cron_remove` 三个工具，"列出所有定时任务"、"把 #3 删掉"都能听懂。任务触发时作为一条消息提交给当前会话执行。详见 [定时任务](/peri-cool/docs/features/cron/)。
+内置 `cron_register` / `cron_list` / `cron_remove` 三个工具，"列出所有定时任务"、"把 #3 删掉"都能听懂。任务触发时作为一条消息提交给当前会话执行。详见 [定时任务](/docs/features/cron/)。
 
 ## TUI 交互增强
 
@@ -76,6 +74,6 @@ Peri 现在会在回复过程中预测对话走向：**会话标题自动更新*
 
 ## 相关文章
 
-- [图片输入](/peri-cool/docs/features/image-input/)
-- [模型档位](/peri-cool/docs/features/model-profiles/)
-- [定时任务](/peri-cool/docs/features/cron/)
+- [图片输入](/docs/features/image-input/)
+- [模型档位](/docs/features/model-profiles/)
+- [定时任务](/docs/features/cron/)

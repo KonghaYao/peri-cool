@@ -1,20 +1,30 @@
 ---
-import { getCollection } from 'astro:content';
-import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
-import { getFeaturedPost, postCategories, postPath, postSidebar, postsByTopic, postsInCategory, resolveFeaturedPost, sortPosts } from '../../lib/content';
+import { getCollection } from "astro:content";
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import {
+	getFeaturedPost,
+	postCategories,
+	postPath,
+	postSidebar,
+	postsByTopic,
+	postsInCategory,
+	resolveFeaturedPost,
+	sortPosts,
+} from "../../lib/content";
+import { toNimbusSidebar } from "../../lib/post-sidebar";
 
-const posts = sortPosts(await getCollection('posts'));
+const posts = sortPosts(await getCollection("posts"));
 const base = import.meta.env.BASE_URL;
-const sidebar = postSidebar(posts);
+const sidebar = toNimbusSidebar(postSidebar(posts));
 ---
 
-<StarlightPage
-	frontmatter={{
-		title: '文章',
-		description: 'Peri 的工程、产品、研究与项目动态。',
-	}}
+<DocsLayout
+	title="文章"
+	description="Peri 的工程、产品、研究与项目动态。"
 	sidebar={sidebar}
-	tableOfContents={false}
+	headings={false}
+	prevNext={false}
+	breadcrumbs={false}
 >
 	<p>这里收录工程设计、产品说明、数据研究和项目动态。使用文档查找操作方法，使用文章理解设计背景与证据。</p>
 	<div class="category-grid">
@@ -27,9 +37,14 @@ const sidebar = postSidebar(posts);
 					: getFeaturedPost(categoryPosts, category.id);
 				return (
 					<section>
-						<h2><a href={`${base}posts/${category.id}/`}>{category.label}</a></h2>
+						<h2>
+							<a href={`${base}posts/${category.id}/`}>{category.label}</a>
+						</h2>
 						<p>{category.description}</p>
-						<p class="featured-link"><span>从这里开始</span><a href={`${base}${postPath(featured)}`}>{featured.data.title}</a></p>
+						<p class="featured-link">
+							<span>从这里开始</span>
+							<a href={`${base}${postPath(featured)}`}>{featured.data.title}</a>
+						</p>
 						<ul class="topic-preview">
 							{topicGroups.map(({ topic, posts }) => (
 								<li>
@@ -43,16 +58,16 @@ const sidebar = postSidebar(posts);
 			})
 		}
 	</div>
-</StarlightPage>
+</DocsLayout>
 
 <style>
 	.category-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem; }
-	.category-grid section { border-top: 1px solid var(--sl-color-gray-5); padding-top: 1rem; }
+	.category-grid section { border-top: 1px solid var(--nb-border); padding-top: 1rem; }
 	.category-grid h2 { margin-top: 0; }
 	.featured-link { display: grid; gap: 0.2rem; }
-	.featured-link span { color: var(--sl-color-gray-3); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; }
+	.featured-link span { color: var(--nb-muted-foreground); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; }
 	.topic-preview { list-style: none; margin: 1rem 0 0; padding: 0; }
-	.topic-preview li { align-items: baseline; border-top: 1px solid var(--sl-color-gray-5); display: flex; justify-content: space-between; gap: 1rem; padding: 0.55rem 0; }
-	.topic-preview span { color: var(--sl-color-gray-3); font-size: 0.8rem; white-space: nowrap; }
+	.topic-preview li { align-items: baseline; border-top: 1px solid var(--nb-border); display: flex; justify-content: space-between; gap: 1rem; padding: 0.55rem 0; }
+	.topic-preview span { color: var(--nb-muted-foreground); font-size: 0.8rem; white-space: nowrap; }
 	@media (max-width: 50rem) { .category-grid { grid-template-columns: 1fr; } }
 </style>

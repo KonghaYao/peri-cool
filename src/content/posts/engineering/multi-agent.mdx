@@ -8,8 +8,6 @@ hero:
     alt: 纸飞机队
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
 ## 架构位置
 
 Peri 的 Multi Agent 系统允许主 Agent 将子任务委派给专业化的 SubAgent。每个 SubAgent 是独立的 ReAct 循环实例，拥有自己的上下文窗口、工具集合和系统提示词。
@@ -284,6 +282,6 @@ flowchart LR
 
 ## 限制与边界
 
-- [Agent Loop](/peri-cool/posts/engineering/agent-loop/) — 每个 SubAgent 内部运行的 ReAct 循环引擎
-- [System Prompt 设计](/peri-cool/posts/engineering/system-prompt/) — FrozenContext 的静态/动态分离策略
-- [Hook 与 Middleware](/peri-cool/posts/engineering/hook-middleware-overview/) — SubAgent 的 SubagentStart/Stop hook 触发路径
+- [Agent Loop](/posts/engineering/agent-loop/) — 每个 SubAgent 内部运行的 ReAct 循环引擎
+- [System Prompt 设计](/posts/engineering/system-prompt/) — FrozenContext 的静态/动态分离策略
+- [Hook 与 Middleware](/posts/engineering/hook-middleware-overview/) — SubAgent 的 SubagentStart/Stop hook 触发路径

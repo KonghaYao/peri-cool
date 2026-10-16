@@ -8,8 +8,6 @@ hero:
     alt: 众声一星
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
 ## 协议层的位置
 
 [Agent Client Protocol](https://agentclientprotocol.com)（ACP）是 Zed Industries 发起、社区维护的开放协议，定义编辑器（Client）与 AI 编程 Agent（Server）之间的通信，走 JSON-RPC 2.0。协议的方法集中在几个根命名空间，`initialize` 做能力协商，`session/*` 管理会话生命周期，`session/prompt` 驱动单轮交互；执行过程中的状态增量由 Agent 侧通过 `session/update` 等通知持续推回客户端，而不是等一轮结束给一个大块结果。
@@ -161,7 +159,7 @@ Peri 同时扮演两种实现方（TUI 自己是 Client，对外又是 Server）
 
 ## 相关实现
 
-- [Agent Loop](/peri-cool/posts/engineering/agent-loop/) — ReAct 引擎如何与 session/prompt 周期对齐
-- [Hook 中间件总览](/peri-cool/posts/engineering/hook-middleware-overview/) — 中间件链如何挂在 ACP 事件生命周期上
-- [Multi Agent 架构](/peri-cool/posts/engineering/multi-agent/) — SubAgent 的事件如何在 ACP 通道中上报
-- [System Prompt](/peri-cool/posts/engineering/system-prompt/) — prompt 分段如何装配
+- [Agent Loop](/posts/engineering/agent-loop/) — ReAct 引擎如何与 session/prompt 周期对齐
+- [Hook 中间件总览](/posts/engineering/hook-middleware-overview/) — 中间件链如何挂在 ACP 事件生命周期上
+- [Multi Agent 架构](/posts/engineering/multi-agent/) — SubAgent 的事件如何在 ACP 通道中上报
+- [System Prompt](/posts/engineering/system-prompt/) — prompt 分段如何装配

@@ -8,9 +8,7 @@ hero:
     alt: 种中藏界
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
-[Agent Loop](/peri-cool/posts/engineering/agent-loop/) 解释了 Compact 的触发规则和模型视图。本稿讨论另一个问题，Compact 不是一次性动作。长会话里它在每一轮都可能触发，会话结束后还可能跨进程恢复。**多次触发、跨会话恢复之后，模型看到的视图必须保持一致**——否则同一段历史，上一轮压缩后的截断效果在这一轮生效，下一轮又变回原样。
+[Agent Loop](/posts/engineering/agent-loop/) 解释了 Compact 的触发规则和模型视图。本稿讨论另一个问题，Compact 不是一次性动作。长会话里它在每一轮都可能触发，会话结束后还可能跨进程恢复。**多次触发、跨会话恢复之后，模型看到的视图必须保持一致**——否则同一段历史，上一轮压缩后的截断效果在这一轮生效，下一轮又变回原样。
 
 多轮稳定依赖三个能跨轮次存活的东西，
 
@@ -128,6 +126,6 @@ Full Compact 是另一种状态切换，会进入后续轮次，全部旧消息�
 
 ## 相关实现
 
-- [Agent Loop](/peri-cool/posts/engineering/agent-loop/)，Compact 的触发规则与两级策略
-- [中断长任务的恢复边界](/peri-cool/posts/engineering/rcra-interruption-recovery/)，恢复时从版本控制、测试输出与工作流记录核对状态
-- [工具交换的原子提交](/peri-cool/posts/engineering/concurrent-tool-calls/)，长会话里另一类与轮次相关的边界
+- [Agent Loop](/posts/engineering/agent-loop/)，Compact 的触发规则与两级策略
+- [中断长任务的恢复边界](/posts/engineering/rcra-interruption-recovery/)，恢复时从版本控制、测试输出与工作流记录核对状态
+- [工具交换的原子提交](/posts/engineering/concurrent-tool-calls/)，长会话里另一类与轮次相关的边界

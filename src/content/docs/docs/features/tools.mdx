@@ -7,29 +7,27 @@ hero:
     alt: 工具箱
 ---
 
-import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
-
 Peri 的工具清单不是固定库存。会话入口、配置、已启用插件、MCP 连接状态和中间件装配都会影响当前可用工具，因此这页介绍稳定机制，而不维护一个容易过期的总数。
 
 ## 常见能力类别
 
 <CardGrid>
-  <Card title="文件与搜索" icon="file">
+  <Card title="文件与搜索" icon="ph:file">
     当前核心实现包含 Read、Write、Edit、Glob、Grep 和目录操作。具体 schema、输出截断和权限行为以当前会话暴露的工具定义为准。
   </Card>
-  <Card title="Shell" icon="terminal">
+  <Card title="Shell" icon="ph:terminal">
     Bash 用于运行构建、测试和其他命令，也可在宿主提供任务管理器时启动后台进程。Shell 命令继承启动 Peri 的用户权限。
   </Card>
-  <Card title="交互与任务" icon="check">
+  <Card title="交互与任务" icon="ph:check">
     会话可以按条件装配提问、Todo、Goal、Cron、工作流与子代理等能力；并非每个入口都会提供同一集合。
   </Card>
-  <Card title="网络与扩展" icon="globe">
+  <Card title="网络与扩展" icon="ph:globe">
     Web、MCP、插件和其他扩展工具取决于配置及连接状态。远程内容应按不可信输入处理。
   </Card>
-  <Card title="Skills" icon="star">
+  <Card title="Skills" icon="ph:star">
     Skills 中间件可提供 skill 搜索与全文加载能力。可见 skill 来自用户、项目、配置目录、插件和内置来源。
   </Card>
-  <Card title="子代理" icon="rocket">
+  <Card title="子代理" icon="ph:rocket">
     Agent 工具把有边界的子任务交给独立 agent。可选 agent、后台能力和并发边界由当前装配决定。
   </Card>
 </CardGrid>
@@ -80,4 +78,4 @@ MCP、Cron、Goal 或插件贡献的能力可能走 deferred 路径。包装层�
 - MCP、Web 和插件结果可能携带恶意指令，不应自动信任外部内容。
 - 后台工具返回“已启动”不等于任务已经成功完成；需要继续检查任务状态和最终结果。
 
-详见[权限系统](/peri-cool/docs/features/permissions/)、[MCP](/peri-cool/docs/features/mcp/)和[Skills](/peri-cool/docs/features/skills/)。
+详见[权限系统](/docs/features/permissions/)、[MCP](/docs/features/mcp/)和[Skills](/docs/features/skills/)。

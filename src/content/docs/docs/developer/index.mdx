@@ -3,9 +3,7 @@ title: 开发者入口
 description: 从产品主链、模块边界和契约测试进入 Peri 代码库。
 ---
 
-import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
-
-这里面向准备阅读、修改或审查 Peri 源码的贡献者。用户操作说明仍以[文档总览](/peri-cool/docs/)为入口；本节关注代码放在哪里、跨层变更需要同时检查什么。
+这里面向准备阅读、修改或审查 Peri 源码的贡献者。用户操作说明仍以[文档总览](/docs/)为入口；本节关注代码放在哪里、跨层变更需要同时检查什么。
 
 ## 先建立一张地图
 
@@ -32,7 +30,7 @@ peri-tui → peri-acp → peri-agent::run_react_loop
   </Card>
 </CardGrid>
 
-更完整的职责图和跨层不变量见[架构总览](/peri-cool/docs/developer/architecture/)。
+更完整的职责图和跨层不变量见[架构总览](/docs/developer/architecture/)。
 
 ## 按任务找入口
 
@@ -96,7 +94,7 @@ lefthook run pre-commit
 
 ## 下一步
 
-- [架构总览](/peri-cool/docs/developer/architecture/)：理解层边界、事件链和会话执行权
-- [3.0 分层重构](/peri-cool/docs/history/3-0-refactor/)：理解这些边界为何被重新划分
-- [可验证工程里程碑](/peri-cool/docs/history/milestones/)：按证据类型阅读项目演进
-- [贡献指南](/peri-cool/docs/features/best-practices/)：开始具体修改前核对工作方式
+- [架构总览](/docs/developer/architecture/)：理解层边界、事件链和会话执行权
+- [3.0 分层重构](/docs/history/3-0-refactor/)：理解这些边界为何被重新划分
+- [可验证工程里程碑](/docs/history/milestones/)：按证据类型阅读项目演进
+- [贡献指南](/docs/features/best-practices/)：开始具体修改前核对工作方式

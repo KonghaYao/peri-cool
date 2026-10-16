@@ -16,7 +16,7 @@ peri --version
 - Windows 重新打开终端，再检查用户级 `PATH` 是否包含 `%USERPROFILE%\.peri`。
 - Linux 出现动态链接错误时检查 glibc；release 使用 GNU target。
 
-详见[安装、升级与卸载](/peri-cool/docs/get-started/installation/)。
+详见[安装、升级与卸载](/docs/get-started/installation/)。
 
 ## 启动后没有可用模型
 
@@ -29,11 +29,11 @@ peri --version
 test -f ~/.peri/settings.json && chmod 600 ~/.peri/settings.json
 ```
 
-不要把配置内容直接贴到公开 issue。参见[配置 Provider](/peri-cool/docs/guides/providers/)和 [Settings 参考](/peri-cool/docs/reference/settings/)。
+不要把配置内容直接贴到公开 issue。参见[配置 Provider](/docs/guides/providers/)和 [Settings 参考](/docs/reference/settings/)。
 
 ## CLI 参数看起来没有生效
 
-`--help` 只证明 parser 接受参数。print 路径当前不会应用 `--effort`、`--max-turns`、allowed/disallowed tools；交互 TUI 的 `--model` 也没有写回运行服务。使用对应 TUI 面板，或查看[非交互模式](/peri-cool/docs/guides/non-interactive/)中的已知限制。
+`--help` 只证明 parser 接受参数。print 路径当前不会应用 `--effort`、`--max-turns`、allowed/disallowed tools；交互 TUI 的 `--model` 也没有写回运行服务。使用对应 TUI 面板，或查看[非交互模式](/docs/guides/non-interactive/)中的已知限制。
 
 ## 找不到旧会话
 
@@ -42,11 +42,11 @@ test -f ~/.peri/settings.json && chmod 600 ~/.peri/settings.json
 - `/threads`、`/history` 和 `/resume` 打开同一个 Thread Browser。
 - active goal 和 Cron 任务是内存状态，不随会话记录恢复。
 
-详见[会话管理](/peri-cool/docs/guides/sessions/)。
+详见[会话管理](/docs/guides/sessions/)。
 
 ## MCP 配置修改后没有变化
 
-当前没有已验证的用户级热重载入口。保存配置后重启 Peri，再打开 `/mcp` 查看状态。面板用于状态与 OAuth 操作，不替代配置文件。参见 [MCP](/peri-cool/docs/features/mcp/)。
+当前没有已验证的用户级热重载入口。保存配置后重启 Peri，再打开 `/mcp` 查看状态。面板用于状态与 OAuth 操作，不替代配置文件。参见 [MCP](/docs/features/mcp/)。
 
 ## Cron 没有触发
 
@@ -55,7 +55,7 @@ test -f ~/.peri/settings.json && chmod 600 ~/.peri/settings.json
 - 任务保存在进程内存中，重启后丢失，没有 catch-up。
 - 列表只显示 ID 前缀，而删除需要完整 ID，这是当前可用性缺口。
 
-参见[定时任务](/peri-cool/docs/features/cron/)。
+参见[定时任务](/docs/features/cron/)。
 
 ## Workflow 无法启动
 

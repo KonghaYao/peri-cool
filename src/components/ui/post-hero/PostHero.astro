@@ -1,0 +1,42 @@
+---
+/**
+ * PostHero — 文章头图。
+ *
+ * 由 DocsLayout 的 `page-hero` 槽渲染，是标题区网格的第二列（桌面）。
+ * 尺寸沿用旧站 Starlight hero：小图，不占满正文宽度。
+ */
+import { Image } from "astro:assets";
+import type { ImageMetadata } from "astro";
+
+interface Props {
+  image: ImageMetadata;
+  alt: string;
+}
+
+const { image, alt } = Astro.props as Props;
+---
+
+<figure class="post-hero">
+  <Image src={image} alt={alt} widths={[400, 800]} sizes="(min-width: 48rem) 25rem, min(70vw, 20rem)" loading="eager" />
+</figure>
+
+<style>
+  .post-hero {
+    margin: 0 auto;
+    width: min(70%, 20rem);
+  }
+  .post-hero img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--nb-border);
+    border-radius: 12px;
+  }
+  /* 桌面：并入标题区网格的右列；移动端保持标题上方居中。 */
+  @media (min-width: 48rem) {
+    .post-hero {
+      order: 2;
+      width: min(100%, 25rem);
+    }
+  }
+</style>

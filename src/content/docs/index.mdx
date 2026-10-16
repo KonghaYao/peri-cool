@@ -1,0 +1,31 @@
+---
+title: Peri Code
+description: Rust 编写的终端 AI 编码助手
+sidebar: false
+tableOfContents: false
+---
+
+# Peri Code
+
+轻舟一叶，不扰清波，渡君至远山。
+
+Peri 是一个运行在终端里的 AI 编码助手。启动后，你面对的是一套完整 TUI，而不是需要自己拼装的命令管道——任务、工具调用、审批、会话和模型状态都在同一个界面里呈现。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/konghayao/peri/main/scripts/install.sh | bash
+```
+
+## 为什么用 Peri
+
+- **过程可核对。** 消息区展示任务、回复与工具执行。任务结束时应当能回答三件事：改了什么、怎样验证、还有什么没有验证。
+- **接入既有配置。** 可读取 Claude Code 风格的 Skills、Hooks、MCP 与插件配置，不必为新工具重建一套工作流。
+- **边界讲清楚。** 权限审批只决定工具执行前是否询问，真正的隔离仍由操作系统、容器和凭据策略提供。
+
+## 从哪里开始
+
+<CardGrid>
+  <LinkCard title="安装 Peri" description="macOS、Linux 与 Windows 的安装脚本、运行依赖与验证方式。" href="/docs/get-started/installation/" />
+  <LinkCard title="在 TUI 中快速上手" description="启动界面、完成首次设置、选择模型并提交第一个任务。" href="/docs/get-started/quickstart/" />
+  <LinkCard title="文档总览" description="按任务与主题进入全部文档。" href="/docs/" />
+  <LinkCard title="文章" description="架构梳理、工程实践与研究记录。" href="/posts/" />
+</CardGrid>

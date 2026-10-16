@@ -7,8 +7,6 @@ hero:
     alt: 钥匙与星
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
 这份参考以当前代码调用路径为准。`peri --help` 能证明参数可被解析，但不能证明参数已经接入运行时；下文因此把参数分成“已接线”和“已解析但未生效”两类。
 
 ## 已接线的基础入口
@@ -24,7 +22,7 @@ import { Aside } from '@astrojs/starlight/components';
 | `peri --db-path <path>` | 重定向 SQLite 会话数据库路径 |
 | `peri update` | 下载并执行仓库 `main` 分支上的安装脚本 |
 
-`--dangerously-skip-permissions` 也会选择 Bypass。权限模式只控制工具审批，不提供容器、文件系统或网络隔离。安全边界见[权限系统](/peri-cool/docs/features/permissions/)。
+`--dangerously-skip-permissions` 也会选择 Bypass。权限模式只控制工具审批，不提供容器、文件系统或网络隔离。安全边界见[权限系统](/docs/features/permissions/)。
 
 ## 非交互模式
 

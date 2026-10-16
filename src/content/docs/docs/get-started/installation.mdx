@@ -44,6 +44,23 @@ PERI_INSTALL_VERSION=agent-v2.0.0 PERI_INSTALL_DIR="$HOME/tools/peri" \
 
 Windows 使用同名环境变量。版本值必须对应 GitHub Release tag；不存在或缺少当前平台制品时，脚本会退出。
 
+## 网络受限环境
+
+脚本的请求分两类，代理变量分别配置——多数镜像只代理下载路径，不代理 API：
+
+1. `GITHUB_PROXY`：下载制品与校验和，替换 URL 中的 `https://github.com` 前缀。
+2. `GITHUB_API_PROXY`：查询 Release，替换 URL 中的 `https://api.github.com` 前缀。
+
+```bash
+GITHUB_PROXY=https://ghproxy.com/https://github.com \
+GITHUB_API_PROXY=https://gh-proxy.com/https://api.github.com \
+  curl -fsSL https://raw.githubusercontent.com/konghayao/peri/main/scripts/install.sh | bash
+```
+
+指定 `PERI_INSTALL_VERSION` 时不查询 API：下载地址按 tag 与发布命名规则直接拼装，只请求制品和校验和，因此只需要 `GITHUB_PROXY`。不指定版本时才通过 API 解析最新 tag。
+
+Windows 同样使用 `$env:GITHUB_PROXY` 与 `$env:GITHUB_API_PROXY`。
+
 ## 升级
 
 已安装版本可以运行：
@@ -69,7 +86,7 @@ rm -r "$HOME/.peri"
 ## 安全与限制
 
 - `curl | bash` 和 `irm | iex` 会直接执行远程 `main` 分支脚本。发布工作流生成 checksum，但当前安装脚本没有校验下载制品的 checksum。
-- 自动安装依赖 GitHub API、GitHub Releases、TLS 和本机 `PATH` 配置。
+- 自动安装依赖 GitHub API、GitHub Releases、TLS 和本机 `PATH` 配置；指定 `PERI_INSTALL_VERSION` 时不需要 GitHub API。
 - 安装脚本成功只证明制品已下载并放到预期路径；脚本不会运行 `peri --version` 验证启动。Provider 凭据也需单独配置。
 
-下一步：[在 TUI 中快速上手](/peri-cool/docs/get-started/quickstart/) · [凭据与权限边界](/peri-cool/docs/security/secrets-and-permissions/) · [故障排除](/peri-cool/docs/troubleshooting/)
+下一步：[在 TUI 中快速上手](/docs/get-started/quickstart/) · [凭据与权限边界](/docs/security/secrets-and-permissions/) · [故障排除](/docs/troubleshooting/)

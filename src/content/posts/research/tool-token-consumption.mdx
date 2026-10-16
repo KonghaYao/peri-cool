@@ -62,7 +62,7 @@ hero:
 
 ## 3. 出参集中在三个工具
 
-![工具出参占比 top8](/peri-cool/chart-ttc-share.svg)
+![工具出参占比 top8](/chart-ttc-share.svg)
 
 *口径:主窗口 93,997 次调用出参合计 268.3 MiB*
 
@@ -74,7 +74,7 @@ hero:
 
 ## 4. 分桶:调用多的小桶,字节少
 
-![出参分桶:调用占比 vs 字节占比](/peri-cool/chart-ttc-buckets.svg)
+![出参分桶:调用占比 vs 字节占比](/chart-ttc-buckets.svg)
 
 *口径:按单次出参分桶;&lt;1KB 的调用占 59.3% 却只贡献 4.3% 字节*
 
@@ -85,7 +85,7 @@ hero:
 
 ## 5. token 排名:三巨头占四分之三
 
-![工具 token 消耗排名 top10](/peri-cool/chart-ttc-token.svg)
+![工具 token 消耗排名 top10](/chart-ttc-token.svg)
 
 *口径:入参+出参 × 0.341(方法 A 全局比率),灰色为入参、陶土色为出参*
 
@@ -96,7 +96,7 @@ hero:
 
 ## 6. 浪费:26.2% 的出参
 
-![浪费构成(四类 + 并集)](/peri-cool/chart-ttc-waste.svg)
+![浪费构成(四类 + 并集)](/chart-ttc-waste.svg)
 
 *口径:并集已去重(一次调用同时命中多项只计一次)*
 
@@ -114,7 +114,7 @@ hero:
 
 ## 7. 周演变:07-13 见顶后回落
 
-![周演变:工具出参总量与单次 P95](/peri-cool/chart-ttc-weekly.svg)
+![周演变:工具出参总量与单次 P95](/chart-ttc-weekly.svg)
 
 *口径:按线程创建时间归周(周边界近似);虚线为调用数*
 

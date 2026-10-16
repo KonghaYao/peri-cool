@@ -56,7 +56,7 @@ description: 重构代码时使用。用户要求提取模块、拆分函数、�
 用 refactor-code 把 src/core/handler.rs 里的 validate_token 提取到 src/auth/validate.rs，保持现有调用签名不变
 ```
 
-Peri 会按流程走：先提醒快照 → 搜影响面 → 分批改分批验证 → 独立审查。skill 的存放位置、自动加载机制和修改方式，见[探索陌生代码库](/peri-cool/docs/features/explore-codebase/)的说明。
+Peri 会按流程走：先提醒快照 → 搜影响面 → 分批改分批验证 → 独立审查。skill 的存放位置、自动加载机制和修改方式，见[探索陌生代码库](/docs/features/explore-codebase/)的说明。
 
 ## 进阶：worktree 隔离并行重构
 
@@ -75,9 +75,9 @@ npx skills add https://github.com/konghayao/peri --skill using-superpowers
 用 ultracode 并行：worktree 1 做 auth 模块迁移，worktree 2 做 middleware 适配
 ```
 
-两个 worktree 各改各的，改完合并回主分支。完整的模式说明见 [Superpowers 工作流](/peri-cool/docs/features/superpowers/)。
+两个 worktree 各改各的，改完合并回主分支。完整的模式说明见 [Superpowers 工作流](/docs/features/superpowers/)。
 
 ## 下一步
 
-- 重构完要验证行为不变 → [编写测试](/peri-cool/docs/features/write-tests/)
-- 重构引入的问题 → [定位并修复 Bug](/peri-cool/docs/features/fix-bugs/)
+- 重构完要验证行为不变 → [编写测试](/docs/features/write-tests/)
+- 重构引入的问题 → [定位并修复 Bug](/docs/features/fix-bugs/)
