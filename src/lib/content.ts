@@ -140,7 +140,11 @@ export const postCategories = [
 				id: 'resource-baselines',
 				label: '资源基线',
 				description: '记录特定环境下的资源快照，并明确外推边界。',
-				posts: ['research/sandbox-memory-usage', 'research/subagent-cpu-baseline'],
+				posts: [
+					'research/sandbox-memory-usage',
+					'research/subagent-cpu-baseline',
+					'research/sdk-wasm-capacity-baseline',
+				],
 			},
 		],
 	},
