@@ -36,13 +36,13 @@ peri-tui → peri-acp → peri-agent::run_react_loop
 
 | 任务 | 先读 | 稳定代码入口 |
 | --- | --- | --- |
-| Agent loop、Compact、模型调用、工具 trait | `peri-agent/CLAUDE.md`、架构契约、Rust 规范 | `peri-agent/src/agent/`、`peri-agent/src/agent/compact_v2/`、`peri-agent/src/session/` |
-| Session、Prompt、事件映射、ACP transport | `peri-acp/CLAUDE.md`、架构契约 | `peri-acp/src/session/`、`peri-acp/src/prompt/`、`peri-acp/src/event/` |
-| MCP、Skills、Plugin、SubAgent、HITL、Hook | `peri-middlewares/CLAUDE.md`、架构契约 | `peri-middlewares/src/` |
-| TUI 输入、消息流、面板、通知 | `peri-tui/CLAUDE.md`、TUI 与 Rust 规范 | `peri-tui/src/kit/` |
-| E2E | `e2e/CLAUDE.md`、测试规范 | `e2e/` |
+| Agent loop、Compact、模型调用、工具 trait | `docs/code-index/peri-agent.md`、架构契约、Rust 规范 | `peri-agent/src/agent/`、`peri-agent/src/agent/compact_v2/`、`peri-agent/src/session/` |
+| Session、Prompt、事件映射、ACP transport | `docs/code-index/peri-acp.md`、架构契约 | `peri-acp/src/session/`、`peri-acp/src/prompt/`、`peri-acp/src/event/` |
+| MCP、Skills、Plugin、SubAgent、HITL、Hook | `docs/code-index/peri-middlewares.md`、架构契约 | `peri-middlewares/src/` |
+| TUI 输入、消息流、面板、通知 | `docs/code-index/peri-tui.md`、TUI 与 Rust 规范 | `peri-tui/src/kit/` |
+| E2E | `docs/standards/testing.md` | `e2e/` |
 
-模块指引不会由 loader 自动继承父目录规则。进入某个模块前，要显式阅读该模块的 `CLAUDE.md` 与适用的 `docs/standards/` 文档。
+loader 不会自动继承父目录规则；进入某个模块前，按任务显式读取对应的 `docs/code-index/` 与 `docs/standards/` 文档。
 
 ## 事实优先级
 
