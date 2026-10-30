@@ -3,8 +3,6 @@ title: 可验证工程里程碑
 description: 按 tag、commit 与决策记录区分证据类型，记录 Peri 已可核验的演进节点。
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
 这不是逐 commit changelog，而是一组能由仓库证据复核的工程里程碑。它回答“何时出现了什么版本标记或架构变化”，不把提交日期自动解释为用户安装到该功能的日期。
 
 ## 日期怎么读
@@ -66,7 +64,7 @@ git show -s --format=fuller 15269e31
 - 2026-08-09：commit `c6402d9a` 为 SubAgent 增加按 thread 恢复现场的入口。
 - 2026-08-11：3.0 伞形 PRD 与 L1–L5/M 子项在历史索引中归档；同日 commit `6a99d379` 让 Agent 工具支持动态选择模型档位。
 
-3.0 分层重构发生在 `agent-v3.0.0` tag 之后，因此本页称它为“3.0 分层重构”，不称为“v3.0 首发”。详见[3.0 分层重构](/peri-cool/docs/history/3-0-refactor/)。
+3.0 分层重构发生在 `agent-v3.0.0` tag 之后，因此本页称它为“3.0 分层重构”，不称为“v3.0 首发”。详见[3.0 分层重构](/docs/history/3-0-refactor/)。
 
 ## 如何复核
 
@@ -86,6 +84,6 @@ rg -n '3.0 L|event-chain-canonical' spec/global/problems.md spec/global/domains/
 
 ## 相关内容
 
-- [3.0 分层重构](/peri-cool/docs/history/3-0-refactor/)
-- [架构总览](/peri-cool/docs/developer/architecture/)
-- [ACP 协议在生态中的定位](/peri-cool/posts/engineering/acp-positioning/)
+- [3.0 分层重构](/docs/history/3-0-refactor/)
+- [架构总览](/docs/developer/architecture/)
+- [ACP 协议在生态中的定位](/posts/engineering/acp-positioning/)

@@ -8,8 +8,6 @@ hero:
     alt: 众声一星
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
 ## 协议层的位置
 
 [Agent Client Protocol](https://agentclientprotocol.com)（ACP）是 Zed Industries 发起、社区维护的开放协议，定义编辑器（Client）与 AI 编程 Agent（Server）之间的通信，走 JSON-RPC 2.0。协议的方法集中在几个根命名空间，`initialize` 做能力协商，`session/*` 管理会话生命周期，`session/prompt` 驱动单轮交互；执行过程中的状态增量由 Agent 侧通过 `session/update` 等通知持续推回客户端，而不是等一轮结束给一个大块结果。
@@ -45,7 +43,7 @@ Peri 在这套协议里有两个身份，它是实现 ACP Server 的 Agent，同
 
 **冻结数据。** 会话创建时形成的 owner snapshot 从创建时刻保持不可变。frozen base prompt、项目静态输入和 Meta Harness 状态随 ThreadStore 持久化，`session/load`、resume、fork 与 SubAgent 复用同一快照；每次请求的 middleware contribution 只能追加在冻结前缀之后。这也是 session 层区别于聊天窗口的地方——会话是一个可恢复的持久化单元，不是一次请求。
 
-**按 session 复用重量级资源。** 与会话绑定的资源池在会话创建时装配、跨 turn 复用，`AgentPool`（`session/agent_pool.rs`）缓存 LLM 实例与其持有的 `reqwest::Client`（代码注释估计单个客户端约 1–2 MB，含连接池与 TLS 会话缓存），首次 prompt 时填充、provider 切换时失效；LSP 池与 workflow 中间件以端口形式注入（`Arc<dyn LspPoolPort>` / `Arc<dyn WorkflowMiddlewarePort>`）。这解释了协议的抽象粒度，session 是大粒度资源的边界，prompt 是轻量输入。
+**按 session 复用重量级资源。** 与会话绑定的资源池在会话创建时装配、跨 turn 复用，`AgentPool`（`session/agent_pool.rs`）缓存 LLM 实例与其持有的 `reqwest::Client`（代码注释估计单个客户端约 1–2 MB，含连接池与 TLS 会话缓存），首次 prompt 时填充、provider 切换时失效。原本以端口形式注入的 LSP 池与 workflow 中间件在 v4 已删除：LSP 能力整体移除，workflow 改为同进程的 builtin MCP 实例（`mcp__workflow__*`）。这解释了协议的抽象粒度，session 是大粒度资源的边界，prompt 是轻量输入。
 
 顺带提一个实现现状（L5 重构后），`AcpSession` 本身瘦身为对外句柄，核心状态委托给 `peri-agent::session::Session`，ACP 层保留的是协议特有字段。阅读代码时，不用再在 `AcpSession` 里找全部执行状态。
 
@@ -69,7 +67,7 @@ sequenceDiagram
 
 `session/prompt` 收到输入后，执行层读取会话创建时冻结的 base prompt，再从当前 middleware 链收集 request-time contribution，组合后运行一轮。基础段与能力段分别由对应 middleware 持有；middleware 缺席时，它的段落、工具和 Hook 必须一起消失。
 
-单一条件源是当前 middleware 链。它同时导出段落所有权、direct 工具、deferred-tool 搜索和命令投影，避免多处判定漂移。`PermissionMiddleware` 持有审批与 `10_hitl`，`HumanInTheLoopMiddleware` 持有提问工具与 `12_ask_user`；两项能力不能互相代替。`15_channel` 仍由关闭的 feature gate 保留，不算当前可用能力。
+单一条件源是当前 middleware 链。它同时导出段落所有权、direct 工具、deferred-tool 搜索和命令投影，避免多处判定漂移。`PermissionMiddleware` 持有审批与 `10_hitl`，`HumanInTheLoopMiddleware` 持有提问工具与 `12_ask_user`；两项能力不能互相代替。channel 消息功能已退役，系统提示词不再保留其无持有者的 feature gate。
 
 单轮结果统一用 `PromptResult`（`peri-acp-types/src/session.rs`）回传，消息历史、是否成功、停止原因、本轮是否发生 compact 替换可见历史。prompt 层只负责把输入变成一轮执行，状态管理归 session。
 
@@ -161,7 +159,7 @@ Peri 同时扮演两种实现方（TUI 自己是 Client，对外又是 Server）
 
 ## 相关实现
 
-- [Agent Loop](/peri-cool/posts/engineering/agent-loop/) — ReAct 引擎如何与 session/prompt 周期对齐
-- [Hook 中间件总览](/peri-cool/posts/engineering/hook-middleware-overview/) — 中间件链如何挂在 ACP 事件生命周期上
-- [Multi Agent 架构](/peri-cool/posts/engineering/multi-agent/) — SubAgent 的事件如何在 ACP 通道中上报
-- [System Prompt](/peri-cool/posts/engineering/system-prompt/) — prompt 分段如何装配
+- [Agent Loop](/posts/engineering/agent-loop/) — ReAct 引擎如何与 session/prompt 周期对齐
+- [Hook 中间件总览](/posts/engineering/hook-middleware-overview/) — 中间件链如何挂在 ACP 事件生命周期上
+- [Multi Agent 架构](/posts/engineering/multi-agent/) — SubAgent 的事件如何在 ACP 通道中上报
+- [System Prompt](/posts/engineering/system-prompt/) — prompt 分段如何装配

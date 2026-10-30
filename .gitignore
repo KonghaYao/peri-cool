@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 
 # Workflow 运行产物（journal / state / 生成的脚本）
 .claude/workflow-runs/
+
+# Nimbus 构建缓存（每次 build 重新生成）
+.nimbus/

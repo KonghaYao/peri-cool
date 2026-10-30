@@ -58,7 +58,7 @@ description: 修复 bug 时使用。用户报告报错、测试失败、异常�
 复现步骤：先启动服务，再调用 POST /auth/compact
 ```
 
-Peri 会按流程走：收集信息 → 诊断根因（先说明等你确认）→ 修复 → 独立验证。skill 的存放位置、自动加载机制和修改方式，见[探索陌生代码库](/peri-cool/docs/features/explore-codebase/)的说明。
+Peri 会按流程走：收集信息 → 诊断根因（先说明等你确认）→ 修复 → 独立验证。skill 的存放位置、自动加载机制和修改方式，见[探索陌生代码库](/docs/features/explore-codebase/)的说明。
 
 ## 进阶：系统化排查
 
@@ -80,9 +80,9 @@ npx skills add https://github.com/mattpocock/skills --skill diagnosing-bugs
 /systematic-debugging 排查定时任务每 2 分钟一个实例持续增长的问题
 ```
 
-排查出根因后，接 `/verification-before-completion` 强制跑完构建、测试、lint 再宣布修复完成。完整的调试模式见 [Superpowers 工作流](/peri-cool/docs/features/superpowers/)。
+排查出根因后，接 `/verification-before-completion` 强制跑完构建、测试、lint 再宣布修复完成。完整的调试模式见 [Superpowers 工作流](/docs/features/superpowers/)。
 
 ## 下一步
 
-- 修完确认行为 → [编写测试](/peri-cool/docs/features/write-tests/)
-- 修复涉及大改动 → [安全重构](/peri-cool/docs/features/refactor-code/)
+- 修完确认行为 → [编写测试](/docs/features/write-tests/)
+- 修复涉及大改动 → [安全重构](/docs/features/refactor-code/)

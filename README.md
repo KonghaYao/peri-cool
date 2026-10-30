@@ -1,6 +1,6 @@
 # Peri Cool
 
-Peri 的官方文档与文章站点，基于 Astro 和 Starlight 构建。站点内容使用简体中文，以可核验的产品行为、工程记录和研究数据为事实基础。
+Peri 的官方文档与文章站点，基于 Astro 和 Nimbus 构建。站点内容使用简体中文，以可核验的产品行为、工程记录和研究数据为事实基础。
 
 ## 内容结构
 
@@ -8,7 +8,7 @@ Peri 的官方文档与文章站点，基于 Astro 和 Starlight 构建。站点
 src/content/docs/docs/    用户文档与参考手册
 src/content/posts/        工程、产品、研究与动态文章
 src/pages/                首页、文章索引与文章路由
-src/components/           Starlight 自定义组件
+src/components/           Nimbus 自定义组件
 src/styles/               全局主题
 public/                   静态图表与公开资源
 ```
@@ -43,8 +43,9 @@ git diff --check
 
 1. 在 `src/content/docs/docs/` 的合适主题下新建 `.mdx` 文件。
 2. 添加 `title` 和 `description` frontmatter。
-3. 在 `astro.config.mjs` 的 sidebar 中放入对应 slug。
-4. 内部链接使用带 base 的绝对路径，例如 `/peri-cool/docs/get-started/quickstart/`。
+3. 在 `astro.config.ts` 的 sidebar 中放入对应 slug。
+4. 内部链接使用不带 base 的逻辑绝对路径，例如 `/docs/get-started/quickstart/`。Nimbus 构建时会补上 `/peri-cool/`。
+5. 若新增可路由的自定义集合，必须把 collection 写入 `nimbusConfig.rendering.collections`；当前 `docs` 与 `posts` 已列出。
 
 ## 添加文章
 

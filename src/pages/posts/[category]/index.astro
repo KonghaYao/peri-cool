@@ -1,6 +1,6 @@
 ---
 import { getCollection } from 'astro:content';
-import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import DocsLayout from '../../../layouts/DocsLayout.astro';
 import {
 	getPostCategory,
 	getFeaturedPost,
@@ -11,6 +11,7 @@ import {
 	postsByTopic,
 	postsInCategory,
 } from '../../../lib/content';
+import { toNimbusSidebar } from '../../../lib/post-sidebar';
 
 export function getStaticPaths() {
 	return postCategories.map((category) => ({ params: { category: category.id } }));
@@ -23,13 +24,16 @@ const featured = import.meta.env.DEV
 	: getFeaturedPost(posts, category.id);
 const topicGroups = postsByTopic(posts, category.id);
 const base = import.meta.env.BASE_URL;
-const sidebar = postSidebar(posts, category.id);
+const sidebar = toNimbusSidebar(postSidebar(posts, category.id));
 ---
 
-<StarlightPage
-	frontmatter={{ title: category.label, description: category.description }}
+<DocsLayout
+	title={category.label}
+	description={category.description}
 	sidebar={sidebar}
-	tableOfContents={false}
+	headings={false}
+	prevNext={false}
+	breadcrumbs={false}
 >
 	<p class="category-promise">{category.promise}</p>
 	<section class="featured-post" data-post={postPath(featured).replace(/^posts\//, '').replace(/\/$/, '')}>
@@ -89,34 +93,34 @@ const sidebar = postSidebar(posts, category.id);
 		<strong>栏目边界</strong>
 		<p>{category.boundary}</p>
 	</aside>
-</StarlightPage>
+</DocsLayout>
 
 <style>
 	.category-promise { font-size: 1.15rem; max-width: 48rem; }
-	.featured-post { border-block: 1px solid var(--sl-color-gray-5); margin: 2rem 0; padding: 1.5rem 0; }
+	.featured-post { border-block: 1px solid var(--nb-border); margin: 2rem 0; padding: 1.5rem 0; }
 	.featured-post h2 { margin: 0.35rem 0 0.5rem; }
-	.section-label { color: var(--sl-color-text-accent); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; margin: 0; text-transform: uppercase; }
+	.section-label { color: var(--nb-primary); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; margin: 0; text-transform: uppercase; }
 	.topic-map { margin: 2.5rem 0 3.5rem; }
 	.topic-map-heading h2 { margin: 0.3rem 0 1.25rem; }
-	.topic-card { align-items: center; border-top: 1px solid var(--sl-color-gray-5); color: inherit; display: grid; gap: 1rem; grid-template-columns: 2.5rem minmax(0, 1fr) auto; padding: 1rem 0; text-decoration: none; }
-	.topic-card:last-child { border-bottom: 1px solid var(--sl-color-gray-5); }
-	.topic-card:hover strong { color: var(--sl-color-text-accent); }
-	.topic-card:focus-visible { outline: 2px solid var(--sl-color-text-accent); outline-offset: 4px; }
-	.topic-index { color: var(--sl-color-text-accent); font-size: 0.78rem; font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: 0.08em; }
+	.topic-card { align-items: center; border-top: 1px solid var(--nb-border); color: inherit; display: grid; gap: 1rem; grid-template-columns: 2.5rem minmax(0, 1fr) auto; padding: 1rem 0; text-decoration: none; }
+	.topic-card:last-child { border-bottom: 1px solid var(--nb-border); }
+	.topic-card:hover strong { color: var(--nb-primary); }
+	.topic-card:focus-visible { outline: 2px solid var(--nb-primary); outline-offset: 4px; }
+	.topic-index { color: var(--nb-primary); font-size: 0.78rem; font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: 0.08em; }
 	.topic-card-body { display: grid; gap: 0.2rem; }
 	.topic-card-body strong { font-size: 1.05rem; }
-	.topic-card-body span { color: var(--sl-color-gray-2); }
-	.topic-count { color: var(--sl-color-gray-3); font-size: 0.8rem; white-space: nowrap; }
+	.topic-card-body span { color: var(--nb-muted-foreground); }
+	.topic-count { color: var(--nb-muted-foreground); font-size: 0.8rem; white-space: nowrap; }
 	.topic-sections { display: grid; gap: 3.5rem; }
 	.topic-section { scroll-margin-top: 5rem; }
-	.topic-section > header { align-items: start; border-left: 3px solid var(--sl-color-text-accent); display: grid; gap: 0.75rem; grid-template-columns: 2.5rem minmax(0, 1fr); padding-left: 1rem; }
+	.topic-section > header { align-items: start; border-left: 3px solid var(--nb-primary); display: grid; gap: 0.75rem; grid-template-columns: 2.5rem minmax(0, 1fr); padding-left: 1rem; }
 	.topic-section > header h2 { margin: 0; }
-	.topic-section > header p { color: var(--sl-color-gray-2); margin: 0.35rem 0 0; }
-	.featured-in-topic { color: var(--sl-color-gray-3); font-size: 0.85rem; margin: 1.1rem 0 0; }
-	.post-list article { border-top: 1px solid var(--sl-color-gray-5); padding: 1.4rem 0; }
+	.topic-section > header p { color: var(--nb-muted-foreground); margin: 0.35rem 0 0; }
+	.featured-in-topic { color: var(--nb-muted-foreground); font-size: 0.85rem; margin: 1.1rem 0 0; }
+	.post-list article { border-top: 1px solid var(--nb-border); padding: 1.4rem 0; }
 	.post-list h3 { font-size: 1.25rem; margin: 0.25rem 0 0.5rem; }
-	.post-date { margin: 0; color: var(--sl-color-gray-3); font-size: 0.85rem; }
-	.category-boundary { border-top: 1px solid var(--sl-color-gray-5); margin-top: 2rem; padding-top: 1rem; color: var(--sl-color-gray-2); }
+	.post-date { margin: 0; color: var(--nb-muted-foreground); font-size: 0.85rem; }
+	.category-boundary { border-top: 1px solid var(--nb-border); margin-top: 2rem; padding-top: 1rem; color: var(--nb-muted-foreground); }
 	.category-boundary p { margin-top: 0.35rem; }
 	@media (max-width: 40rem) {
 		.topic-card { align-items: start; grid-template-columns: 2rem minmax(0, 1fr); }

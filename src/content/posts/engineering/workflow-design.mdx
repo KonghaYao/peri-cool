@@ -8,8 +8,6 @@ hero:
     alt: 混沌生序
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
 Dynamic Workflow 是 Peri 的多 Agent 编排机制，一段脚本描述执行计划，脚本由 LLM 在任务现场生成，执行交给独立进程并保持确定性。本文讲四件事，workflow 是什么、为什么说它是动态的、它与子代理和普通回合的边界、journal 与恢复怎么工作，最后是适用边界。
 
 ## 编排层的位置
@@ -72,7 +70,7 @@ return { security, perf, bugs }
 | 结果去向 | 会话历史 | 回传主 Agent 上下文 | 脚本变量，跨阶段显式传递 |
 
 - **普通回合**，主会话的单 ReAct 循环，动作随手在上下文里产生，无法保存、重跑、比对。适合需要连续对话的任务——确认边界、逐轮追问、反复试错。
-- **子代理**，主 Agent 在回合里用 Agent 工具派发独立 ReAct 循环，输出回传上下文。派发决策仍在 LLM 手里——同一任务跑两次，拆法可能不同、结果不可比。机制细节见 [Multi Agent 架构](/peri-cool/posts/engineering/multi-agent/)。
+- **子代理**，主 Agent 在回合里用 Agent 工具派发独立 ReAct 循环，输出回传上下文。派发决策仍在 LLM 手里——同一任务跑两次，拆法可能不同、结果不可比。机制细节见 [Multi Agent 架构](/posts/engineering/multi-agent/)。
 - **workflow**，决策权从上下文移到脚本。脚本生成后脱离主会话的推理路径独立执行，主会话只收完成通知；流程的版本、日志、结果都在脚本和磁盘上留痕。
 
 值得注意的复用点，workflow 的每个 `agent()` 最终都落到统一的 SubAgent 执行体——复用 Agent Loop、工具过滤和 token 统计，并继承主会话在 `session/new` 时形成的 owner snapshot。执行体是子代理基础设施，变的是决策者：普通子代理由模型在回合里派发，workflow 由脚本批量声明、runner 统一运行。
@@ -92,7 +90,7 @@ log(message)             写入面板日志
 workflow(ref, args)      运行子工作流（仅一层嵌套）
 ```
 
-- **不复制控制流原语。** 条件分支、收敛循环这类结构是 JavaScript 自身的 `if` / `while` / `for`，直接在脚本里写。ultracode 文档里的七种模式（[编排模式图解](/peri-cool/docs/features/ultracode-workflow/)）多数依赖脚本语言表达力，而不是原语数量。
+- **不复制控制流原语。** 条件分支、收敛循环这类结构是 JavaScript 自身的 `if` / `while` / `for`，直接在脚本里写。ultracode 文档里的七种模式（[编排模式图解](/docs/features/ultracode-workflow/)）多数依赖脚本语言表达力，而不是原语数量。
 - **脱离 ESM。** `import` 在脚本里会直接报错；需要外部依赖时经 `args` 由调用方注入。这既是沙箱的一部分，也让脚本与宿主进程解耦。
 - **`phase()` 只影响展示。** 它组织的是可观测性边界，不改变执行顺序；面板按阶段归组，`agent()` 的归属在 `phase()` 与显式 `opts.phase` 之间取运行时当前值。
 - **失败语义。** `agent()` 返回 dead 或抛错时整体重试一次；用户取消（killed）与中断（interrupted）直接记为失败，不做重试。`parallel` / `pipeline` 单项失败返回 `null`，不中断整轮；是否接受单项失败，由脚本作者在结构里决定。
@@ -161,10 +159,10 @@ journal 每条是 `{ key, seq, result }`，`key` 是 prompt 与参数（剔除 `
 
 - 模型分层是脚本字段，审计类用 haiku、核心改写用 sonnet，写在哪就那么执行。成本策略随脚本可见、可审查，不藏在 LLM 的临时判断里。
 - 监控走 `/workflows` 面板，阶段与 agent 的实时状态、token、工具调用数，数据经 2 秒轮询拉取（拉取间隔为当前实现值，非承诺）。
-- 编排模板与委托写法见 [ultracode 使用建议](/peri-cool/docs/features/ultracode-usage/)。
+- 编排模板与委托写法见 [ultracode 使用建议](/docs/features/ultracode-usage/)。
 
 ## 相关实现
 
-- [Multi Agent 架构](/peri-cool/posts/engineering/multi-agent/)，workflow 的执行体从哪来，子代理的派发与并发限制
-- [RCRA 中断恢复逻辑](/peri-cool/posts/engineering/rcra-interruption-recovery/)，回合级中断恢复与 workflow 的 journal 恢复是两个层次
-- [System Prompt 设计](/peri-cool/posts/engineering/system-prompt/)，workflow agent 复用的冻结系统提示词机制
+- [Multi Agent 架构](/posts/engineering/multi-agent/)，workflow 的执行体从哪来，子代理的派发与并发限制
+- [RCRA 中断恢复逻辑](/posts/engineering/rcra-interruption-recovery/)，回合级中断恢复与 workflow 的 journal 恢复是两个层次
+- [System Prompt 设计](/posts/engineering/system-prompt/)，workflow agent 复用的冻结系统提示词机制

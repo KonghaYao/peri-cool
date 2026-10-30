@@ -67,6 +67,16 @@ export const postCategories = [
 					'engineering/mcp-2026-07-28',
 				],
 			},
+			{
+				id: 'storage-split',
+				label: '存算分离',
+				description: '会话存储、执行生命周期与宿主环境各自独立：重启不恢复执行、归属按机器与路径确定、核心可嵌入宿主运行时。',
+				posts: [
+					'engineering/restart-no-recovery',
+					'engineering/session-ownership',
+					'engineering/embedding-wasm',
+				],
+			},
 		],
 	},
 	{
@@ -114,6 +124,7 @@ export const postCategories = [
 				posts: [
 					'research/long-session-study',
 					'research/subagent-dispatch-phases',
+					'research/cache-hit-rate-study',
 				],
 			},
 			{
@@ -129,7 +140,7 @@ export const postCategories = [
 				id: 'resource-baselines',
 				label: '资源基线',
 				description: '记录特定环境下的资源快照，并明确外推边界。',
-				posts: ['research/sandbox-memory-usage'],
+				posts: ['research/sandbox-memory-usage', 'research/subagent-cpu-baseline'],
 			},
 		],
 	},
@@ -148,6 +159,7 @@ export const postCategories = [
 				posts: [
 					'news/2026-08-01-weekly-updates',
 					'news/2026-08-13-project-updates',
+					'news/2026-10-16-project-updates',
 				],
 			},
 			{

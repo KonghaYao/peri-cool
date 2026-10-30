@@ -7,8 +7,6 @@ hero:
     alt: 钥匙与星
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
 这份参考以当前代码调用路径为准。`peri --help` 能证明参数可被解析，但不能证明参数已经接入运行时；下文因此把参数分成“已接线”和“已解析但未生效”两类。
 
 ## 已接线的基础入口
@@ -24,7 +22,7 @@ import { Aside } from '@astrojs/starlight/components';
 | `peri --db-path <path>` | 重定向 SQLite 会话数据库路径 |
 | `peri update` | 下载并执行仓库 `main` 分支上的安装脚本 |
 
-`--dangerously-skip-permissions` 也会选择 Bypass。权限模式只控制工具审批，不提供容器、文件系统或网络隔离。安全边界见[权限系统](/peri-cool/docs/features/permissions/)。
+`--dangerously-skip-permissions` 也会选择 Bypass。权限模式只控制工具审批，不提供容器、文件系统或网络隔离。安全边界见[权限系统](/docs/features/permissions/)。
 
 ## 非交互模式
 
@@ -44,7 +42,7 @@ echo "解释 src/main.rs" | peri -p
 | `--output-format stream-json` | 逐行输出文本和工具事件 JSON |
 | `--model <alias>` | 尝试按配置中的档位选择 provider 和模型；找不到该档位时沿用当前 provider |
 | `--settings <path-or-json>` | 从指定文件或 JSON 字符串加载本次运行的配置 |
-| `--bare` | 跳过 settings hooks、LSP 和插件等装配 |
+| `--bare` | 跳过 settings hooks 和插件等装配 |
 | `--db-path <path>` | 使用指定会话数据库；打开失败时退出 |
 
 <Aside type="caution">
@@ -76,7 +74,7 @@ echo "解释 src/main.rs" | peri -p
 peri plugin install frontend-design@claude-plugins-official
 ```
 
-另有 `peri sync ...`、`peri web ...` 与 `peri acp ...`。各子命令的参数以对应的 `--help` 为入口；其中 `peri web` 默认监听 `0.0.0.0`，启动前应确认网络暴露范围。
+另有 `peri acp ...`。各子命令的参数以对应的 `--help` 为入口。
 
 ## 确定性命令
 

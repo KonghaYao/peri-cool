@@ -3,8 +3,6 @@ title: 3.0 分层重构
 description: Peri 如何把执行、协议、资源、控制面和观测职责重新归位，以及用什么契约保护迁移。
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
 Peri 的 3.0 分层重构解决的是职责和生命周期错位，不是一次性能优化。重构主线在 2026-08-05 建立决策记录，主要迁移于 2026-08-06 合入，并在 2026-08-11 归档。
 
 这里的日期分别来自 spec 的创建/归档记录与 commit 日期。`agent-v3.0.0` tag 创建于 2026-08-02，早于这次分层迁移，因此这段历史不是“v3.0 首发记录”。
@@ -112,6 +110,6 @@ cargo test -p peri-agent --lib model_bridge
 
 ## 相关内容
 
-- [架构总览](/peri-cool/docs/developer/architecture/)
-- [开发者入口](/peri-cool/docs/developer/)
-- [可验证工程里程碑](/peri-cool/docs/history/milestones/)
+- [架构总览](/docs/developer/architecture/)
+- [开发者入口](/docs/developer/)
+- [可验证工程里程碑](/docs/history/milestones/)

@@ -8,8 +8,6 @@ hero:
     alt: 工具箱
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
 审查这三个文件，再对比两份配置。这类任务里，Peri 经常在**一个回合**内并发执行多个工具。终端里的工具事件是一条条冒出来的，快工具先显示结束，与慢工具交错；同一个回合的会话记录里，固定的却是一套整齐的配对，一条 assistant 消息声明了这批调用，之后每条调用各对应一条结果，失败的也包含在内。
 
 这个差异来自两种机制的分工，事件流实时配送，transcript 成组提交。
@@ -55,7 +53,7 @@ transcript 写入是**两阶段**的。Peri 先解析并审批整批调用，然
 
 并发执行期间，每个工具拿到的是同一份**已提交可见消息 + 本轮 AI 消息**的快照，而不是其他工具正在产生的半成品。一个工具的结果对同批另一个工具的输入不可见——这是隔离保证，也是协作约束，依赖前一个结果的任务需要显式分步，不能指望并发工具互相看到对方的结果。
 
-事件的乱和记录的齐由身份字段衔接。工具事件带 `tool_call_id`，文本块带 `message_id`，客户端据此把交错的事件归位到正确的调用与消息上。子代理并行执行时是另一个来源，子代理有自己的事件总线，事件经转发器注入 `source_agent_id` 后路由回父代理，避免父子事件混淆（多代理场景见[多代理编排](/peri-cool/posts/engineering/multi-agent/)）。
+事件的乱和记录的齐由身份字段衔接。工具事件带 `tool_call_id`，文本块带 `message_id`，客户端据此把交错的事件归位到正确的调用与消息上。子代理并行执行时是另一个来源，子代理有自己的事件总线，事件经转发器注入 `source_agent_id` 后路由回父代理，避免父子事件混淆（多代理场景见[多代理编排](/posts/engineering/multi-agent/)）。
 
 ## 失败与中断仍然成组
 
@@ -81,4 +79,4 @@ transcript 写入是**两阶段**的。Peri 先解析并审批整批调用，然
 
 ## 相关实现
 
-继续阅读 [理解 Agent Loop](/peri-cool/posts/engineering/agent-loop/) 了解回合如何收尾并回喂给模型，[Hook 中间件统一入口](/peri-cool/posts/engineering/hook-middleware-overview/) 查看 before_tool、after_tool 的拦截点，[中断长任务的恢复边界](/peri-cool/posts/engineering/rcra-interruption-recovery/) 处理中断后的恢复动作。
+继续阅读 [理解 Agent Loop](/posts/engineering/agent-loop/) 了解回合如何收尾并回喂给模型，[Hook 中间件统一入口](/posts/engineering/hook-middleware-overview/) 查看 before_tool、after_tool 的拦截点，[中断长任务的恢复边界](/posts/engineering/rcra-interruption-recovery/) 处理中断后的恢复动作。

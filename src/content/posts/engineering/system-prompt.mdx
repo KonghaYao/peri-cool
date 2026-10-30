@@ -1,5 +1,5 @@
 ---
-title: 系统提示词的冻结区与动态区
+title: 系统提示词
 description: 说明 Peri 如何组合会话级 base prompt、request-time middleware contribution 与 Provider cache seam。
 date: 2026-08-16
 hero:
@@ -71,4 +71,4 @@ frozen base → cache boundary → request-time contribution
 排查问题时分别比较 frozen snapshot、middleware chain、request-time contribution 和 Provider
 最终序列化结果。只观察模型回复无法证明是哪一层发生了漂移。
 
-相关内容：[Meta Harness](/peri-cool/posts/engineering/meta-harness/) · [工具系统](/peri-cool/docs/features/tools/) · [上下文工程](/peri-cool/docs/features/context-engineering/)
+相关内容：[Meta Harness](/posts/engineering/meta-harness/) · [工具系统](/docs/features/tools/) · [上下文工程](/docs/features/context-engineering/)

@@ -1,5 +1,5 @@
 ---
-title: Agent Loop：Receive、Compact、Reason、Act
+title: RCRA Loop
 description: 说明 Peri 的 RCRA 循环如何消费消息、投影视图、请求模型、原子提交工具交换，并在 Receive 收口退出。
 date: 2026-08-16
 hero:
@@ -7,8 +7,6 @@ hero:
     file: ../../../assets/img_gears_and_path_s51.png
     alt: 齿轮与路径
 ---
-
-import { Aside } from '@astrojs/starlight/components';
 
 Peri 的执行核心是 RCRA：Receive → Compact → Reason → Act。它不是四个独立服务，而是
 `peri-agent` 在同一 session 状态上推进的四个阶段。所有路径最终回到 Receive，由 Receive
@@ -57,7 +55,7 @@ LLM 视图；应用阶段只写持久化 flags 与 projection directive。ToolUs
 当局部回收不足且上下文压力达到 Full 阈值时，Full Compact 用摘要替代一段可见历史，并按
 预算重新注入必要文件和 Skill 信息。连续失败有降级保护，压缩失败不会被当成 Agent 成功。
 
-机制与跨轮次恢复见 [Compact 多轮稳定](/peri-cool/posts/engineering/compact-multiround-stability/)。
+机制与跨轮次恢复见 [Compact 多轮稳定](/posts/engineering/compact-multiround-stability/)。
 
 ## Reason：组装请求并调用模型
 
@@ -93,11 +91,11 @@ flowchart LR
 - **deferred**：不常驻工具数组，经 `SearchExtraTools` 发现，再由 `ExecuteExtraTool` 执行。
 
 “Core”可以作为对高频工具的口语称呼，但不是运行时白名单。实际集合从当前 session 的
-middleware chain、配置与 Agent filter 派生。PTC、MCP、Workflow、LSP、Plugin 等能力是否
-可搜索，最终也由同一工具视图决定。
+middleware chain、配置与 Agent filter 派生。MCP 能力（含 workspace、workflow 等 builtin
+实例）是否可搜索，最终也由同一工具视图决定。
 
 包装调用不能改变权限事实。审批、事件和工具卡片应按 effective target 处理，不能因为外层
-名字是 `ExecuteExtraTool` 或 `RunPtcCode` 就跳过真实工具边界。
+名字是 `ExecuteExtraTool` 就跳过真实工具边界。
 
 ## Middleware 链的所有权
 
@@ -130,4 +128,4 @@ SubAgent 拥有独立 Transcript 和工具视图，并继承父会话冻结的 o
   Agent 发射、Runtime/Controller 路由、ACP 映射和 TUI 消费逐层验证。
 </Aside>
 
-相关内容：[系统提示词](/peri-cool/posts/engineering/system-prompt/) · [Hook 与 Middleware](/peri-cool/posts/engineering/hook-middleware-overview/) · [Dynamic Workflow](/peri-cool/posts/engineering/workflow-design/)
+相关内容：[系统提示词](/posts/engineering/system-prompt/) · [Hook 与 Middleware](/posts/engineering/hook-middleware-overview/) · [Dynamic Workflow](/posts/engineering/workflow-design/)
