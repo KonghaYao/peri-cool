@@ -1,4 +1,5 @@
 import { defineConfig } from "astro/config";
+import react from "@astrojs/react";
 import tailwindcss from "@tailwindcss/vite";
 import nimbus, { defineConfig as defineNimbusConfig } from "@cloudflare/nimbus-docs";
 import { tableScroll } from "@cloudflare/nimbus-docs/markdown";
@@ -82,6 +83,7 @@ const nimbusConfig = defineNimbusConfig({
           { label: "权限系统", link: "/docs/features/permissions/" },
           { label: "系统提示词与能力裁剪（Meta Harness）", link: "/docs/features/meta-harness/" },
           { label: "图片输入", link: "/docs/features/image-input/" },
+          { label: "回答里的界面（OpenUI）", link: "/docs/features/openui/" },
           { label: "上下文工程", link: "/docs/features/context-engineering/" },
           { label: "最佳实践", link: "/docs/features/best-practices/" },
         ],
@@ -137,9 +139,22 @@ export default defineConfig({
   site: "https://konghayao.github.io",
   base: "/peri-cool/",
   output: "static",
-  vite: { plugins: [tailwindcss()] },
+  vite: {
+    plugins: [tailwindcss()],
+    resolve: { dedupe: ["react", "react-dom"] },
+    // 同一包的两个 subpath 若被分别预打包，会各持一份 canvas/hooks 模块，
+    // 主题桥与 Renderer 读到不同的 store。让 Vite 直接走源码，共享同一模块图。
+    optimizeDeps: {
+      exclude: ["@peri-code/sdk", "@openuidev/react-lang", "@openuidev/lang-core"],
+    },
+    // SDK 的 OpenUI 出口直接发布 .tsx 源码；SSR 阶段必须交给 Vite 编译，
+    // 不能让 Node 按原生 ESM 外置加载（Node 不解析 JSX）。
+    ssr: {
+      noExternal: ["@peri-code/sdk", "@openuidev/react-lang", "@openuidev/lang-core"],
+    },
+  },
   prefetch: { prefetchAll: true, defaultStrategy: "hover" },
-  integrations: [nimbus(nimbusConfig, {
+  integrations: [react(), nimbus(nimbusConfig, {
     rules: {
       "nimbus/frontmatter-shape": "error",
       "nimbus/internal-link": "error",

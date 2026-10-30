@@ -4,6 +4,7 @@ import "@fontsource-variable/jetbrains-mono";
 import "../styles/globals.css";
 import "../styles/prose.css";
 import "../styles/mermaid.css";
+import "../styles/openui.css";
 import { ClientRouter } from "astro:transitions";
 import { config } from "virtual:nimbus/config";
 import {
@@ -93,6 +94,10 @@ const resolvedMarkdownUrl =
           const mode = resolveMode();
           if (mode === "dark") root.setAttribute("data-mode", "dark");
           else root.removeAttribute("data-mode");
+          // OpenUI 的 installOpenUITheme() 只认 .light / .dark class。
+          // 镜像站点主题，明暗切换时由它的 MutationObserver 重放配色。
+          root.classList.toggle("light", mode === "light");
+          root.classList.toggle("dark", mode === "dark");
           root.style.colorScheme = mode;
           document.querySelectorAll("[data-nb-theme-toggle]").forEach((b) => {
             b.setAttribute("data-nb-state", mode);

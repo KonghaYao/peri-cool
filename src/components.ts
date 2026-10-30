@@ -11,6 +11,7 @@ import { CardGrid } from "./components/ui/card-grid";
 import { CodeGroup } from "./components/ui/code-group";
 import { FileTree } from "./components/ui/file-tree";
 import { LinkCard } from "./components/ui/link-card";
+import { OpenUI } from "./components/openui";
 import { PackageManagers } from "./components/ui/package-managers";
 import { Step, Steps } from "./components/ui/steps";
 import { Tabs, TabItem } from "./components/ui/tabs";
@@ -22,6 +23,7 @@ export const components = {
   CodeGroup,
   FileTree,
   LinkCard,
+  OpenUI,
   PackageManagers,
   Render,
   Step,

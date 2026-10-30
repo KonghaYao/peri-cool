@@ -32,6 +32,11 @@
 	--nb-muted: oklch(0.98 0 0);
 	--nb-muted-foreground: oklch(0.556 0 0);
 
+	/* OpenUI 主题桥：SDK 只读这三个变量，且只接受 hex（oklch 会被忽略）。 */
+	--chat-code-bg: #f4f4f5;
+	--chat-fg: #1f1f1f;
+	--chat-link: #2f6fdb;
+
 	--nb-accent: oklch(0.967 0 0);
 	--nb-accent-foreground: var(--nb-foreground);
 
@@ -133,6 +138,11 @@
 
 	--nb-muted: #060606;
 	--nb-muted-foreground: oklch(0.708 0 0);
+
+	/* OpenUI 主题桥（暗色）。值必须是 hex。 */
+	--chat-code-bg: #1b1b1c;
+	--chat-fg: #f9fafb;
+	--chat-link: #7aaaff;
 
 	--nb-accent: oklch(0.269 0 0);
 	--nb-accent-foreground: var(--nb-foreground);

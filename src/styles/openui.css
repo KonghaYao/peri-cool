@@ -1,0 +1,88 @@
+/* OpenUI 预览容器。
+ *
+ * 只约束宽度，不设高度：OpenUI 的分片会按内容自然撑开；给容器写
+ * `height: 100%` / `size-full` 会把图表和卡片压进固定高度（参考 peri 的
+ * f9ea44f90 高度修复）。 */
+.openui-figure {
+	margin: 1.5rem 0;
+}
+
+.openui-caption {
+	margin-bottom: 0.5rem;
+	font-size: 0.8125rem;
+	color: var(--nb-muted-foreground);
+}
+
+.openui-surface {
+	width: 100%;
+	min-width: 0;
+	padding: 1rem;
+	overflow-x: auto;
+	border: 1px solid var(--nb-border);
+	border-radius: 0.5rem;
+	background: var(--nb-card);
+}
+
+.openui-surface [data-slot="peri-openui"] {
+	width: 100%;
+	min-width: 0;
+}
+
+/* 解析/渲染失败时展示的原文。 */
+.openui-fallback {
+	margin: 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	font-family: var(--nb-font-mono);
+	font-size: 0.8125rem;
+	line-height: 1.6;
+	color: var(--nb-muted-foreground);
+}
+
+.openui-source {
+	margin-top: 0.75rem;
+	font-size: 0.875rem;
+}
+
+.openui-source summary {
+	cursor: pointer;
+	color: var(--nb-muted-foreground);
+}
+
+.openui-source pre {
+	margin-top: 0.5rem;
+}
+
+/* 首页内嵌：去掉示例面板的外框，保留正文块间距（prose.css 的 1.25rem 节奏）。 */
+.openui-figure.home-openui {
+	margin: 1.25rem 0 0;
+}
+
+.home-openui .openui-surface {
+	padding: 0;
+	border: 0;
+	background: transparent;
+	overflow: visible;
+}
+
+/* prose.css 的 .docs-content 规则会命中 OpenUI 生成的裸元素（没有 class）。
+ * prose 的表格外框、灰色表头和 nowrap 会与 OpenUI 的内联样式叠加，这里在
+ * 组件边界内还原；表格的横向滚动由 OpenUI 自己的 wrapper 负责。 */
+.home-openui .openui-surface :where(table) {
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+}
+
+.home-openui .openui-surface :where(th, td) {
+	white-space: normal;
+	font-size: inherit;
+}
+
+.home-openui .openui-surface :where(th) {
+	background: transparent;
+}
+
+.home-openui .openui-surface :where(a) {
+	font-weight: inherit;
+}

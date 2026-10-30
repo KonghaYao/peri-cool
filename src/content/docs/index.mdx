@@ -5,8 +5,6 @@ sidebar: false
 tableOfContents: false
 ---
 
-# Peri Code
-
 轻舟一叶，不扰清波，渡君至远山。
 
 Peri 是一个运行在终端里的 AI 编码助手。启动后，你面对的是一套完整 TUI，而不是需要自己拼装的命令管道——任务、工具调用、审批、会话和模型状态都在同一个界面里呈现。
@@ -17,9 +15,24 @@ curl -fsSL https://raw.githubusercontent.com/konghayao/peri/main/scripts/install
 
 ## 为什么用 Peri
 
-- **过程可核对。** 消息区展示任务、回复与工具执行。任务结束时应当能回答三件事：改了什么、怎样验证、还有什么没有验证。
-- **接入既有配置。** 可读取 Claude Code 风格的 Skills、Hooks、MCP 与插件配置，不必为新工具重建一套工作流。
-- **边界讲清楚。** 权限审批只决定工具执行前是否询问，真正的隔离仍由操作系统、容器和凭据策略提供。
+三条原则：过程可核对、接入既有配置、边界讲清楚。
+
+<OpenUI
+  class="home-openui"
+  source={false}
+  program={`root = Stack([principles, taskTable, boundary], 16)
+principles = Grid(2, [traceable, existingConfig], 12)
+traceable = Card("过程可核对", [Text("消息区展示任务、回复与工具执行。任务结束时回答三件事：改了什么、怎样验证、还有什么没有验证。", "primary")])
+existingConfig = Card("接入既有配置", [configText, configTags])
+configText = Text("读取 Claude Code 风格的 Skills、Hooks、MCP 与插件配置，不必为新工具重建一套工作流。", "primary")
+configTags = Row([skills, hooks, mcp, plugins], 6, "center", "start", true)
+skills = Pill("Skills")
+hooks = Pill("Hooks")
+mcp = Pill("MCP")
+plugins = Pill("插件")
+taskTable = Table(["任务", "你可以这样说", "Peri 会做什么"], [["探索代码库", "这个项目的消息链路怎么走？", "定位入口、调用链与相关测试"], ["实现功能", "按现有模式实现这个接口", "先读相邻代码，再改实现与测试"], ["修复 Bug", "复现这个报错并修复", "先复现，再改代码，最后跑回归"]], ["left", "left", "left"])
+boundary = Callout("warning", "权限审批只决定工具执行前是否询问；真正的隔离仍由操作系统、容器和凭据策略提供。", "边界讲清楚")`}
+/>
 
 ## 从哪里开始
 

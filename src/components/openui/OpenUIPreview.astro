@@ -1,0 +1,32 @@
+---
+import Code from "../ui/code/Code.astro";
+import OpenUIPreview from "./OpenUIPreview";
+
+interface Props {
+  /** OpenUI 程序源码。 */
+  program: string;
+  /** 面板上方的说明文字。 */
+  title?: string;
+  /** 是否在面板下方折叠展示源码，默认展示。 */
+  source?: boolean;
+  /** 追加到 figure 的 class，供宿主页覆盖面板外观。 */
+  class?: string;
+}
+
+const { program, title, source = true, class: className } = Astro.props;
+---
+
+<figure class:list={["openui-figure", className]}>
+  {title && <figcaption class="openui-caption">{title}</figcaption>}
+  <div class="openui-surface">
+    <OpenUIPreview client:visible program={program} />
+  </div>
+  {
+    source && (
+      <details class="openui-source">
+        <summary>查看 OpenUI 源码</summary>
+        <Code code={program} lang="text" />
+      </details>
+    )
+  }
+</figure>
