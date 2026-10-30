@@ -8,6 +8,7 @@ import { Aside } from "./components/ui/aside";
 import Render from "./components/Render.astro";
 import { Card } from "./components/ui/card";
 import { CardGrid } from "./components/ui/card-grid";
+import { Chat, ChatMessage } from "./components/ui/chat";
 import { CodeGroup } from "./components/ui/code-group";
 import { FileTree } from "./components/ui/file-tree";
 import { LinkCard } from "./components/ui/link-card";
@@ -20,6 +21,8 @@ export const components = {
   Aside,
   Card,
   CardGrid,
+  Chat,
+  ChatMessage,
   CodeGroup,
   FileTree,
   LinkCard,

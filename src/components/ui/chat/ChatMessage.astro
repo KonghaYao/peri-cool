@@ -1,0 +1,41 @@
+---
+/**
+ * ChatMessage — `Chat` 里的一条消息。
+ *
+ * `role="user"` 右对齐、浅色气泡；`role="assistant"` 左对齐、占满宽度，
+ * 便于嵌入 `OpenUI` 面板或表格。没有头像与时间戳，避免把注意力从内容上移开。
+ */
+import { cn } from "@/lib/cn";
+import type { HTMLAttributes } from "astro/types";
+
+interface Props extends HTMLAttributes<"div"> {
+  role: "user" | "assistant";
+  /** 覆盖默认标注（「你」/「Peri」）。 */
+  name?: string;
+}
+
+const { role, name, class: className, ...attrs } = Astro.props;
+const label = name ?? (role === "user" ? "你" : "Peri");
+---
+
+<div
+	class={cn(
+		"flex min-w-0 flex-col gap-1.5",
+		role === "user" ? "items-end" : "items-stretch",
+		className,
+	)}
+	data-role={role}
+	{...attrs}
+>
+	<span class="text-xs font-medium text-muted-foreground">{label}</span>
+	<div
+		class={cn(
+			"min-w-0 text-sm leading-relaxed",
+			role === "user"
+				? "max-w-[85%] rounded-2xl rounded-tr-sm bg-muted px-4 py-2.5 text-foreground"
+				: "rounded-lg bg-card px-4 py-3 text-foreground ring ring-border",
+		)}
+	>
+		<slot />
+	</div>
+</div>
