@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import nimbus, { defineConfig as defineNimbusConfig } from "@cloudflare/nimbus-docs";
 import { tableScroll } from "@cloudflare/nimbus-docs/markdown";
 import { mermaidFences } from "./src/lib/mermaid-fences";
+import { markdownComponents } from "./src/lib/markdown-components";
 import { postCategories } from "./src/lib/content";
 
 const nimbusConfig = defineNimbusConfig({
@@ -162,6 +163,7 @@ export default defineConfig({
     markdown: {
       hastPlugins: [tableScroll(), mermaidFences()],
       features: { headingAttributes: true },
+      componentMap: markdownComponents,
     },
   })],
 });
