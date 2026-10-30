@@ -1,0 +1,192 @@
+---
+title: "Peri 4.0 版本回顾：执行环境搬出宿主"
+description: 按 agent-v4.0.0 至 agent-v4.0.9 的 tag 与提交，记录工具迁入内置 MCP、存储三级归属、执行恢复剥离，以及 4.0.x 的修复与变更。
+date: 2026-10-16
+hero:
+  image:
+    file: ../../../assets/img_toolbox_open_s53.png
+    alt: 打开的工具箱
+---
+
+1. 版本号与日期来自 `git tag`。`agent-v4*` 是 annotated tag，日期采用 tagger 日期（+0800）。
+2. 提交数用 `git rev-list --count` 统计，包含合并提交；不按自然日重新切分。
+3. tag 日期只证明仓库打标时间，不证明 GitHub Release、安装脚本或包注册表在同一天可用。
+4. 4.0.0 的合并内容按合并提交与对应 PR 记录归纳；无法从 tag 单独推出每条改动的上线日期。
+
+<OpenUI
+  title="4.0 版本摘要"
+  source={false}
+  program={`root = Stack([summary])
+summary = Text("工具与存储搬出宿主：七个文件与终端工具迁入内置 workspace MCP，存储改为 Machine → Workspace → Session 三级归属，持久执行恢复与 LSP 被剥离。", "primary", "body", "medium")`}
+/>
+
+本页覆盖 `agent-v4.0.0` 至 `agent-v4.0.9`（2026-10-11 09:17 至 2026-10-16 15:54，+0800），共 71 个提交（`git rev-list --count agent-v4.0.0..agent-v4.0.9`）。主要 PR：`#179`、`#181`、`#189`、`#192`、`#216`、`#218`、`#220`、`#229`、`#231`、`#232`、`#233`。
+
+日历日按首尾日期计算，含首尾两天。
+
+## 本版变化
+
+优先级按 P0 → P2 分段，段内按序排列。变化类型用图标与标题区分：新增（绿色对勾）、变更（橙色三角）、移除（红色感叹号）、修复（蓝色信息）。
+
+<Tabs>
+  <TabItem label="工具与 MCP">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, i2, h3, i4, i5, i6])
+h0 = H3("P0 需要行动")
+i1 = Callout("warning", "system MCP 工具不再带 mcp__<server>__ 前缀；同名冲突改为告警加先到者生效", "变更 · 4.0.0")
+i2 = Callout("danger", "LSP 能力整体删除，没有保留兼容层；local-mcp-server 退役", "移除 · 4.0.0")
+h3 = H3("P1 用户可感")
+i4 = Callout("warning", "七个文件与终端工具（Read、Write、Edit、Glob、Grep、folder_operations、Bash）改由内置 workspace MCP 实例承载，模型面的工具名保持原名", "变更 · 4.0.0")
+i5 = Callout("success", "workspace 实例增加 skill://、agent://、peri-instruction://、peri-meta:// 四类资源域，Skill 与子代理定义从文件系统下沉为 MCP 资源", "新增 · 4.0.0")
+i6 = Callout("success", "Workflow 编排改为内置 MCP 实例，工具以 mcp__workflow__* 出现", "新增 · #181 / 4.0.2")
+`}
+    />
+  </TabItem>
+  <TabItem label="存储与会话">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, i2, h3, i4, h5, i6])
+h0 = H3("P0 需要行动")
+i1 = Callout("warning", "存储升级为 Machine → Workspace → Session 三级归属；MCP 授权与响应缓存按工作区隔离", "变更 · 4.0.0")
+i2 = Callout("danger", "持久执行恢复被剥离：重启后可以加载历史并续聊，但不恢复旧执行", "移除 · 4.0.0")
+h3 = H3("P1 用户可感")
+i4 = Callout("success", "Turso 远端存储：使用远端定位符时，会话、绑定与证据只走远端，不再打开或创建本地库", "新增 · 4.0.0")
+h5 = H3("P2 其他变更与修复")
+i6 = Callout("info", "无绑定历史会话按当前观测重建归属；有 frozen 的历史会话只补绑定，子会话继承父绑定", "修复 · #218 / 4.0.5 / 4.0.6")
+`}
+    />
+  </TabItem>
+  <TabItem label="配置与命令行">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, i2, h3, i4, h5, i6, i7])
+h0 = H3("P0 需要行动")
+i1 = Callout("danger", "环境变量 PERI_WRITE_DRAFT", "移除 · 4.0.0")
+i2 = Callout("warning", "模型选择改为 provider 与档位成对给出", "变更 · 4.0.0")
+h3 = H3("P1 用户可感")
+i4 = Callout("success", "peri mcp-start workspace 可以启动独立的纯 MCP 工作进程；当期状态自陈「开发中」，使用前先确认版本行为", "新增 · 4.0.0")
+h5 = H3("P2 其他变更与修复")
+i6 = Callout("warning", "--settings 改为内存装配，不再写固定路径的临时文件", "变更 · 4.0.0")
+i7 = Callout("info", "安装脚本的代理覆盖 API 与下载两端，固定版本不再依赖 API", "修复 · 4.0.8")
+`}
+    />
+  </TabItem>
+  <TabItem label="界面与交互">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, i2, i3, i4, i5, i6])
+h0 = H3("P1 用户可感")
+i1 = Callout("warning", "TUI 工作台在 v4 数据流上重建；过程区采用转角台阶与缩进", "变更 · 4.0.7")
+i2 = Callout("success", "粘贴图片显示为图片标签，并在消息区留下附件记录", "新增 · 4.0.5")
+i3 = Callout("info", "Compact 摘要请求被窗口前置拦截，导致高压场景必然终止", "修复 · 4.0.3")
+i4 = Callout("info", "print 模式接受 --max-turns，避免评测 harness 在启动前被拒", "修复 · 4.0.3")
+i5 = Callout("info", "keepgoing 空 Prompt 恢复入队，「继续」按钮不再一点就停", "修复 · 4.0.3")
+i6 = Callout("info", "子代理同步交接丢失任务结果", "修复 · 4.0.4")
+`}
+    />
+  </TabItem>
+  <TabItem label="平台与发布">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, i2, h3, i4, i5])
+h0 = H3("P1 用户可感")
+i1 = Callout("success", "WASM 接入：Emscripten 目标编译完成，Node、Bun 与本地 workerd 验收通过；托管部署未验收", "新增 · 4.0.0")
+i2 = Callout("warning", "发布资产命名与安装契约调整；peri update 复用安装脚本；mise 安装需要带 agent-v 前缀的版本号", "变更 · 4.0.0")
+h3 = H3("P2 其他变更与修复")
+i4 = Callout("success", "Langfuse 遥测 spool；当期状态是「已实施，待用户验收」，本页不写成已验收", "新增 · #189 / 4.0.4")
+i5 = Callout("info", "远端 schema 探测改为批量启动探测并跳过健康 DDL；旧迁移 schema 改走直接 pragma", "修复 · 4.0.8")
+`}
+    />
+  </TabItem>
+</Tabs>
+
+## 按 patch 看
+
+### 4.0.0（10-11 09:17，版本线基线）
+
+1. 指向 `merge/v4-to-main` 的合并提交（`#179`）。
+2. 相对第一父只增加 11 个提交，但这 11 个提交覆盖工具、存储与界面的大批量改动，不能把 11 当作改动量。
+
+### 4.0.1（10-11 16:22，11 个提交）
+
+1. 【新增】TUI MCP 面板打通授权与详情链路，透传连接元信息与失败摘要。
+2. 【新增】fork 子代理启动前增加上下文门：使用率超过 75% 拒绝并引导非 fork 子代理。
+3. 【修复】dynamic MCP HTTP 连接在 handle 记录配置 URL，详情不再空占位符。
+4. 【修复】SandboxWrite 解析沙箱内裸相对路径；tag 版本注入后同步 `Cargo.lock`。
+
+### 4.0.2（10-11 23:39，7 个提交）
+
+1. 【新增】Workflow 编排改为内置 MCP 实例（`#181`）。
+2. 【修复】TUI 面板提示与实际动作对齐，覆盖 agent、hooks、plugin 与 Tasks 面板。
+
+### 4.0.3（10-12 17:59，15 个提交）
+
+1. 【新增】TUI 退出后打印会话恢复提示。
+2. 【修复】删除 Compact 摘要请求的窗口前置拦截；摘要未完成时在有界预算内恢复，耗尽才终止本轮。
+3. 【修复】`print` 模式接受 `--max-turns`；keepgoing 空 Prompt 恢复入队。
+4. 【修复】删除遗留 MCP panel pool，消除无归属 `mcp.error` 孤立 trace。
+
+### 4.0.4（10-13 17:54，6 个提交）
+
+1. 【修复】子代理嵌套同步交接能够结算，并在交接时保留待处理任务结果。
+2. 【新增】Langfuse 遥测 spool 合入（`#189`），上报不阻塞业务等待；状态为待验收。
+
+### 4.0.5（10-14 14:11，6 个提交）
+
+1. 【新增】MCP Apps canonical 调用契约与附件模型（`#192`）。
+2. 【新增】粘贴图片显示为图片标签，并在消息区留下附件记录。
+3. 【修复】无绑定历史会话按当前观测重建归属（`#218`）；submodule 检出目录按证据不足跳过 worktree 成员核对（`#216`）。
+
+### 4.0.6（10-14 17:18，3 个提交）
+
+1. 【修复】有 frozen 的历史会话只补绑定，子会话继承父绑定。
+2. 【变更】加入 SSH TUI fixture（`#220`），用于界面回归。
+
+### 4.0.7（10-14 21:44，8 个提交）
+
+1. 【变更】TUI 过程区转场改用转角台阶与标记列；消息区过程区增加缩进与进入分叉。
+2. 【变更】短回复并入过程带并补上下空行；Divider 台阶色与按钮行竖线跟随所接文本。
+3. 【修复】MCP shell group 在 leader 回收后再次终止，覆盖 fork 窗口；订阅握手增加超时。
+
+### 4.0.8（10-15 17:54，12 个提交）
+
+1. 【变更】供应商预设来源替换 Peri Code 免费服务入口。
+2. 【修复】安装脚本代理覆盖 API 与下载两端，固定版本不再依赖 API。
+3. 【修复】远端 schema 探测批量启动并跳过健康 DDL；旧迁移 schema 改走直接 pragma。
+4. 【变更】合入 `work/main-20261015`（`#229`）。
+
+### 4.0.9（10-16 15:54，3 个提交）
+
+1. 【变更】TUI 面板架构重构合入（`#231`）。
+2. 【变更】数据结构与热路径性能优化（`#232`）。
+3. 【变更】交付前收窄门与后台全量验证回执（`#233`）。
+
+## 在项目阶段中的位置
+
+1. 根 `CLAUDE.md` 把项目分为三段：单机本地闭环已完成；单机服务化未完成；集群化与 Serverless 化未完成。
+2. 4.0 的改动集中在第二段：工具环境搬进内置 MCP 实例，存储归属细分到机器、工作区、会话，执行恢复从宿主剥离。这个对应关系是本页的归纳，仓库没有为版本线标注阶段名。
+3. 4.0 没有完成单机服务化。它立起了边界，把托管部署、跨实例接管与真实云端验收留在后续版本。
+
+## 未完成项与证据边界
+
+1. 托管部署与跨实例接管未验收；WASM 场景下文件工具需要外部 MCP 提供。
+2. 遥测 spool 的状态停在「已实施，待用户验收」；本页没有把它写成已验收。
+3. `#221` 的 4 项遗留不在本版范围（4.1.0 才进入 tag）；本页不把 4.0 写成上下文所有权已收口。
+4. 仓库没有 GitHub Release 发布时间、六平台制品构建结果与 npm 注册表状态；本页只写 tag 与提交。
+
+## 升级注意
+
+1. **会话库会迁移**：升级到 4.x 会走一次单条迁移；仓库没有给出备份提示，升级前请自行备份会话库。
+2. **恢复语义收窄**：重启后能加载历史并续聊，但不恢复旧执行。
+3. **LSP 能力消失**：不是改名，是整块删除，原有 LSP 工具调用不再存在。
+4. **工具名总体不变**：七个文件与终端工具仍是原名；system MCP 工具不再带前缀，重名按先到者生效并告警。
+5. **环境变量变化**：`PERI_WRITE_DRAFT` 移除；模型选择改为 provider 与档位成对给出。
+
+## 相关阅读
+
+1. [会话归属三层模型](/posts/engineering/session-ownership/)：Machine、Workspace、Session 的职责划分。
+2. [重启不恢复执行](/posts/engineering/restart-no-recovery/)：4.0 的执行恢复语义。
+3. [MCP](/docs/features/mcp/)：工具与 MCP 的当前使用说明。
+4. [可验证工程里程碑](/docs/history/milestones/)：tag 与 commit 的证据类型说明。
+5. [Peri 4.1 版本回顾](/posts/news/agent-v4-1-release-notes/)：下一版。

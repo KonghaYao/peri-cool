@@ -1,0 +1,106 @@
+---
+title: "Peri 4.4 版本回顾：服务化入口"
+description: 按 agent-v4.3.2 至 agent-v4.4.1 的 tag 与提交，记录 OpenAI Responses、ChatGPT 计划登录、SDK 收敛与服务化入口，以及未进入 agent tag 的后续提交。
+date: 2026-10-28
+hero:
+  image:
+    file: ../../../assets/img_rocket_and_home_s26.png
+    alt: 火箭与家
+---
+
+<OpenUI
+  title="4.4 版本摘要"
+  source={false}
+  program={`root = Stack([summary])
+summary = Text("服务化入口成形：新增 OpenAI Responses 与 ChatGPT 计划登录，SDK 统一存储配置并收敛 WASM 运行参数，ACP 会话可按 per-session 订阅 MCP。", "primary", "body", "medium")`}
+/>
+
+本页覆盖 `agent-v4.3.2` 之后至 `agent-v4.4.1`（2026-10-25 14:02 至 2026-10-28 17:13，+0800），共 34 个提交（`git rev-list --count agent-v4.3.2..agent-v4.4.1`）。主要 PR：`#269`、`#289`、`#292`、`#293`、`#294`、`#298`、`#299`、`#300`、`#301`、`#302`、`#304`。`agent-v4.4.1` 之后另有 5 个提交未进入 `agent-v4*` tag，单独列出。
+
+## 本版变化
+
+优先级按 P0 → P2 分段，段内按序排列。变化类型用图标与标题区分：新增（绿色对勾）、变更（橙色三角）、移除（红色感叹号）、修复（蓝色信息）。
+
+<Tabs>
+  <TabItem label="模型与登录">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, i2])
+h0 = H3("P1 用户可感")
+i1 = Callout("success", "OpenAI Responses 适配：流式、重放与工具调用", "新增 · #289 / 4.4.0")
+i2 = Callout("success", "ChatGPT 计划登录：OAuth PKCE、JWT 校验、安全存储与登出；CLI 提供 auth chatgpt login、auth chatgpt status、auth chatgpt logout，TUI 提供配置与登录界面", "新增 · #289 / 4.4.0")
+`}
+    />
+  </TabItem>
+  <TabItem label="SDK 与服务端">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, h2, i3, i4, i5, i6, i7])
+h0 = H3("P0 需要行动")
+i1 = Callout("warning", "SDK 统一存储配置并内部化 WASM 运行参数（带破坏性标记）", "变更 · #294 / 4.4.0")
+h2 = H3("P2 其他变更与修复")
+i3 = Callout("success", "peri-cf 的 Chat 与服务端 Agent 链完成重构", "新增 · #269 / 4.4.0")
+i4 = Callout("warning", "SDK 收敛模块分层与发布入口", "变更 · #293 / 4.4.0")
+i5 = Callout("warning", "sandbox adapter 与 per-chat 配置解耦", "变更 · #300 / 4.4.0")
+i6 = Callout("info", "WASM 编译模块在多个 agent 之间共享", "修复 · #301 / 4.4.1")
+i7 = Callout("info", "SDK 发布 workflow 的校验与认证、版本端点校验、WASM 构建与 Linux sqld 安装", "修复 · 4.4.0 / 4.4.1")
+`}
+    />
+  </TabItem>
+  <TabItem label="子代理与 Compact">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, i2, i3])
+h0 = H3("P2 其他变更与修复")
+i1 = Callout("info", "同步子代理取消时保留终态路径", "修复 · #292 / 4.4.0")
+i2 = Callout("info", "后台交接确认后才恢复 mailbox", "修复 · #298 / 4.4.0")
+i3 = Callout("warning", "Micro 压缩只在净收益为正时提交，并保留工具证据", "变更 · #299 / 4.4.0")
+`}
+    />
+  </TabItem>
+  <TabItem label="MCP">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1])
+h0 = H3("P1 用户可感")
+i1 = Callout("info", "ACP 会话按 _meta 的 peri.subscriptions 应用 per-session MCP 订阅；HTTP 与 stdio 会话的 mcpServers 条目映射到 McpServerConfig.subscriptions；无效值仍走 -32602", "修复 · #304 / 4.4.1")
+`}
+    />
+  </TabItem>
+</Tabs>
+
+## 按 patch 看
+
+| Tag | 日期 | 区间提交 | 代表项 |
+| --- | --- | --- | --- |
+| `4.4.0` | 10-28 09:38 | 31 | `#269` `peri-cf`；`#289` Responses 与 ChatGPT 登录；`#292` 子代理取消；`#293` SDK 分层；`#294` 存储配置（破坏性）；`#298` mailbox；`#299` Micro 压缩；`#300` sandbox adapter |
+| `4.4.1` | 10-28 17:13 | 3 | `#301` WASM 模块共享；`#302` CI 构建顺序；`#304` per-session MCP 订阅 |
+
+## 未进入 agent tag 的部分
+
+1. `#305` OpenUI 组件库抽取与流式渲染（`73447b864`，2026-10-29），属于 `sdk-v0.3.0`，没有进入任何 `agent-v4*` tag。
+2. `#306` 遥测 metric 事件挂到 turn root span（`72748ecc8`）。
+3. `#312` `claude-sonnet-5-5` adaptive thinking（`283d12db4`）。
+4. 文档删减与 skills 索引导航整理（`74ab29c14`、`421d653bd`），不属于产品行为。
+
+## 阶段位置
+
+1. 4.4 仍在第二段「单机服务化」；本版把 SDK、`peri-cf`、模型登录与 MCP 订阅推到服务化入口。
+2. 4.4 不是第二段的完成点：Cloudflare 托管部署、跨实例接管与真实云端验收仍未完成。
+
+## 未完成项与证据边界
+
+1. Cloudflare 托管部署、跨实例接管、真实 Turso 凭证回环未验收。
+2. WASM 场景下文件工具需要外部 MCP 提供。
+3. npm 注册表上 `@peri-code/sdk` 0.3.0 的实际可用性未验证；`sdk-v0.3.0` 只证明仓库打标与 workflow 会发布。
+4. tag 日期不是发布日；没有 GitHub Release 与六平台制品构建结果。
+
+## 升级注意
+
+1. `#294` 带破坏性标记，SDK 初始化参数需要按当前接口调整；仓库没有提供自动迁移脚本。
+2. ChatGPT 计划登录是新增的一种认证模式，与 API key 模式并列。
+3. per-session MCP 订阅通过 `_meta["peri.subscriptions"]` 传递；ACP 类型服务器不支持订阅。
+
+## 相关阅读
+
+[Peri 4.3 版本回顾](/posts/news/agent-v4-3-release-notes/) · [嵌入与 WASM 契约](/posts/engineering/embedding-wasm/) · [MCP 支持](/posts/engineering/mcp-support/) · [MCP](/docs/features/mcp/) · [回答里的界面（OpenUI）](/docs/features/openui/) · [可验证工程里程碑](/docs/history/milestones/)

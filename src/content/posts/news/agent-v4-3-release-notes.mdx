@@ -1,0 +1,100 @@
+---
+title: "Peri 4.3 版本回顾：单二进制与服务边界"
+description: 按 agent-v4.2.6 至 agent-v4.3.2 的 tag 与提交，记录单二进制启动内置 MCP、代理更新、有界化修复与 Read 截断提示。
+date: 2026-10-25
+hero:
+  image:
+    file: ../../../assets/img_open_door_path_s49.png
+    alt: 打开的门与路
+---
+
+<OpenUI
+  title="4.3 版本摘要"
+  source={false}
+  program={`root = Stack([summary])
+summary = Text("内置 MCP 收进单个 peri 二进制，独立的 peri-mcp-workspace 删除；peri update 支持代理；内存与取消路径完成有界化。", "primary", "body", "medium")`}
+/>
+
+本页覆盖 `agent-v4.2.6` 之后至 `agent-v4.3.2`（2026-10-22 13:57 至 2026-10-25 14:02，+0800），共 13 个提交（`git rev-list --count agent-v4.2.6..agent-v4.3.2`）。主要 PR：`#271`、`#272`、`#273`、`#278`、`#280`、`#281`、`#282`、`#283`、`#284`、`#285`、`#286`、`#287`/`#288`。
+
+## 本版变化
+
+优先级按 P0 → P2 分段，段内按序排列。变化类型用图标与标题区分：新增（绿色对勾）、变更（橙色三角）、移除（红色感叹号）、修复（蓝色信息）。
+
+<Tabs>
+  <TabItem label="CLI 与 MCP">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, h2, i3, i4])
+h0 = H3("P0 需要行动")
+i1 = Callout("danger", "独立的 peri-mcp-workspace 二进制删除，改由 peri mcp-start 启动", "移除 · 4.3.0")
+h2 = H3("P1 用户可感")
+i3 = Callout("success", "单个 peri 二进制启动所有 builtin MCP 实例：覆盖 web、artifact、cron、workspace、workflow；HTTP 传输监听 /mcp", "新增 · #280 / 4.3.0")
+i4 = Callout("warning", "peri update 支持 --use-proxy，复用 GITHUB_PROXY 与 GITHUB_API_PROXY；不带该参数时保持直连", "变更 · #281 / 4.3.1")
+`}
+    />
+  </TabItem>
+  <TabItem label="资源与内存">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, i2, i3, i4, i5])
+h0 = H3("P2 其他变更与修复")
+i1 = Callout("info", "rewind 候选查找有界，去掉全量历史复制", "修复 · #283 / 4.3.1")
+i2 = Callout("info", "MCP 任务取消有界，不再阻塞 ACP loop", "修复 · #284 / 4.3.1")
+i3 = Callout("info", "Micro Compact 限制常驻历史内存与复制成本", "修复 · #285 / 4.3.1")
+i4 = Callout("info", "live 工具卡进入历史窗口淘汰", "修复 · #286 / 4.3.1")
+i5 = Callout("info", "子代理减少冗余保留并修正内存记账", "修复 · #278 / 4.3.0")
+`}
+    />
+  </TabItem>
+  <TabItem label="界面">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, i2, i3])
+h0 = H3("P2 其他变更与修复")
+i1 = Callout("info", "宽终端居中带的鼠标坐标偏移", "修复 · #272 / 4.3.0")
+i2 = Callout("info", "新会话通知的 wire 顺序", "修复 · #273 / 4.3.0")
+i3 = Callout("info", "Read 对超长单行的截断提示", "修复 · #287 / #288 / 4.3.2")
+`}
+    />
+  </TabItem>
+  <TabItem label="遥测">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1])
+h0 = H3("P2 其他变更与修复")
+i1 = Callout("info", "移除未使用的最终答案累积", "修复 · #282 / 4.3.1")
+`}
+    />
+  </TabItem>
+</Tabs>
+
+## 按 patch 看
+
+| Tag | 日期 | 区间提交 | 代表项 |
+| --- | --- | --- | --- |
+| `4.3.0` | 10-23 21:34 | 6 | `#272` 鼠标坐标；`#273` 通知顺序；`#278` 子代理内存；`#280` 单二进制内置 MCP |
+| `4.3.1` | 10-25 08:16 | 6 | `#281` `--use-proxy`；`#282` Langfuse 累积；`#283` rewind；`#284` MCP 取消；`#285` Micro Compact；`#286` live 工具卡 |
+| `4.3.2` | 10-25 14:02 | 1 | `#287`/`#288` Read 超长单行截断提示 |
+
+## 阶段位置
+
+1. 仍在第二段「单机服务化」；本版把内置 MCP 启动收口到一个二进制，并给多条热路径加上界。
+2. 单二进制启动不等于工具环境独立驻留；托管部署、跨实例接管与真实云端验收仍未完成。
+
+## 未完成项与证据边界
+
+1. 托管部署、跨实例接管、真实 Turso 凭证回环未验收。
+2. `#280` 的 workflow 以 slot 模式启动；需要 ACP 绑定运行时的调用会返回明确的未绑定错误，不会自动恢复。
+3. 有界化修复只证明代码路径有界，没有统一的性能对照数据；本页不写吞吐或延迟提升。
+4. tag 日期不是发布日；没有 GitHub Release、制品构建结果与 npm 状态。
+
+## 升级注意
+
+1. 旧的 `peri-mcp-workspace` 二进制不存在；改用 `peri mcp-start workspace`。
+2. `--use-proxy` 使用 `GITHUB_PROXY` 与 `GITHUB_API_PROXY`；不带参数时保持直连。
+3. Read 对超长单行的提示改变；依赖旧提示文本的脚本需要检查。
+
+## 相关阅读
+
+[Peri 4.2 版本回顾](/posts/news/agent-v4-2-release-notes/) · [Peri 4.4 版本回顾](/posts/news/agent-v4-4-release-notes/) · [MCP 支持](/posts/engineering/mcp-support/) · [MCP](/docs/features/mcp/) · [重启不恢复执行](/posts/engineering/restart-no-recovery/) · [会话归属三层模型](/posts/engineering/session-ownership/) · [可验证工程里程碑](/docs/history/milestones/)

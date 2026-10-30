@@ -1,0 +1,121 @@
+---
+title: "Peri 4.2 版本回顾：异步结果与 MCP 控制"
+description: 按 agent-v4.1.2 至 agent-v4.2.6 的 tag 与提交，记录长会话窗口 v2、异步结果邮箱、Compact 归档安全与 MCP 生命周期控制。
+date: 2026-10-22
+hero:
+  image:
+    file: ../../../assets/img_data_to_insight_s02.png
+    alt: 数据与洞察
+---
+
+<OpenUI
+  title="4.2 版本摘要"
+  source={false}
+  program={`root = Stack([summary])
+summary = Text("长会话窗口 v2 与异步结果邮箱落地，MCP 生命周期改由 ACP 会话请求控制，执行准入不再依赖 inode 身份。", "primary", "body", "medium")`}
+/>
+
+本页覆盖 `agent-v4.1.2` 之后至 `agent-v4.2.6`（2026-10-19 16:41 至 2026-10-22 13:57，+0800），共 41 个提交（`git rev-list --count agent-v4.1.2..agent-v4.2.6`）。主要 PR：`#247`、`#248`、`#249`、`#250`、`#253`、`#254`、`#255`、`#256`、`#257`、`#258`、`#259`、`#260`、`#261`、`#262`、`#264`、`#266`、`#267`、`#268`。
+
+## 本版变化
+
+优先级按 P0 → P2 分段，段内按序排列。变化类型用图标与标题区分：新增（绿色对勾）、变更（橙色三角）、移除（红色感叹号）、修复（蓝色信息）。
+
+<Tabs>
+  <TabItem label="上下文与会话">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, i2, h3, i4, i5])
+h0 = H3("P1 用户可感")
+i1 = Callout("success", "长会话窗口 v2：稳定身份、有界 bootstrap、驻留预算、schema 12 inherited 派生索引", "新增 · #248 / 4.2.0")
+i2 = Callout("warning", "Micro Compact 重设计合入", "变更 · #260 / 4.2.4")
+h3 = H3("P2 其他变更与修复")
+i4 = Callout("info", "Compact 归档在跨 turn 与 fork 时保持安全", "修复 · #261 / 4.2.4")
+i5 = Callout("info", "历史窗口实时正文回收链路闭合", "修复 · #262 / 4.2.4")
+`}
+    />
+  </TabItem>
+  <TabItem label="子代理与后台任务">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, h2, i3, i4, i5])
+h0 = H3("P1 用户可感")
+i1 = Callout("success", "异步结果邮箱：Queued、Ready、InFlight、Blocked、Suspended、Covered 六种生命周期状态；TUI 的 /tasks 增加状态列；失败或 Stop 之后需要显式 resume", "新增 · #255 / 4.2.0")
+h2 = H3("P2 其他变更与修复")
+i3 = Callout("info", "有界收尾子 Agent，交接未结任务并显式表达未完成", "修复 · #254 / 4.2.0")
+i4 = Callout("info", "有界交接重复写入的 ID 冲突", "修复 · #257 / 4.2.2")
+i5 = Callout("info", "恢复的会话绑定 task manager", "修复 · #249 / 4.2.0")
+`}
+    />
+  </TabItem>
+  <TabItem label="界面">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, h2, i3, i4])
+h0 = H3("P1 用户可感")
+i1 = Callout("info", "拖拽选择与剪贴板投递", "修复 · #247 / 4.2.0")
+h2 = H3("P2 其他变更与修复")
+i3 = Callout("info", "workflow agent 表格按面板宽度适配", "修复 · 4.2.0")
+i4 = Callout("info", "删除无消费者的弹出队列，消除虚假事件丢弃告警", "修复 · #264 / 4.2.5")
+`}
+    />
+  </TabItem>
+  <TabItem label="MCP 与 ACP">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, i2, h3, i4, i5, i6])
+h0 = H3("P1 用户可感")
+i1 = Callout("success", "ACP 会话请求可以控制 MCP 生命周期：注册、重启、关闭；TUI 提供重启与关闭入口", "新增 · #266 / 4.2.6")
+i2 = Callout("info", "执行准入不再使用 inode 身份：修复容器重启后同一路径 inode 变化导致 session/load 以 -32010 拒绝已有会话", "修复 · #268 / 4.2.6")
+h3 = H3("P2 其他变更与修复")
+i4 = Callout("danger", "DynamicMCP 路径被移除，MCP 运行控制改由会话请求承担", "移除 · #266 / 4.2.6")
+i5 = Callout("info", "MCP 发现代际隔离与激活归属校验；失败与停止状态保留", "修复 · #267 / 4.2.6")
+i6 = Callout("info", "workflow MCP 注册完成后再接线消费者", "修复 · #256 / 4.2.1")
+`}
+    />
+  </TabItem>
+  <TabItem label="模型与提示">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, i2])
+h0 = H3("P2 其他变更与修复")
+i1 = Callout("info", "goal 验证器输出预算耗尽导致解析失败", "修复 · #253 / 4.2.0")
+i2 = Callout("warning", "默认委派与冻结环境提示词调整；后台 shell 并发上限拒绝不阻塞 task scope 结算", "变更 · #258 / #259 / 4.2.3")
+`}
+    />
+  </TabItem>
+</Tabs>
+
+## 按 patch 看
+
+| Tag | 日期 | 区间提交 | 代表项 |
+| --- | --- | --- | --- |
+| `4.2.0` | 10-20 17:42 | 11 | `#247` 拖拽；`#248` 长会话窗口 v2；`#249` task manager；`#250` MCP 提醒；`#253` goal 预算；`#254` 有界收尾；`#255` 异步结果邮箱 |
+| `4.2.1` | 10-20 19:38 | 1 | `#256` workflow MCP 注册完成后再接线 |
+| `4.2.2` | 10-21 10:25 | 2 | `#257` 有界交接 ID 冲突 |
+| `4.2.3` | 10-21 12:47 | 12 | `#258` 提示词与冻结环境；`#259` 后台 shell 结算 |
+| `4.2.4` | 10-21 18:57 | 3 | `#260` Micro Compact 重设计；`#261` 归档安全；`#262` 历史窗口回收 |
+| `4.2.5` | 10-22 10:05 | 3 | `#264` 删除无消费者的弹出队列 |
+| `4.2.6` | 10-22 13:57 | 9 | `#266` MCP 生命周期；`#267` 发现代际；`#268` 执行准入 inode |
+
+## 阶段位置
+
+1. 仍在第二段「单机服务化」；本版处理异步结果、长会话驻留与 MCP 生命周期。
+2. 不把本版写成服务化完成；托管部署与跨实例接管仍未验收。
+
+## 未完成项与证据边界
+
+1. 异步结果邮箱的 resume 是显式的；失败或 Stop 之后不自动恢复。
+2. MCP 生命周期控制依赖 ACP 客户端支持；未协商的客户端没有入口。
+3. `#268` 的修复针对容器重启后的 inode 变化；不覆盖其他会话恢复失败原因。
+4. tag 日期不是发布日；没有 GitHub Release、制品构建结果与 npm 状态。
+
+## 升级注意
+
+1. `/tasks` 增加状态列；失败后需要显式 resume。
+2. MCP 可以在会话内重启与关闭；需要 TUI 或支持该能力的 ACP 客户端。
+3. 长会话窗口 v2 会在旧数据上回填派生索引；仓库没有给出回填耗时数据。
+
+## 相关阅读
+
+[Peri 4.1 版本回顾](/posts/news/agent-v4-1-release-notes/) · [Peri 4.3 版本回顾](/posts/news/agent-v4-3-release-notes/) · [重启不恢复执行](/posts/engineering/restart-no-recovery/) · [Compact 多轮稳定性](/posts/engineering/compact-multiround-stability/) · [MCP 支持](/posts/engineering/mcp-support/) · [MCP](/docs/features/mcp/) · [可验证工程里程碑](/docs/history/milestones/)

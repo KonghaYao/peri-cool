@@ -149,28 +149,23 @@ export const postCategories = [
 		label: '动态',
 		description: '按证据窗口记录已经发生的产品与项目变化。',
 		promise: '这里是一份时间账本，说明什么新增了、什么修复了、什么改变了，以及使用者是否需要行动。',
-		boundary: '文章日期、Git tag、代码提交与公众发布日期分别表述；项目更新不冒充正式发布说明。',
-		featuredPost: 'news/2026-08-13-project-updates',
+		boundary: '文章日期、Git tag、代码提交与公众发布日期分别表述；版本回顾不冒充正式发布说明。',
+		featuredPost: 'news/agent-v4-4-release-notes',
 		topics: [
-			{
-				id: 'project-updates',
-				label: '项目更新',
-				description: '按证据窗口汇总用户可见的新增、修复与行动提示。',
-				posts: [
-					'news/2026-08-01-weekly-updates',
-					'news/2026-08-13-project-updates',
-					'news/2026-10-16-project-updates',
-				],
-			},
 			{
 				id: 'version-retrospectives',
 				label: '版本回顾',
 				description: '用 tag、提交与设计记录回看一个版本阶段的工程方向。',
 				posts: [
-						'news/demo-v2-release',
-						'news/agent-v2-release-notes',
-						'news/agent-v3-release-notes',
-					],
+					'news/agent-v4-4-release-notes',
+					'news/agent-v4-3-release-notes',
+					'news/agent-v4-2-release-notes',
+					'news/agent-v4-1-release-notes',
+					'news/agent-v4-0-release-notes',
+					'news/agent-v3-release-notes',
+					'news/agent-v2-release-notes',
+					'news/demo-v2-release',
+				],
 			},
 		],
 	},
@@ -299,6 +294,18 @@ type SidebarGroup = {
 	items: { label: string; link: string }[];
 };
 
+/** 侧边栏短标签：文章标题保持完整，版本条目用“版本号 + 五到六字简述”标识阶段方向。 */
+const postSidebarLabels: Readonly<Record<string, string>> = {
+	'news/demo-v2-release': 'v2 架构分层',
+	'news/agent-v2-release-notes': '2.0 重构与分层',
+	'news/agent-v3-release-notes': '3.0 分层迁移落地',
+	'news/agent-v4-0-release-notes': '4.0 执行环境迁移',
+	'news/agent-v4-1-release-notes': '4.1 历史窗口分页',
+	'news/agent-v4-2-release-notes': '4.2 异步结果邮箱',
+	'news/agent-v4-3-release-notes': '4.3 单二进制启动',
+	'news/agent-v4-4-release-notes': '4.4 服务化入口',
+};
+
 /** 文章侧边栏：主题 → 文章（两层），与文档侧边栏（分组 → 页面）层级一致。
  * 分类（工程/产品等）是内容归属，不参与侧边栏层级。
  * 传 category 只返回该分类下的主题（文章页/分类页用），不传返回全部分类主题（列表页用）。 */
@@ -307,10 +314,13 @@ export function postSidebar(posts: Post[], category?: PostCategory): SidebarGrou
 	return categories.flatMap((c) =>
 		postsByTopic(posts, c.id).map(({ topic, posts: topicPosts }) => ({
 			label: topic.label,
-			items: topicPosts.map((post) => ({
-				label: post.data.title,
-				link: `/${postPath(post)}`,
-			})),
+			items: topicPosts.map((post) => {
+				const id = postIdWithoutExtension(post.id);
+				return {
+					label: postSidebarLabels[id] ?? post.data.title,
+					link: `/${postPath(post)}`,
+				};
+			}),
 		})),
 	);
 }

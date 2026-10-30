@@ -1,0 +1,116 @@
+---
+title: "Peri 4.1 版本回顾：历史窗口与默认委派"
+description: 按 agent-v4.0.9 至 agent-v4.1.2 的 tag 与提交，记录 Full Compact 后历史分页、historyWindowV1、子代理默认委派与工具面变化。
+date: 2026-10-19
+hero:
+  image:
+    file: ../../../assets/img_compass_and_heart_s28.png
+    alt: 罗盘与心
+---
+
+1. 版本号与日期来自 `git tag`。`agent-v4*` 是 annotated tag，日期采用 tagger 日期（+0800）。
+2. 提交数用 `git rev-list --count` 统计，包含合并提交；区间起点是 `agent-v4.0.9`。
+3. tag 日期只证明仓库打标时间，不证明 GitHub Release、安装脚本或包注册表在同一天可用。
+4. 本页只列能从提交主题与正文复核的代表项，不逐 commit 罗列。
+
+<OpenUI
+  title="4.1 版本摘要"
+  source={false}
+  program={`root = Stack([summary])
+summary = Text("Full Compact 之后加入历史分页与 historyWindowV1 协议，默认主动委派；WriteSandbox 与 allowedWriteDirs 被移除。", "primary", "body", "medium")`}
+/>
+
+本页覆盖 `agent-v4.0.9` 之后至 `agent-v4.1.2`（2026-10-16 15:54 至 2026-10-19 16:41，+0800），共 16 个提交（`git rev-list --count agent-v4.0.9..agent-v4.1.2`）。主要 PR：`#221`、`#234`–`#246`。
+
+日历日按首尾日期计算，含首尾两天。
+
+## 本版变化
+
+优先级按 P0 → P2 分段，段内按序排列。变化类型用图标与标题区分：新增（绿色对勾）、变更（橙色三角）、移除（红色感叹号）、修复（蓝色信息）。
+
+<Tabs>
+  <TabItem label="上下文与历史">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, i2, h3, i4])
+h0 = H3("P1 用户可感")
+i1 = Callout("success", "Full Compact 之后的 transcript 收缩与 ACP 历史分页：TUI 滚动到顶端取更早历史，SDK 增量合并分页结果；未协商 peri.historyPagination 的 ACP 客户端仍收到完整历史回放", "新增 · #221 / 4.1.0")
+i2 = Callout("success", "historyWindowV1 上下文协议，默认关闭，beta 键 history-window-v1；新增 open、page、seek、body 分页与 inherited 只读快照", "新增 · #238 / 4.1.1")
+h3 = H3("P2 其他变更与修复")
+i4 = Callout("info", "历史窗口去重、内存、交付顺序与 UTF-8 边界", "修复 · #241 / #242 / 4.1.1")
+`}
+    />
+  </TabItem>
+  <TabItem label="子代理与工具">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, h2, i3, i4, h5, i6])
+h0 = H3("P0 需要行动")
+i1 = Callout("danger", "删除 WriteSandbox 工具与 allowedWriteDirs 字段，读写约束下沉到提示词", "移除 · #234 / 4.1.0")
+h2 = H3("P1 用户可感")
+i3 = Callout("warning", "子代理工具面改为全量继承，移除读写硬限制", "变更 · #234 / 4.1.0")
+i4 = Callout("warning", "默认主动委派；取消「2 至 3 个文件」硬门槛；explorer 改为工具级只读", "变更 · #239 / 4.1.1")
+h5 = H3("P2 其他变更与修复")
+i6 = Callout("info", "全工具审计 F01–F14、Q01–Q08、V01–V02；工具执行证据与子 Agent 回执收口", "修复 · #240 / #235 / 4.1.1")
+`}
+    />
+  </TabItem>
+  <TabItem label="模型、MCP 与任务">
+    <OpenUI
+      source={false}
+      program={`root = Stack([h0, i1, i2, i3, h4, i5, i6, i7])
+h0 = H3("P1 用户可感")
+i1 = Callout("warning", "默认重试上限改为 10，并支持 goal 阻断后的恢复", "变更 · #237 / 4.1.1")
+i2 = Callout("success", "MCP 详情视图以表格展示工具、技能、代理与订阅", "新增 · #243 / 4.1.2")
+i3 = Callout("warning", "后台 shell 并发上限从 5 调到 20", "变更 · #244 / 4.1.2")
+h4 = H3("P2 其他变更与修复")
+i5 = Callout("warning", "MCP 数据边界收敛，宿主改走标准协议", "变更 · #245 / 4.1.2")
+i6 = Callout("info", "结清 workflow 子会话并在切换前重放 incomplete close", "修复 · #236 / 4.1.0")
+i7 = Callout("warning", "升级 ACP、rmcp 与依赖，并固定工具链", "变更 · #246 / 4.1.2")
+`}
+    />
+  </TabItem>
+</Tabs>
+
+## 按 patch 看
+
+### 4.1.0（10-17 09:39，4 个提交）
+
+1. `#221` Full Compact 后的历史分页与 transcript 收缩；`#234` 子代理工具面全量继承；`#235` 工具证据与回执；`#236` workflow 子会话结清。
+
+### 4.1.1（10-18 23:26，6 个提交）
+
+1. `#237` 重试上限与 goal 恢复；`#238` historyWindowV1；`#239` 默认委派与只读 `explorer`；`#240` 工具审计；`#241`/`#242` 历史窗口边界与复审修复。
+
+### 4.1.2（10-19 16:41，6 个提交）
+
+1. `#243` MCP 详情表；`#244` 后台 shell 并发 5 → 20；`#245` MCP 数据边界；`#246` 依赖与工具链升级。
+
+## 在项目阶段中的位置
+
+1. 4.1 仍在第二段「单机服务化」；本版处理上下文所有权、子代理委派与 MCP 数据边界。
+2. 不把本版写成服务化完成：托管部署、跨实例接管、真实云端验收仍未进入 tag。
+3. 版本线到阶段的对应是归纳；根 `CLAUDE.md` 只划分三阶段。
+
+## 未完成项与证据边界
+
+1. `#221` 的提交正文自报 4 项遗留：A05 索引待裁决、`peri.sessionWorkspaceV1` 门控待裁决、锁调用点级绕过缺口、WASM 红绿链不可独立复核。本页不据此写成已验收。
+2. 仓库另有分支提交 `5e691a2ac` 记录 A05 与 sessionWorkspaceV1 的后续裁决，但它不在 4.1.0 的 tag 历史里；本页不把它当作 4.1.0 的内容。
+3. tag 日期不是发布日；没有 GitHub Release、制品构建结果与 npm 状态。
+
+## 升级注意
+
+1. 子代理读写硬限制消失，工具面全量继承；小任务也可能被拆分，是否拆分由模型按独立性、风险与验证成本判断。
+2. 后台 shell 并发上限 20；资源占用可能上升。
+3. ACP 历史分页需要客户端协商；未协商的客户端仍收到完整历史回放。
+
+## 相关阅读
+
+1. [Peri 4.0 版本回顾](/posts/news/agent-v4-0-release-notes/)
+2. [Peri 4.2 版本回顾](/posts/news/agent-v4-2-release-notes/)
+3. [Compact 多轮稳定性](/posts/engineering/compact-multiround-stability/)
+4. [多 Agent 协作](/posts/engineering/multi-agent/)
+5. [MCP 支持](/posts/engineering/mcp-support/)
+6. [MCP](/docs/features/mcp/)
+7. [Skills](/docs/features/skills/)
+8. [可验证工程里程碑](/docs/history/milestones/)
