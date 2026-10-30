@@ -10,7 +10,6 @@ hero:
 
 <OpenUI
   title="4.2 版本摘要"
-  source={false}
   program={`root = Stack([summary])
 summary = Text("长会话窗口 v2 与异步结果邮箱落地，MCP 生命周期改由 ACP 会话请求控制，执行准入不再依赖 inode 身份。", "primary", "body", "medium")`}
 />
@@ -24,7 +23,6 @@ summary = Text("长会话窗口 v2 与异步结果邮箱落地，MCP 生命周�
 <Tabs>
   <TabItem label="上下文与会话">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, i2, h3, i4, i5])
 h0 = H3("P1 用户可感")
 i1 = Callout("success", "长会话窗口 v2：稳定身份、有界 bootstrap、驻留预算、schema 12 inherited 派生索引", "新增 · #248 / 4.2.0")
@@ -37,7 +35,6 @@ i5 = Callout("info", "历史窗口实时正文回收链路闭合", "修复 · #2
   </TabItem>
   <TabItem label="子代理与后台任务">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, h2, i3, i4, i5])
 h0 = H3("P1 用户可感")
 i1 = Callout("success", "异步结果邮箱：Queued、Ready、InFlight、Blocked、Suspended、Covered 六种生命周期状态；TUI 的 /tasks 增加状态列；失败或 Stop 之后需要显式 resume", "新增 · #255 / 4.2.0")
@@ -50,7 +47,6 @@ i5 = Callout("info", "恢复的会话绑定 task manager", "修复 · #249 / 4.2
   </TabItem>
   <TabItem label="界面">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, h2, i3, i4])
 h0 = H3("P1 用户可感")
 i1 = Callout("info", "拖拽选择与剪贴板投递", "修复 · #247 / 4.2.0")
@@ -62,7 +58,6 @@ i4 = Callout("info", "删除无消费者的弹出队列，消除虚假事件丢�
   </TabItem>
   <TabItem label="MCP 与 ACP">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, i2, h3, i4, i5, i6])
 h0 = H3("P1 用户可感")
 i1 = Callout("success", "ACP 会话请求可以控制 MCP 生命周期：注册、重启、关闭；TUI 提供重启与关闭入口", "新增 · #266 / 4.2.6")
@@ -76,7 +71,6 @@ i6 = Callout("info", "workflow MCP 注册完成后再接线消费者", "修复 �
   </TabItem>
   <TabItem label="模型与提示">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, i2])
 h0 = H3("P2 其他变更与修复")
 i1 = Callout("info", "goal 验证器输出预算耗尽导致解析失败", "修复 · #253 / 4.2.0")

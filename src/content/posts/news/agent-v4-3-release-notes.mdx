@@ -10,7 +10,6 @@ hero:
 
 <OpenUI
   title="4.3 版本摘要"
-  source={false}
   program={`root = Stack([summary])
 summary = Text("内置 MCP 收进单个 peri 二进制，独立的 peri-mcp-workspace 删除；peri update 支持代理；内存与取消路径完成有界化。", "primary", "body", "medium")`}
 />
@@ -24,7 +23,6 @@ summary = Text("内置 MCP 收进单个 peri 二进制，独立的 peri-mcp-work
 <Tabs>
   <TabItem label="CLI 与 MCP">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, h2, i3, i4])
 h0 = H3("P0 需要行动")
 i1 = Callout("danger", "独立的 peri-mcp-workspace 二进制删除，改由 peri mcp-start 启动", "移除 · 4.3.0")
@@ -36,7 +34,6 @@ i4 = Callout("warning", "peri update 支持 --use-proxy，复用 GITHUB_PROXY �
   </TabItem>
   <TabItem label="资源与内存">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, i2, i3, i4, i5])
 h0 = H3("P2 其他变更与修复")
 i1 = Callout("info", "rewind 候选查找有界，去掉全量历史复制", "修复 · #283 / 4.3.1")
@@ -49,7 +46,6 @@ i5 = Callout("info", "子代理减少冗余保留并修正内存记账", "修复
   </TabItem>
   <TabItem label="界面">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, i2, i3])
 h0 = H3("P2 其他变更与修复")
 i1 = Callout("info", "宽终端居中带的鼠标坐标偏移", "修复 · #272 / 4.3.0")
@@ -60,7 +56,6 @@ i3 = Callout("info", "Read 对超长单行的截断提示", "修复 · #287 / #2
   </TabItem>
   <TabItem label="遥测">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1])
 h0 = H3("P2 其他变更与修复")
 i1 = Callout("info", "移除未使用的最终答案累积", "修复 · #282 / 4.3.1")

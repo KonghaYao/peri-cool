@@ -10,7 +10,6 @@ hero:
 
 <OpenUI
   title="4.4 版本摘要"
-  source={false}
   program={`root = Stack([summary])
 summary = Text("服务化入口成形：新增 OpenAI Responses 与 ChatGPT 计划登录，SDK 统一存储配置并收敛 WASM 运行参数，ACP 会话可按 per-session 订阅 MCP。", "primary", "body", "medium")`}
 />
@@ -24,7 +23,6 @@ summary = Text("服务化入口成形：新增 OpenAI Responses 与 ChatGPT 计�
 <Tabs>
   <TabItem label="模型与登录">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, i2])
 h0 = H3("P1 用户可感")
 i1 = Callout("success", "OpenAI Responses 适配：流式、重放与工具调用", "新增 · #289 / 4.4.0")
@@ -34,7 +32,6 @@ i2 = Callout("success", "ChatGPT 计划登录：OAuth PKCE、JWT 校验、安全
   </TabItem>
   <TabItem label="SDK 与服务端">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, h2, i3, i4, i5, i6, i7])
 h0 = H3("P0 需要行动")
 i1 = Callout("warning", "SDK 统一存储配置并内部化 WASM 运行参数（带破坏性标记）", "变更 · #294 / 4.4.0")
@@ -49,7 +46,6 @@ i7 = Callout("info", "SDK 发布 workflow 的校验与认证、版本端点校�
   </TabItem>
   <TabItem label="子代理与 Compact">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, i2, i3])
 h0 = H3("P2 其他变更与修复")
 i1 = Callout("info", "同步子代理取消时保留终态路径", "修复 · #292 / 4.4.0")
@@ -60,7 +56,6 @@ i3 = Callout("warning", "Micro 压缩只在净收益为正时提交，并保留�
   </TabItem>
   <TabItem label="MCP">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1])
 h0 = H3("P1 用户可感")
 i1 = Callout("info", "ACP 会话按 _meta 的 peri.subscriptions 应用 per-session MCP 订阅；HTTP 与 stdio 会话的 mcpServers 条目映射到 McpServerConfig.subscriptions；无效值仍走 -32602", "修复 · #304 / 4.4.1")

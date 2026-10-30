@@ -15,7 +15,6 @@ hero:
 
 <OpenUI
   title="4.1 版本摘要"
-  source={false}
   program={`root = Stack([summary])
 summary = Text("Full Compact 之后加入历史分页与 historyWindowV1 协议，默认主动委派；WriteSandbox 与 allowedWriteDirs 被移除。", "primary", "body", "medium")`}
 />
@@ -31,7 +30,6 @@ summary = Text("Full Compact 之后加入历史分页与 historyWindowV1 协议�
 <Tabs>
   <TabItem label="上下文与历史">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, i2, h3, i4])
 h0 = H3("P1 用户可感")
 i1 = Callout("success", "Full Compact 之后的 transcript 收缩与 ACP 历史分页：TUI 滚动到顶端取更早历史，SDK 增量合并分页结果；未协商 peri.historyPagination 的 ACP 客户端仍收到完整历史回放", "新增 · #221 / 4.1.0")
@@ -43,7 +41,6 @@ i4 = Callout("info", "历史窗口去重、内存、交付顺序与 UTF-8 边界
   </TabItem>
   <TabItem label="子代理与工具">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, h2, i3, i4, h5, i6])
 h0 = H3("P0 需要行动")
 i1 = Callout("danger", "删除 WriteSandbox 工具与 allowedWriteDirs 字段，读写约束下沉到提示词", "移除 · #234 / 4.1.0")
@@ -57,7 +54,6 @@ i6 = Callout("info", "全工具审计 F01–F14、Q01–Q08、V01–V02；工具
   </TabItem>
   <TabItem label="模型、MCP 与任务">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, i2, i3, h4, i5, i6, i7])
 h0 = H3("P1 用户可感")
 i1 = Callout("warning", "默认重试上限改为 10，并支持 goal 阻断后的恢复", "变更 · #237 / 4.1.1")

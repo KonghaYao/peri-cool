@@ -15,7 +15,6 @@ hero:
 
 <OpenUI
   title="4.0 版本摘要"
-  source={false}
   program={`root = Stack([summary])
 summary = Text("工具与存储搬出宿主：七个文件与终端工具迁入内置 workspace MCP，存储改为 Machine → Workspace → Session 三级归属，持久执行恢复与 LSP 被剥离。", "primary", "body", "medium")`}
 />
@@ -31,7 +30,6 @@ summary = Text("工具与存储搬出宿主：七个文件与终端工具迁入�
 <Tabs>
   <TabItem label="工具与 MCP">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, i2, h3, i4, i5, i6])
 h0 = H3("P0 需要行动")
 i1 = Callout("warning", "system MCP 工具不再带 mcp__<server>__ 前缀；同名冲突改为告警加先到者生效", "变更 · 4.0.0")
@@ -45,7 +43,6 @@ i6 = Callout("success", "Workflow 编排改为内置 MCP 实例，工具以 mcp_
   </TabItem>
   <TabItem label="存储与会话">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, i2, h3, i4, h5, i6])
 h0 = H3("P0 需要行动")
 i1 = Callout("warning", "存储升级为 Machine → Workspace → Session 三级归属；MCP 授权与响应缓存按工作区隔离", "变更 · 4.0.0")
@@ -59,7 +56,6 @@ i6 = Callout("info", "无绑定历史会话按当前观测重建归属；有 fro
   </TabItem>
   <TabItem label="配置与命令行">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, i2, h3, i4, h5, i6, i7])
 h0 = H3("P0 需要行动")
 i1 = Callout("danger", "环境变量 PERI_WRITE_DRAFT", "移除 · 4.0.0")
@@ -74,7 +70,6 @@ i7 = Callout("info", "安装脚本的代理覆盖 API 与下载两端，固定�
   </TabItem>
   <TabItem label="界面与交互">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, i2, i3, i4, i5, i6])
 h0 = H3("P1 用户可感")
 i1 = Callout("warning", "TUI 工作台在 v4 数据流上重建；过程区采用转角台阶与缩进", "变更 · 4.0.7")
@@ -88,7 +83,6 @@ i6 = Callout("info", "子代理同步交接丢失任务结果", "修复 · 4.0.4
   </TabItem>
   <TabItem label="平台与发布">
     <OpenUI
-      source={false}
       program={`root = Stack([h0, i1, i2, h3, i4, i5])
 h0 = H3("P1 用户可感")
 i1 = Callout("success", "WASM 接入：Emscripten 目标编译完成，Node、Bun 与本地 workerd 验收通过；托管部署未验收", "新增 · 4.0.0")

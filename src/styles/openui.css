@@ -39,20 +39,6 @@
 	color: var(--nb-muted-foreground);
 }
 
-.openui-source {
-	margin-top: 0.75rem;
-	font-size: 0.875rem;
-}
-
-.openui-source summary {
-	cursor: pointer;
-	color: var(--nb-muted-foreground);
-}
-
-.openui-source pre {
-	margin-top: 0.5rem;
-}
-
 /* 首页内嵌：去掉示例面板的外框，保留正文块间距（prose.css 的 1.25rem 节奏）。 */
 .openui-figure.home-openui {
 	margin: 1.25rem 0 0;
