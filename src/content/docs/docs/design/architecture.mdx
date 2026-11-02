@@ -1,0 +1,182 @@
+---
+title: 总体架构
+description: 面向贡献者的 Peri 边界地图：层职责、两条协议边界、关键链路与演进状态。
+---
+
+Peri 把模型协议、会话执行、能力装配、协议出口和终端呈现拆成不同边界。本文回答三个问题：一项状态由谁持有，一项决策由谁执行，一个事件在哪里被协议化。
+
+内容整理自主仓库 `docs/design/architecture.md`（状态：现行设计）；演进状态按根 `CLAUDE.md` 的阶段目标校对。跨模块不变量以 `docs/standards/architecture-contracts.md` 为准；具体符号与代码入口查 `docs/code-index/`。
+
+## 边界地图
+
+<OpenUI
+  title="Peri 边界地图"
+  program={`root = Stack([direction, map, protocol], 14)
+direction = Row([Pill("请求 ↓"), Text("从端点向下进入", "secondary", "small"), Pill("事件 ↑"), Text("从执行层向上返回", "secondary", "small"), Pill("能力供给 ↑"), Text("供给层为上方各层提供能力", "secondary", "small")], 8, "center", "start", true)
+map = Card("六层主链与能力供给", [mapIntro, Divider(), l6, d1, l5, d2, l4, d3, l3, d4, l2, d5, l1, d6, supply])
+mapIntro = Text("能力供给自下而上；请求向下进入，事件向上返回。", "secondary", "small")
+l6 = Row([Pill("端点", "sm"), Code("peri-tui"), Code("print"), Text("TUI、CLI、IDE 与 print 都经 ACP；stdio 只是本地 transport", "secondary", "small")], 8, "center", "start", true)
+d1 = Divider()
+l5 = Row([Pill("协议出口", "sm"), Code("peri-acp"), Text("ACP 适配、事件协议化与 caps 门控；不承载业务", "secondary", "small")], 8, "center", "start", true)
+d2 = Divider()
+l4 = Row([Pill("控制面", "sm"), Code("peri-controller"), Text("组合 Resources 与 Runtime；取消目标链路中只定位与转发；观测走旁路", "secondary", "small")], 8, "center", "start", true)
+d3 = Divider()
+l3 = Row([Pill("运行编排", "sm"), Code("peri-runtime"), Text("只持有 session_id → SessionHandle 映射，不持有 session 状态", "secondary", "small")], 8, "center", "start", true)
+d4 = Divider()
+l2 = Row([Pill("会话执行", "sm"), Code("peri-agent"), Text("Session 聚合根、RCRA 循环、冻结上下文与 cancel 终态判定（目标）", "secondary", "small")], 8, "center", "start", true)
+d5 = Divider()
+l1 = Row([Pill("协议适配", "sm"), Code("peri-model"), Text("OpenAI / Anthropic 协议、ModelMessage / ModelStream；无业务语义", "secondary", "small")], 8, "center", "start", true)
+d6 = Divider()
+supply = Row([Text("能力供给与共享底座", "primary", "small", "semibold"), Code("peri-middlewares"), Code("peri-resources"), Code("peri-process"), Code("peri-config"), Code("peri-acp-types"), Text("连接与工具切面、外部数据、子进程、配置权威面、共享契约", "secondary", "small")], 8, "center", "start", true)
+protocol = Callout("info", "内部依赖走 MCP，外部出口走 ACP。两条都是协议边界，与是否同进程部署无关。", "两条协议边界")`}
+/>
+
+<Aside type="note" title="方向怎么读">
+  图中的 ↑/↓ 表示能力供给、请求与事件的方向，不是 Rust 依赖箭头。能力供给自下而上；请求向下进入，事件向上返回。Rust 依赖按“消费者 → 提供方”理解，方向常与能力供给相反：`peri-middlewares` 消费 Agent 的 hook、工具与装配接口，Agent 不反向依赖 Middleware 实现；Runtime 消费共享契约中的 `SessionHandle`，不依赖具体 Agent crate。
+</Aside>
+
+## 三问定层
+
+判断一项职责归哪一层，按以下顺序回答：
+
+1. **生命周期**：状态跟着 session 活，归 Agent；跟着进程或多 session 活，归 Runtime；单次调用即结束的，不跨层。
+2. **来源**：LLM 协议形态归 Model；ACP 协议形态归 ACP；外部系统数据的访问通道归 Resources，持有者按生命周期决定。
+3. **消费**：界面呈现归 TUI；组合多源决策归 Controller；旁路观测走独立通道，不参与业务链路。
+
+发生争议时，通道与持有分离，生命周期优先于消费；协议适配归 Model，业务切面归 Middleware，界面归 TUI，接口契约归 `peri-acp-types`。
+
+## 两条协议边界
+
+<Aside type="note" title="内部依赖走 MCP，外部出口走 ACP">
+  MCP 能力先经过标准 `resources/read`、`tools/call` 或已协商的订阅，再由宿主投影到 ACP 或其他客户端；同进程部署也不构成绕过协议数据面的例外。外围客户端一律经 ACP 拿数据；stdio 只是本地 transport，不改变业务语义。
+</Aside>
+
+这两条边界都是协议边界，不是进程边界。MCP 按能力消费方向定义，与部署位置无关；MCP 能力边界也不强制对应独立进程，部署隔离按信任边界和生命周期确定。模型可见性与调用授权分别校验，宿主专用控制工具不进入模型工具目录。
+
+在这个方向上，文件系统依赖尽量下沉到 `mcp-packages` 层以下，业务层不直接外溢；网络依赖优先于本地文件依赖。工作区与工具环境可独立于计算实例驻留是服务化目标，不是当前已完成的承诺。
+
+## 职责边界
+
+按四个长期能力面阅读，最后单独看 Model 的协议边界。每个面都落在主链的一段上，不是独立进程。
+
+### Sessions：状态跟着会话活
+
+`peri-agent` 是 Session 聚合根。Session 的创建、运行和销毁，消息队列、RCRA 循环、冻结上下文、Session 级 hook 与 cancel 终态都归这一层。Session 创建时从 Resources 拉取项目指引、Skills 摘要和日期并冻结；SubAgent 创建时复制同一份冻结数据，因此会话内不会漂移。存储中 Session 就是 Thread，SubAgent 通过 `parent_thread_id` 形成父子链。
+
+`peri-runtime` 只维护 `session_id → SessionHandle` 映射，负责多 Session 的事件聚合补打与请求转发。它不持有 Session 状态、持久态或业务配置；其余能力全部注入，状态留在各 Session 内。它也不是消息激活或执行准入的第二权威。
+
+历史与执行分开。Thread/transcript、配置与 frozen/inherited 是历史事实源；Store 不保存 Agent 执行恢复账本。进程重启后可以加载历史会话并继续对话，但不会重建旧 mailbox、任务 owner 或旧执行；外部副作用未知时如实报告，不伪造完成、取消或跨进程恢复。
+
+### Resources：能力接入与外部数据
+
+`peri-middlewares` 承载业务切面：Goal、SubAgent、Permission、AskUser 等通过 Hook 挂载，并声明工具与 prompt 贡献；生产链顺序属于行为契约，不能按名称排序或为局部方便重排。文件系统与终端工具由 builtin Workspace MCP 实例提供；Skills、Cron 等能力同样经 MCP Middleware 接入，业务层不直接持有这些实现。MCP 客户端连接池、连接生命周期与工具桥接也在 Middleware 层。
+
+`peri-resources` 是外部系统门面：会话持久化（本地 SQLite 与远端 Turso adapter）、Workspace 级 OAuth 凭据。adapter 负责保存与适配状态，共用领域 reducer，不维护第二份业务规则；它不拥有 MCP 连接，也不承担交互 broker。配置来源 I/O 由独立 `peri-mcp-config` bootstrap 提供文件正文、具名环境与字节 CAS，不由 `peri-resources` 实现；有效配置规则归 `peri-config`，也不归输入 provider。`peri-process` 提供 OS 子进程能力，不拥有 session、数据库 lease、协议或 UI；Bash、MCP 与 JavaScript 的 owner 各自持有并负责清理。
+
+这里的关键规则是通道与持有分离：外部数据的访问通道归 Resources，持有者按生命周期决定。工作区与工具环境可独立于计算实例驻留是服务化目标，不是当前已完成的承诺。
+
+### Orchestration：同构 Agent 的任务关系
+
+`peri-controller` 是控制面：用 lite params（session 标识、agent 定义引用、cwd、初始输入）选择 Resources 与 Runtime，运行 Session 并消费事件；其余上下文由 Controller 组装注入。事件聚合与过滤、cancel 的定位与转发也在这一层；它只定位和转发，不解释取消语义。观测是横切旁路，不参与业务结果。
+
+`peri-agent` 以 AgentGroup 组织平等 Agent，SubAgent 通过 `SessionFactory::spawn_subagent` 创建；Task 与 Thread 分工不同：Thread 是持久化实体，Task 是当前进程的运行投影。任务归属、调用关联和交付只存在于当前进程，不持久化 owner 声明、任务绑定或交付账本，也不提供跨实例恢复。
+
+Subagent、Multitask 与 Workflow 都建立在同构 Agent 上，管理任务关系、协调与当前运行期等待，不恢复旧执行。
+
+编排的长期边界是任务关系、协调与当前运行期等待，不绑定某个活跃 Harness 实例；当前实现仍以进程内 Runtime/Controller 为主，跨实例协调属于未完成的服务化目标。结果到达不是复活已取消 turn 的授权；当前运行、暂停和关闭状态都要参与判断。
+
+### Endpoint：所有客户端经 ACP
+
+`peri-acp` 是纯协议实现：ACP 适配、事件协议化映射与 caps 门控，不承载业务。配置的 typed 结果由 `peri-config` 提供，ACP 不复制 typed 解析和来源规则；宿主把同一 scoped snapshot 注入新建 MCP pool。
+
+所有客户端一律经 ACP：TUI、CLI、IDE、print 以及 stdio 路径共用同一套业务语义。stdio 是本地 transport，不是另一条业务链；TUI 只把 ACP 传来的数据映射成界面，print 是同层轻量渲染。`peri-tui` 可以在启动和配置层复用类型与初始化能力，但 Agent 执行入口仍在 ACP 会话路径。
+
+### Model：只做协议适配
+
+`peri-model` 是最底层：OpenAI 与 Anthropic 双协议 adapter，统一的 `ModelMessage` / `ModelStream` 只表达协议形态，不含业务语义；流式输出经 `ModelStreamEvent` 统一。它不解释 Agent 会话语义；取消的最终判定在 Agent，Model 只负责执行中止。
+
+`peri-config` 是内部配置权威面，向 ACP、Middleware、Controller 与 TUI 提供 typed 结果；`peri-acp-types` 是跨层共享契约；`peri-process` 是 OS 子进程能力。三者都不拥有 Session 生命周期。
+
+## 关键链路
+
+<OpenUI
+  title="三条链路与共同约束"
+  program={`root = Stack([chains, cancelNote, contracts], 12)
+chains = Card("三条链路", [chainIntro, Divider(), rcra, d1, events, d2, cancel])
+chainIntro = Text("方向是调用与传递方向，不是 crate 依赖。", "secondary", "small")
+rcra = Row([Pill("RCRA", "sm"), Code("Receive"), Text("→"), Code("Compact"), Text("→"), Code("Reason"), Text("→"), Code("Act"), Text("Receive 是唯一退出口", "secondary", "small")], 6, "center", "start", true)
+d1 = Divider()
+events = Row([Pill("事件", "sm"), Code("Agent"), Text("emit →"), Code("Runtime"), Text("聚合 →"), Code("Controller"), Text("过滤 →"), Code("ACP"), Text("协议化 →"), Code("TUI")], 6, "center", "start", true)
+d2 = Divider()
+cancel = Row([Pill("取消 · 目标", "sm"), Code("TUI"), Text("→"), Code("ACP"), Text("→"), Code("Controller"), Text("定位 →"), Code("Runtime"), Text("查映射 →"), Code("Agent"), Text("终态判定 →"), Code("Model"), Text("中止")], 6, "center", "start", true)
+cancelNote = Callout("warning", "目标链路尚未全部落地；当前取消仍由 ACP 的 SessionManager::cancel_session 与 SessionState.cancel_token 过渡承载。", "取消链路是目标态")
+contracts = Callout("neutral", "事件带 turn_id + agent_id，Runtime 补 session_id 与 session_seq；terminal 事件位于该 turn 全部输出之后，并使客户端离开 loading。cancel 按 (session_id, turn_id, attempt_id) 幂等、clear_queue 默认 false，是目标契约。", "共同约束")`}
+/>
+
+### RCRA
+
+RCRA 是 `Receive → Compact → Reason → Act`。`Receive` 是消息消费与退出判断的唯一入口，也是 cancel 检查点；`Reason` 调用模型；`Act` 执行工具并原子提交 AI 消息与工具结果。Compact 属于 Agent 阶段，token 计数经 Model。上层不直接驱动这个循环。
+
+### 事件链
+
+Agent 发射业务事件，Runtime 按 Session 维度聚合与路由并补 `session_id`，Controller 过滤，ACP 做穷尽协议映射与 caps 门控，TUI 只消费协议化路径。同一业务事件不能沿两条链到达 TUI；否则会出现重复、乱序或身份字段不同。
+
+事件携带 `turn_id` + `agent_id`；`session_id` 由 Runtime 补打，同 Session 事件带单调 `session_seq`。跨层消息统一携带 `(session_id, session_epoch, turn_id, attempt_id)`，epoch/attempt_id 不可复用，防止迟到消息命中新 Session。终止事件必须使客户端离开 loading 状态；主 turn 返回终态前要等待 root EventBus forwarder 完成，保证最终 `LlmCallEnd` / `UsageUpdate` 先于 `AgentDone` / `TurnDone`。
+
+### 取消
+
+下图与本节描述的是目标链路：`TUI → ACP → Controller（定位）→ Runtime（查映射）→ Agent（终态判定）→ Model（中止）`。目标接线尚未全部落地；当前取消仍由 ACP 的 `SessionManager::cancel_session` 与 `SessionState.cancel_token` 过渡承载。
+
+目标契约中，Controller 只定位与转发，Runtime 查映射，Agent 做最终判定并中止 Model 执行。取消按 `(session_id, turn_id, attempt_id)` 幂等，turn 终态唯一（Completed 或 Interrupted）；优先级为 cancel > 续跑 > promote > retry。
+
+cancel 不等于清空待办：MQ 未消费消息保留，随下次循环作为新 attempt 输入；请求可带 `clear_queue`，默认 false。
+
+## 生命周期与持久真相
+
+Session 销毁按固定顺序收束：停收新输入 → 取消 owned tasks → join（带 deadline）→ 超时 abort → 持久化事务收束 → drain 事件 → 移除映射。
+
+异步完成的路径是：当前任务完成 → 明确收件会话的内存 MQ → 当前运行资格与取消检查 → RCRA 处理并写入 canonical history。结果到达不是复活已取消 turn 的授权；当前运行、暂停和关闭状态都要参与判断。
+
+持久真相只有 Thread/transcript、配置与 frozen/inherited。持久 Work、任务恢复绑定、处理义务与 control 回执目标已撤销，不建立替代执行账本。TaskManager、运行句柄、MQ 和 callback 是当前进程能力，不因加载历史复活旧 execution。进程重启只加载历史并允许续聊，不重建旧 mailbox、不接管旧任务，也不保证外部后台结果再次送达。
+
+外部副作用未知时如实报告，不伪造完成、取消或跨进程恢复保证。
+
+错误模型按边界分层：跨层边界用类型化错误并逐层包 context，层内用 `anyhow` 穿透。只有终止类、可重试类和协议错误必须类型化；`TurnError` 语义保留在 Agent 层。
+
+HITL 与 secret 的边界：宿主把 broker 经装配端口注入 Middleware，审批由 `PermissionMiddleware`、提问由 `HumanInTheLoopMiddleware` 消费同一 `UserInteractionBroker` 契约。权限审批只决定工具执行前是否询问，不替代操作系统、容器或凭据策略提供的隔离。
+
+## 演进状态
+
+<OpenUI
+  title="三个阶段的目标完成度"
+  program={`root = Stack([local, service, cluster, boundary], 10)
+local = Callout("success", "本地 Agent、会话与工具已形成可用闭环。", "单机本地 · 已完成")
+service = Callout("warning", "TS SDK 入口、进程与跨主 Agent 管理、ACP 后端、Store 直连与 MCP Client 仍在推进；重启只加载历史并允许续聊，不恢复旧执行。", "单机服务化 · 未完成")
+cluster = Callout("neutral", "多实例协调与接管、工具环境独立驻留、云端部署与计算/推理/工具分离尚未完成。", "集群化 / Serverless · 未完成")
+boundary = Callout("warning", "阶段标签表达目标完成度，不是当前能力承诺。本地闭环不等于服务化可用。", "目标与现状分开读")`}
+/>
+
+三个阶段的目标范围不同，不能互相替代：
+
+1. **单机本地：已完成。** 本地 Agent、会话与工具形成可用闭环。
+2. **单机服务化：未完成。** 目标是由 TS SDK 负责入口、进程与跨主 Agent 管理，Peri 负责 ACP 后端、Agent 执行、Store 直连与 MCP Client。重启后保留历史会话加载与续聊，不恢复旧执行。
+3. **集群化 / Serverless：未完成。** 目标是多实例协调与接管、工具环境独立驻留、云端部署，以及计算核心减重、实例替换和决策/推理/工具执行分开部署。
+
+判断某项能力是否已经具备，先看代码、契约测试与 active spec；阶段标签只表达目标完成度。设计文档里的“现行设计”和“已批准目标”也必须分开读。
+
+## 事实源与维护
+
+- 总体设计：主仓库 `docs/design/architecture.md`，状态为现行设计。
+- 跨模块不变量：`docs/standards/architecture-contracts.md`。
+- 代码入口：`docs/code-index/`。
+- 进度与验收：`spec/issues/`。
+- 设计索引与状态语义：主仓库 `docs/design/README.md`；本站[设计入口](/docs/design/)。
+
+冲突时按代码与契约测试、`docs/standards/`、模块指引、`docs/design/`、active spec、历史记录的顺序判断。本页只做面向贡献者的整理，删去实现清单；需要精确符号时查代码索引。
+
+## 下一步
+
+<CardGrid>
+  <LinkCard title="开发者入口" description="按任务找到代码索引、契约测试和验证命令。" href="/docs/developer/" />
+  <LinkCard title="3.0 分层重构" description="理解这些边界为什么被重新划分。" href="/docs/history/3-0-refactor/" />
+</CardGrid>

@@ -1,0 +1,42 @@
+---
+title: 设计
+description: Peri 已批准设计的入口：先分清事实源与状态，再进入总体架构。
+---
+
+主仓库的 `docs/design/` 只保存已批准的架构与产品设计，回答“系统应当如何工作”。它不记录调查、迁移批次或完成清单；现行行为由代码、契约测试和复现证明。
+
+状态只有三种：现行设计表示已落地；已批准目标表示尚未完全落地，进度写 `spec/issues/`；待重构表示目标已收敛、实现差距已审计。
+
+<OpenUI
+  title="读设计前先分清"
+  program={`root = Stack([truth, status], 12)
+truth = Card("三种材料，三种问题", [truthIntro, Divider(), design, Divider(), standards, Divider(), code])
+truthIntro = Text("同一句话可能在说现状、规则或目标。", "secondary", "small")
+design = Row([Pill("设计", "sm"), Text("系统应当如何工作。允许写已裁决但尚未完全落地的目标，并在文首标明状态。", "secondary", "small")], 8, "center", "start", true)
+standards = Row([Pill("规则", "sm"), Text("跨模块可执行约束。用稳定 ID、Scope、Rule、Verify 定位，不复制设计叙事。", "secondary", "small")], 8, "center", "start", true)
+code = Row([Pill("事实", "sm"), Text("代码、契约测试与可复现结果证明现行行为。设计不能把目标写成现状。", "secondary", "small")], 8, "center", "start", true)
+status = Card("状态怎么读", [statusIntro, Divider(), current, Divider(), target, Divider(), refactor])
+statusIntro = Text("状态写在文首，进度写在 spec/issues。", "secondary", "small")
+current = Row([Pill("现行设计", "sm"), Text("已落地的稳定结构；具体符号与入口以代码索引和源码为准。", "secondary", "small")], 8, "center", "start", true)
+target = Row([Pill("已批准目标", "sm"), Text("已经裁决但尚未完全落地；实现进度与验收只写对应 issue。", "secondary", "small")], 8, "center", "start", true)
+refactor = Row([Pill("待重构", "sm"), Text("设计已收敛、实现差距已审计；作为重构基线，范围与顺序见 active issue。", "secondary", "small")], 8, "center", "start", true)`}
+/>
+
+## 从这里开始
+
+<CardGrid>
+  <LinkCard title="总体架构" description="六层主链、两条协议边界、关键链路与阶段状态。" href="/docs/design/architecture/" />
+  <LinkCard title="开发者入口" description="按任务找到代码索引、契约测试和验证命令。" href="/docs/developer/" />
+  <LinkCard title="3.0 分层重构" description="理解这些边界为什么被重新划分。" href="/docs/history/3-0-refactor/" />
+</CardGrid>
+
+## 维护边界
+
+1. 新设计先确定状态、scope、代码事实源和对应 active issue。
+2. 实施完成后删掉进度叙事，只把稳定结果同步为“现行设计”。
+3. 文件改名、合并或删除时，同步根/模块路由、standards、code-index 与 active spec 引用。
+4. 动态 inventory、固定源码行号和命令输出不复制进设计；定位信息放 `docs/code-index/`。
+
+## 事实源
+
+本页是贡献者入口，不替代主仓库文档。发生冲突时，按代码与契约测试、`docs/standards/`、模块指引、`docs/design/`、active spec、历史记录的顺序判断。

@@ -16,6 +16,9 @@ const nimbusConfig = defineNimbusConfig({
   socialImageAlt: "Peri 文档预览",
   rendering: { collections: { docs: "build", posts: "build" } },
   sidebar: {
+    // 设计是 docs 内的独立模块：进入该子树时侧栏只保留本模块，
+    // 避免整棵文档树挤在设计页旁；跨模块导航由顶栏章节承担。
+    isolate: { boundaries: ["docs/design"] },
     items: [
       { label: "文档总览", link: "/docs/" },
       {
@@ -113,11 +116,19 @@ const nimbusConfig = defineNimbusConfig({
         ],
       },
       {
+        label: "设计",
+        segment: "/docs/design",
+        collapsed: false,
+        items: [
+          { label: "设计入口", link: "/docs/design/" },
+          { label: "总体架构", link: "/docs/design/architecture/" },
+        ],
+      },
+      {
         label: "开发与历史",
         collapsed: true,
         items: [
           { label: "开发者入口", link: "/docs/developer/" },
-          { label: "架构总览", link: "/docs/developer/architecture/" },
           { label: "3.0 分层重构", link: "/docs/history/3-0-refactor/" },
           { label: "可验证工程里程碑", link: "/docs/history/milestones/" },
         ],

@@ -29,8 +29,22 @@ const { collection, showSidebar = true, sections: sectionsProp } = Astro.props;
 
 // Normalize trailing slash so isActive matches sidebar hrefs.
 const currentSlug = stripBase(Astro.url.pathname, import.meta.env.BASE_URL).replace(/\/$/, "") || "/";
-const sections =
+// Nimbus 只会把跨 collection 的 autogenerate 分组升级为顶栏章节；「设计」
+// 是 docs 内的顶层模块，不额外登记就只出现在侧栏。这里补成同级标签。
+const designHref = "/docs/design/";
+const isDesignPath =
+  currentSlug === designHref.replace(/\/$/, "") ||
+  currentSlug.startsWith(designHref);
+const derivedSections =
   sectionsProp ?? (await getSidebarSections(currentSlug, { collection }));
+const sections: SidebarSection[] = derivedSections.some(
+  (section) => section.href.replace(/\/$/, "") === designHref.replace(/\/$/, ""),
+)
+  ? derivedSections
+  : [
+      { label: "设计", href: designHref, isActive: isDesignPath },
+      ...derivedSections,
+    ];
 // 与框架自身站点一致：只有一个跨 collection 章节时也渲染标签条。
 const showSections = sections.length >= 1;
 const homeHref = withBase("/", import.meta.env.BASE_URL);
